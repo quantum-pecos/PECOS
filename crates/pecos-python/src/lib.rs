@@ -10,10 +10,10 @@
 // or implied. See the License for the specific language governing permissions and limitations under
 // the License.
 
-mod sparse_sim;
+mod sparse_stab_bindings;
 mod state_vec_bindings;
 
-use sparse_sim::SparseSim;
+use sparse_stab_bindings::SparseSim;
 use state_vec_bindings::RsStateVec;
 
 use pyo3::prelude::*;
