@@ -473,14 +473,12 @@ impl ArbitraryRotationGateable<usize> for StateVec {
     fn rx(&mut self, theta: f64, target: usize) -> &mut Self {
         let cos = (theta / 2.0).cos();
         let sin = (theta / 2.0).sin();
-        let neg_i_sin = Complex64::new(0.0, -sin);
-
         self.single_qubit_rotation(
             target,
-            Complex64::new(cos, 0.0), // u00
-            neg_i_sin,                // u01
-            neg_i_sin,                // u10
-            Complex64::new(cos, 0.0), // u11
+            Complex64::new(cos, 0.0),
+            Complex64::new(0.0, -sin),
+            Complex64::new(0.0, -sin),
+            Complex64::new(cos, 0.0),
         )
     }
 
@@ -495,13 +493,12 @@ impl ArbitraryRotationGateable<usize> for StateVec {
     fn ry(&mut self, theta: f64, target: usize) -> &mut Self {
         let cos = (theta / 2.0).cos();
         let sin = (theta / 2.0).sin();
-
         self.single_qubit_rotation(
             target,
-            Complex64::new(cos, 0.0),  // u00
-            Complex64::new(-sin, 0.0), // u01
-            Complex64::new(sin, 0.0),  // u10
-            Complex64::new(cos, 0.0),  // u11
+            Complex64::new(cos, 0.0),
+            Complex64::new(-sin, 0.0),
+            Complex64::new(sin, 0.0),
+            Complex64::new(cos, 0.0),
         )
     }
 
@@ -514,20 +511,20 @@ impl ArbitraryRotationGateable<usize> for StateVec {
     /// Panics if target qubit index is >= number of qubits
     #[inline]
     fn rz(&mut self, theta: f64, target: usize) -> &mut Self {
-        let exp_minus_i_theta_2 = Complex64::from_polar(1.0, -theta / 2.0);
-        let exp_plus_i_theta_2 = Complex64::from_polar(1.0, theta / 2.0);
+        let e_pos = Complex64::from_polar(1.0, -theta / 2.0);
+        let e_neg = Complex64::from_polar(1.0, theta / 2.0);
 
         self.single_qubit_rotation(
             target,
-            exp_minus_i_theta_2,      // u00
-            Complex64::new(0.0, 0.0), // u01
-            Complex64::new(0.0, 0.0), // u10
-            exp_plus_i_theta_2,       // u11
+            e_pos,
+            Complex64::new(0.0, 0.0),
+            Complex64::new(0.0, 0.0),
+            e_neg,
         )
     }
 
     /// Apply U(theta, phi, lambda) gate
-    /// U1_3 = [[cos(θ/2), -e^(iλ)sin(θ/2)],
+    /// `U1_3` = [[cos(θ/2), -e^(iλ)sin(θ/2)],
     ///         [e^(iφ)sin(θ/2), e^(i(λ+φ))cos(θ/2)]]
     ///
     /// # Panics
@@ -681,7 +678,9 @@ impl ArbitraryRotationGateable<usize> for StateVec {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use std::f64::consts::{FRAC_1_SQRT_2, FRAC_PI_2, FRAC_PI_3, FRAC_PI_6, PI, TAU};
+    use std::f64::consts::{FRAC_1_SQRT_2, FRAC_PI_2, FRAC_PI_3, FRAC_PI_4, FRAC_PI_6, PI, TAU};
+
+    use num_complex::Complex64; // Ensure the correct import for Complex64
 
     #[test]
     fn test_new_state() {
@@ -712,16 +711,15 @@ mod tests {
     fn test_ry() {
         let mut q = StateVec::new(1);
 
-        // RY(π) should be equivalent to X up to global phase
+        // RY(π) should flip |0⟩ to |1⟩
         q.ry(PI, 0);
-        assert!(q.state[0].norm() < 1e-10);
-        assert!((q.state[1].norm() - 1.0).abs() < 1e-10);
+        assert!(q.state[0].norm() < 1e-10); // Close to zero
+        assert!((q.state[1].norm() - 1.0).abs() < 1e-10); // Magnitude 1 for |1⟩
 
-        // RY(2π) should return to initial state up to global phase
-        let mut q = StateVec::new(1);
-        q.ry(2.0 * PI, 0);
-        assert!((q.state[0].norm() - 1.0).abs() < 1e-10);
-        assert!(q.state[1].norm() < 1e-10);
+        // Two RY(π) rotations should return to the initial state
+        q.ry(PI, 0);
+        assert!((q.state[0].norm() - 1.0).abs() < 1e-10); // Magnitude 1 for |0⟩
+        assert!(q.state[1].norm() < 1e-10); // Close to zero
     }
 
     #[test]
@@ -729,28 +727,319 @@ mod tests {
         let mut q = StateVec::new(1);
 
         // RZ should only add phases, not change probabilities
-        q.h(0); // Put in superposition first
+        q.h(0); // Put qubit in superposition
         let probs_before: Vec<f64> = q.state.iter().map(num_complex::Complex::norm_sqr).collect();
 
-        q.rz(FRAC_PI_2, 0);
+        q.rz(FRAC_PI_2, 0); // Rotate Z by π/2
         let probs_after: Vec<f64> = q.state.iter().map(num_complex::Complex::norm_sqr).collect();
 
-        // Probabilities should remain unchanged
         for (p1, p2) in probs_before.iter().zip(probs_after.iter()) {
-            assert!((p1 - p2).abs() < 1e-10);
+            assert!((p1 - p2).abs() < 1e-10); // Probabilities unchanged
         }
+    }
 
-        // RZ(2π) should return to initial state up to global phase
+    #[test]
+    fn test_rx_step_by_step() {
+        // Step 1: RX(0) should be identity
         let mut q = StateVec::new(1);
-        q.h(0);
-        let state_before = q.state.clone();
-        q.rz(TAU, 0);
+        q.rx(0.0, 0);
+        assert!((q.state[0].re - 1.0).abs() < 1e-10);
+        assert!(q.state[1].norm() < 1e-10);
 
-        // States should be identical up to global phase
-        let phase = q.state[0] / state_before[0];
-        for (a, b) in q.state.iter().zip(state_before.iter()) {
-            assert!((a - b * phase).norm() < 1e-10);
+        // Step 2: RX(π) on |0⟩ should give -i|1⟩
+        let mut q = StateVec::new(1);
+        q.rx(PI, 0);
+        println!("RX(π)|0⟩ = {:?}", q.state); // Debug output
+        assert!(q.state[0].norm() < 1e-10);
+        assert!((q.state[1].im + 1.0).abs() < 1e-10);
+
+        // Step 3: RX(π/2) on |0⟩ should give (|0⟩ - i|1⟩)/√2
+        let mut q = StateVec::new(1);
+        q.rx(FRAC_PI_2, 0);
+        println!("RX(π/2)|0⟩ = {:?}", q.state); // Debug output
+        let expected_amp = 1.0 / 2.0_f64.sqrt();
+        assert!((q.state[0].re - expected_amp).abs() < 1e-10);
+        assert!((q.state[1].im + expected_amp).abs() < 1e-10);
+    }
+
+    #[test]
+    fn test_ry_step_by_step() {
+        // Step 1: RY(0) should be identity
+        let mut q = StateVec::new(1);
+        q.ry(0.0, 0);
+        println!("RY(0)|0⟩ = {:?}", q.state);
+        assert!((q.state[0].re - 1.0).abs() < 1e-10);
+        assert!(q.state[1].norm() < 1e-10);
+
+        // Step 2: RY(π) on |0⟩ should give |1⟩
+        let mut q = StateVec::new(1);
+        q.ry(PI, 0);
+        println!("RY(π)|0⟩ = {:?}", q.state);
+        assert!(q.state[0].norm() < 1e-10);
+        assert!((q.state[1].re - 1.0).abs() < 1e-10);
+
+        // Step 3: RY(π/2) on |0⟩ should give (|0⟩ + |1⟩)/√2
+        let mut q = StateVec::new(1);
+        q.ry(FRAC_PI_2, 0);
+        println!("RY(π/2)|0⟩ = {:?}", q.state);
+        let expected_amp = 1.0 / 2.0_f64.sqrt();
+        assert!((q.state[0].re - expected_amp).abs() < 1e-10);
+        assert!((q.state[1].re - expected_amp).abs() < 1e-10);
+
+        // Step 4: RY(-π/2) on |0⟩ should give (|0⟩ - |1⟩)/√2
+        let mut q = StateVec::new(1);
+        q.ry(-FRAC_PI_2, 0);
+        println!("RY(-π/2)|0⟩ = {:?}", q.state);
+        assert!((q.state[0].re - expected_amp).abs() < 1e-10);
+        assert!((q.state[1].re + expected_amp).abs() < 1e-10);
+    }
+
+    #[test]
+    fn test_rz_step_by_step() {
+        // Step 1: RZ(0) should be identity
+        let mut q = StateVec::new(1);
+        q.rz(0.0, 0);
+        println!("RZ(0)|0⟩ = {:?}", q.state);
+        assert!((q.state[0].re - 1.0).abs() < 1e-10);
+        assert!(q.state[1].norm() < 1e-10);
+
+        // Step 2: RZ(π/2) on |+⟩ should give |+i⟩ = (|0⟩ + i|1⟩)/√2
+        let mut q = StateVec::new(1);
+        q.h(0); // Create |+⟩
+        q.rz(FRAC_PI_2, 0);
+        println!("RZ(π/2)|+⟩ = {:?}", q.state);
+        let expected_amp = 1.0 / 2.0_f64.sqrt();
+        assert!((q.state[0].norm() - expected_amp).abs() < 1e-10);
+        assert!((q.state[1].norm() - expected_amp).abs() < 1e-10);
+        // Check relative phase
+        let ratio = q.state[1] / q.state[0];
+        println!("Relative phase ratio = {ratio:?}");
+        assert!(
+            (ratio.im - 1.0).abs() < 1e-10,
+            "Relative phase incorrect: ratio = {ratio}"
+        );
+        assert!(
+            ratio.re.abs() < 1e-10,
+            "Relative phase has unexpected real component: {}",
+            ratio.re
+        );
+
+        // Step 3: Two RZ(π/2) operations should equal one RZ(π)
+        let mut q1 = StateVec::new(1);
+        let mut q2 = StateVec::new(1);
+        q1.rz(PI, 0);
+        q2.rz(FRAC_PI_2, 0);
+        q2.rz(FRAC_PI_2, 0);
+        println!("RZ(π)|0⟩ vs RZ(π/2)RZ(π/2)|0⟩:");
+        println!("q1 = {:?}", q1.state);
+        println!("q2 = {:?}", q2.state);
+        let ratio = q2.state[0] / q1.state[0];
+        let phase = ratio.arg();
+        println!("Phase difference between q2 and q1: {phase}");
+        assert!(
+            (ratio.norm() - 1.0).abs() < 1e-10,
+            "Magnitudes differ: ratio = {ratio}"
+        );
+        // Don't check exact phase, just verify states are equal up to global phase
+        assert!((q2.state[1] * q1.state[0] - q2.state[0] * q1.state[1]).norm() < 1e-10);
+    }
+
+    #[test]
+    fn test_sq_rotation_commutation() {
+        // RX and RY don't commute - verify RX(θ)RY(φ) ≠ RY(φ)RX(θ)
+        let mut q1 = StateVec::new(1);
+        let mut q2 = StateVec::new(1);
+
+        let theta = FRAC_PI_3; // π/3
+        let phi = FRAC_PI_4; // π/4
+
+        // Apply in different orders
+        q1.rx(theta, 0).ry(phi, 0);
+        q2.ry(phi, 0).rx(theta, 0);
+
+        println!("RY(π/4)RX(π/3)|0⟩ = {:?}", q1.state);
+        println!("RX(π/3)RY(π/4)|0⟩ = {:?}", q2.state);
+
+        // States should be different - check they're not equal up to global phase
+        let ratio = q2.state[0] / q1.state[0];
+        assert!((q2.state[1] / q1.state[1] - ratio).norm() > 1e-10);
+    }
+
+    #[test]
+    fn test_sq_rotation_decompositions() {
+        // H = RZ(-π)RY(-π/2)
+        let mut q1 = StateVec::new(1);
+        let mut q2 = StateVec::new(1);
+
+        println!("Initial states:");
+        println!("q1 = {:?}", q1.state);
+        println!("q2 = {:?}", q2.state);
+
+        q1.h(0); // Direct H
+        println!("After H: q1 = {:?}", q1.state);
+
+        // H via rotations - changed order and added negative sign to RZ angle
+        q2.ry(-FRAC_PI_2, 0).rz(-PI, 0);
+        println!("After RZ(-π)RY(-π/2): q2 = {:?}", q2.state);
+
+        // Compare up to global phase by looking at ratios between components
+        let ratio = q2.state[0] / q1.state[0];
+        println!("Ratio = {ratio:?}");
+        for (a, b) in q1.state.iter().zip(q2.state.iter()) {
+            println!("Comparing {a} and {b}");
+            assert!(
+                (a * ratio - b).norm() < 1e-10,
+                "States differ: {a} vs {b} (ratio: {ratio})"
+            );
         }
+    }
+
+    // Helper function to compare states up to global phase
+    fn assert_states_equal(state1: &[Complex64], state2: &[Complex64]) {
+        if state1[0].norm() < 1e-10 && state2[0].norm() < 1e-10 {
+            // Both first components near zero, compare other components directly
+            for (a, b) in state1.iter().zip(state2.iter()) {
+                assert!(
+                    (a.norm() - b.norm()).abs() < 1e-10,
+                    "States differ in magnitude: {a} vs {b}"
+                );
+            }
+        } else {
+            // Get phase from first non-zero component
+            let ratio = match state1
+                .iter()
+                .zip(state2.iter())
+                .find(|(a, b)| a.norm() > 1e-10 && b.norm() > 1e-10)
+            {
+                Some((a, b)) => b / a,
+                None => panic!("States have no corresponding non-zero components"),
+            };
+            println!("Phase ratio between states: {ratio:?}");
+
+            for (a, b) in state1.iter().zip(state2.iter()) {
+                assert!(
+                    (a * ratio - b).norm() < 1e-10,
+                    "States differ: {a} vs {b} (ratio: {ratio})"
+                );
+            }
+        }
+    }
+
+    #[test]
+    fn test_sq_standard_gate_decompositions() {
+        // Test S = RZ(π/2)
+        let mut q1 = StateVec::new(1);
+        let mut q2 = StateVec::new(1);
+        q1.sz(0);
+        q2.rz(FRAC_PI_2, 0);
+        println!("S|0⟩ = {:?}", q1.state);
+        println!("RZ(π/2)|0⟩ = {:?}", q2.state);
+        assert_states_equal(&q1.state, &q2.state);
+
+        // Test X = RX(π)
+        let mut q1 = StateVec::new(1);
+        let mut q2 = StateVec::new(1);
+        q1.x(0);
+        q2.rx(PI, 0);
+        println!("X|0⟩ = {:?}", q1.state);
+        println!("RX(π)|0⟩ = {:?}", q2.state);
+        assert_states_equal(&q1.state, &q2.state);
+
+        // Test Y = RY(π)
+        let mut q1 = StateVec::new(1);
+        let mut q2 = StateVec::new(1);
+        q1.y(0);
+        q2.ry(PI, 0);
+        println!("Y|0⟩ = {:?}", q1.state);
+        println!("RY(π)|0⟩ = {:?}", q2.state);
+        assert_states_equal(&q1.state, &q2.state);
+
+        // Test Z = RZ(π)
+        let mut q1 = StateVec::new(1);
+        let mut q2 = StateVec::new(1);
+        q1.z(0);
+        q2.rz(PI, 0);
+        println!("Z|0⟩ = {:?}", q1.state);
+        println!("RZ(π)|0⟩ = {:?}", q2.state);
+        assert_states_equal(&q1.state, &q2.state);
+
+        // Test √X = RX(π/2)
+        let mut q1 = StateVec::new(1);
+        let mut q2 = StateVec::new(1);
+        q1.sx(0);
+        q2.rx(FRAC_PI_2, 0);
+        println!("√X|0⟩ = {:?}", q1.state);
+        println!("RX(π/2)|0⟩ = {:?}", q2.state);
+        assert_states_equal(&q1.state, &q2.state);
+
+        // Test √Y = RY(π/2)
+        let mut q1 = StateVec::new(1);
+        let mut q2 = StateVec::new(1);
+        q1.sy(0);
+        q2.ry(FRAC_PI_2, 0);
+        println!("√Y|0⟩ = {:?}", q1.state);
+        println!("RY(π/2)|0⟩ = {:?}", q2.state);
+        assert_states_equal(&q1.state, &q2.state);
+
+        // Test S = TT as RZ(π/4)RZ(π/4)
+        let mut q1 = StateVec::new(1);
+        let mut q2 = StateVec::new(1);
+        q2.rz(FRAC_PI_4, 0).rz(FRAC_PI_4, 0);
+        q1.sz(0);
+        println!("S|0⟩ = {:?}", q1.state);
+        println!("T²|0⟩ = RZ(π/4)RZ(π/4)|0⟩ = {:?}", q2.state);
+        assert_states_equal(&q1.state, &q2.state);
+
+        // Test H = RX(π)RY(π/2) decomposition
+        let mut q1 = StateVec::new(1);
+        let mut q2 = StateVec::new(1);
+        q1.h(0);
+        q2.ry(FRAC_PI_2, 0).rx(PI, 0);
+        println!("H|0⟩ = {:?}", q1.state);
+        println!("RX(π)RY(π/2)|0⟩ = {:?}", q2.state);
+        assert_states_equal(&q1.state, &q2.state);
+    }
+
+    #[test]
+    fn test_rx_rotation_angle_relations() {
+        // Test that RX(θ)RX(-θ) = I
+        let mut q = StateVec::new(1);
+        let theta = FRAC_PI_3;
+
+        // Apply forward then reverse rotations
+        q.rx(theta, 0).rx(-theta, 0);
+
+        // Should get back to |0⟩ up to global phase
+        assert!(q.state[1].norm() < 1e-10);
+        assert!((q.state[0].norm() - 1.0).abs() < 1e-10);
+    }
+
+    #[test]
+    fn test_ry_rotation_angle_relations() {
+        // Test that RY(θ)RY(-θ) = I
+        let mut q = StateVec::new(1);
+        let theta = FRAC_PI_3;
+
+        // Apply forward then reverse rotations
+        q.ry(theta, 0).ry(-theta, 0);
+
+        // Should get back to |0⟩ up to global phase
+        assert!(q.state[1].norm() < 1e-10);
+        assert!((q.state[0].norm() - 1.0).abs() < 1e-10);
+    }
+
+    #[test]
+    fn test_rz_rotation_angle_relations() {
+        // Test that RZ(θ)RZ(-θ) = I
+        let mut q = StateVec::new(1);
+        let theta = FRAC_PI_3;
+
+        // Apply forward then reverse rotations
+        q.rz(theta, 0).rz(-theta, 0);
+
+        // Should get back to |0⟩ up to global phase
+        assert!(q.state[1].norm() < 1e-10);
+        assert!((q.state[0].norm() - 1.0).abs() < 1e-10);
     }
 
     #[test]
