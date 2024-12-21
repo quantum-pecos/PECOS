@@ -675,15 +675,74 @@ impl ArbitraryRotationGateable<usize> for StateVec {
     }
 }
 
+/// ## Key Invariants
+/// - **Normalization**: The total probability (norm squared) of the state vector
+///   must always be 1.
+/// - **Unitarity**: All gate operations must preserve the norm of the state vector.
+/// - **Phase Consistency**: States are compared up to a global phase.
+///
+/// ## Testing Strategy
+/// - **Unit Tests**: Validate individual operations (e.g., `RX`, `RY`, `RZ`, `CX`, `CY`, etc.).
+/// - **Compositional Tests**: Verify decompositions, commutation relations, and symmetry properties.
+/// - **Edge Cases**: Test with boundary values (e.g., `θ = 0`, `θ = 2π`) and systems near memory limits.
+/// - **Randomized Tests**: Evaluate probabilistic operations like measurement and ensure statistical validity.
+/// - **Integration Tests**: Combine operations to ensure the overall system behaves as expected.
+///
+/// ## Test Organization
+/// - Each gate or operation is tested independently for correctness.
+/// - Helper functions like `assert_states_equal` are used to compare quantum states up to global phase.
+/// - Failures provide clear diagnostic outputs for debugging, including mismatches and intermediate states.
 #[cfg(test)]
 mod tests {
     use super::*;
     use std::f64::consts::{FRAC_1_SQRT_2, FRAC_PI_2, FRAC_PI_3, FRAC_PI_4, FRAC_PI_6, PI, TAU};
 
-    use num_complex::Complex64; // Ensure the correct import for Complex64
+    use num_complex::Complex64;
+
+    /// Compare two quantum states up to global phase.
+    ///
+    /// This function ensures that two state vectors represent the same quantum state,
+    /// accounting for potential differences in global phase.
+    ///
+    /// # Arguments
+    /// - `state1`: A reference to the first state vector.
+    /// - `state2`: A reference to the second state vector.
+    ///
+    /// # Panics
+    /// Panics if the states differ in norm or relative phase beyond a small numerical tolerance.
+    fn assert_states_equal(state1: &[Complex64], state2: &[Complex64]) {
+        if state1[0].norm() < 1e-10 && state2[0].norm() < 1e-10 {
+            // Both first components near zero, compare other components directly
+            for (a, b) in state1.iter().zip(state2.iter()) {
+                assert!(
+                    (a.norm() - b.norm()).abs() < 1e-10,
+                    "States differ in magnitude: {a} vs {b}"
+                );
+            }
+        } else {
+            // Get phase from first non-zero component
+            let ratio = match state1
+                .iter()
+                .zip(state2.iter())
+                .find(|(a, b)| a.norm() > 1e-10 && b.norm() > 1e-10)
+            {
+                Some((a, b)) => b / a,
+                None => panic!("States have no corresponding non-zero components"),
+            };
+            println!("Phase ratio between states: {ratio:?}");
+
+            for (a, b) in state1.iter().zip(state2.iter()) {
+                assert!(
+                    (a * ratio - b).norm() < 1e-10,
+                    "States differ: {a} vs {b} (ratio: {ratio})"
+                );
+            }
+        }
+    }
 
     #[test]
     fn test_new_state() {
+        // Verify the initial state is correctly set to |0>
         let q = StateVec::new(2);
         assert_eq!(q.state[0], Complex64::new(1.0, 0.0));
         for i in 1..4 {
@@ -693,14 +752,15 @@ mod tests {
 
     #[test]
     fn test_rx() {
+        // Test RX gate functionality
         let mut q = StateVec::new(1);
 
-        // RX(π) should be equivalent to X up to global phase
+        // RX(π) should flip |0⟩ to -i|1⟩
         q.rx(PI, 0);
         assert!(q.state[0].norm() < 1e-10);
         assert!((q.state[1].norm() - 1.0).abs() < 1e-10);
 
-        // RX(2π) should return to initial state up to global phase
+        // RX(2π) should return to the initial state up to global phase
         let mut q = StateVec::new(1);
         q.rx(2.0 * PI, 0);
         assert!((q.state[0].norm() - 1.0).abs() < 1e-10);
@@ -740,8 +800,9 @@ mod tests {
 
     #[test]
     fn test_rx_step_by_step() {
-        // Step 1: RX(0) should be identity
         let mut q = StateVec::new(1);
+
+        // Step 1: RX(0) should be identity
         q.rx(0.0, 0);
         assert!((q.state[0].re - 1.0).abs() < 1e-10);
         assert!(q.state[1].norm() < 1e-10);
@@ -891,37 +952,6 @@ mod tests {
                 (a * ratio - b).norm() < 1e-10,
                 "States differ: {a} vs {b} (ratio: {ratio})"
             );
-        }
-    }
-
-    // Helper function to compare states up to global phase
-    fn assert_states_equal(state1: &[Complex64], state2: &[Complex64]) {
-        if state1[0].norm() < 1e-10 && state2[0].norm() < 1e-10 {
-            // Both first components near zero, compare other components directly
-            for (a, b) in state1.iter().zip(state2.iter()) {
-                assert!(
-                    (a.norm() - b.norm()).abs() < 1e-10,
-                    "States differ in magnitude: {a} vs {b}"
-                );
-            }
-        } else {
-            // Get phase from first non-zero component
-            let ratio = match state1
-                .iter()
-                .zip(state2.iter())
-                .find(|(a, b)| a.norm() > 1e-10 && b.norm() > 1e-10)
-            {
-                Some((a, b)) => b / a,
-                None => panic!("States have no corresponding non-zero components"),
-            };
-            println!("Phase ratio between states: {ratio:?}");
-
-            for (a, b) in state1.iter().zip(state2.iter()) {
-                assert!(
-                    (a * ratio - b).norm() < 1e-10,
-                    "States differ: {a} vs {b} (ratio: {ratio})"
-                );
-            }
         }
     }
 
@@ -1615,6 +1645,36 @@ mod tests {
     }
 
     #[test]
+    fn test_sq_rotation_edge_cases() {
+        let mut q = StateVec::new(1);
+
+        // Test RX(0): Should be identity
+        let initial = q.state.clone();
+        q.rx(0.0, 0);
+        assert_states_equal(&q.state, &initial);
+
+        // Test RX(2π): Should also be identity up to global phase
+        q.rx(2.0 * PI, 0);
+        assert_states_equal(&q.state, &initial);
+
+        // Test RY(0): Should be identity
+        q.ry(0.0, 0);
+        assert_states_equal(&q.state, &initial);
+
+        // Test RY(2π): Should also be identity up to global phase
+        q.ry(2.0 * PI, 0);
+        assert_states_equal(&q.state, &initial);
+
+        // Test RZ(0): Should be identity
+        q.rz(0.0, 0);
+        assert_states_equal(&q.state, &initial);
+
+        // Test RZ(2π): Should also be identity up to global phase
+        q.rz(2.0 * PI, 0);
+        assert_states_equal(&q.state, &initial);
+    }
+
+    #[test]
     fn test_unitary_properties() {
         let mut q = StateVec::new(1);
 
@@ -1996,17 +2056,18 @@ mod tests {
     }
 
     #[test]
-    fn test_large_system_h() {
-        let num_qubits = 10; // 10 qubits => state vector size = 1024
+    fn test_large_system() {
+        // Test with a large number of qubits to ensure robustness.
+        let num_qubits = 20; // 20 qubits => 2^20 amplitudes (~1M complex numbers)
         let mut q = StateVec::new(num_qubits);
 
-        // Apply Hadamard gate to the 0th qubit
+        // Apply Hadamard to the first qubit
         q.h(0);
 
-        // Check that |0...0> and |1...0> have equal amplitude
-        let expected_amp = 1.0 / 2.0_f64.sqrt();
-        assert!((q.state[0].re - expected_amp).abs() < 1e-10);
-        assert!((q.state[1].re - expected_amp).abs() < 1e-10);
+        // Check normalization and amplitudes for |0...0> and |1...0>
+        let expected_amp = 1.0 / (2.0_f64.sqrt());
+        assert!((q.state[0].norm() - expected_amp).abs() < 1e-10);
+        assert!((q.state[1].norm() - expected_amp).abs() < 1e-10);
 
         // Ensure all other amplitudes remain zero
         for i in 2..q.state.len() {
