@@ -11,17 +11,18 @@
 // the License.
 
 // re-exporting pecos-core
-pub use pecos_core::VecSet;
+pub use pecos_core::{IndexableElement, VecSet};
 
 // re-exporting pecos-qsim
+pub use pecos_qsim::ArbitraryRotationGateable;
 pub use pecos_qsim::CliffordGateable;
+pub use pecos_qsim::QuantumSimulatorState;
 pub use pecos_qsim::SparseStab;
+pub use pecos_qsim::StateVec;
+
 // TODO: add the following in the future as makes sense...
-// pub use pecos_qsim::clifford_simulator::CliffordSimulator;
 // pub use pecos_qsim::gens::Gens;
 // pub use pecos_qsim::measurement::{MeasBitValue, MeasValue, Measurement}; // TODO: Distinguish between trait and struct/enum
 // pub use pecos_qsim::nonclifford_simulator::NonCliffordSimulator;
 // pub use pecos_qsim::pauli_prop::{PauliProp, StdPauliProp};
 // pub use pecos_qsim::paulis::Paulis;
-// pub use pecos_qsim::quantum_simulator::QuantumSimulator;
-// pub use pecos_qsim::sparse_stab::SparseStab;

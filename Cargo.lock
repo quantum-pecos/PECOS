@@ -1181,8 +1181,10 @@ dependencies = [
 name = "pecos-python"
 version = "0.1.1"
 dependencies = [
+ "num-complex",
  "pecos",
  "pyo3",
+ "rand",
 ]
 
 [[package]]

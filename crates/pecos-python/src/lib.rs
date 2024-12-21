@@ -1,6 +1,6 @@
 // Copyright 2024 The PECOS Developers
 //
-// Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
+// Licensed under the Apache License, Version 2.0 (the "License"); you may not use thispub(crate)pub(crate) file except
 // in compliance with the License.You may obtain a copy of the License at
 //
 //     https://www.apache.org/licenses/LICENSE-2.0
@@ -11,12 +11,16 @@
 // the License.
 
 mod sparse_sim;
+mod state_vec_bindings;
+
 use sparse_sim::SparseSim;
+use state_vec_bindings::RsStateVec;
 
 use pyo3::prelude::*;
 
 #[pymodule]
 fn _pecos_rslib(_py: Python<'_>, m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_class::<SparseSim>()?;
+    m.add_class::<RsStateVec>()?;
     Ok(())
 }

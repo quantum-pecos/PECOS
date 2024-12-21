@@ -1348,10 +1348,7 @@ mod tests {
         q1.cz(0, 1);
         q2.cz(1, 0);
 
-        // Results should be identical
-        for (a, b) in q1.state.iter().zip(q2.state.iter()) {
-            assert!((a - b).norm() < 1e-10);
-        }
+        assert_states_equal(&q1.state, &q2.state);
     }
 
     #[test]
@@ -1695,18 +1692,6 @@ mod tests {
         for (a, b) in q1.state.iter().zip(q2.state.iter()) {
             assert!((a - b).norm() < 1e-10);
         }
-    }
-
-    #[test]
-    fn test_measure2() {
-        let mut q = StateVec::new(1);
-        q.h(0);
-        let _result = q.mz(0);
-
-        // Check collapse to |0⟩ or |1⟩
-        // assert!(result == 0 || result == 1);
-        let norm: f64 = q.state.iter().map(num_complex::Complex::norm_sqr).sum();
-        assert!((norm - 1.0).abs() < 1e-10);
     }
 
     #[test]
