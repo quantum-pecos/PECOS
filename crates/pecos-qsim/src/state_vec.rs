@@ -544,6 +544,20 @@ impl ArbitraryRotationGateable<usize> for StateVec {
         self.single_qubit_rotation(target, u00, u01, u10, u11)
     }
 
+    fn r1xy(&mut self, theta: f64, phi: f64, target: usize) -> &mut Self {
+        let cos = (theta / 2.0).cos();
+        let sin = (theta / 2.0).sin();
+
+        // Calculate the matrix elements
+        let r00 = Complex64::new(cos, 0.0); // cos(θ/2)
+        let r01 = -Complex64::new(0.0, sin) * Complex64::from_polar(1.0, -phi); // -i sin(θ/2) e^(-iφ)
+        let r10 = -Complex64::new(0.0, sin) * Complex64::from_polar(1.0, phi); // -i sin(θ/2) e^(iφ)
+        let r11 = Complex64::new(cos, 0.0); // cos(θ/2)
+
+        // Apply the single-qubit rotation using the matrix elements
+        self.single_qubit_rotation(target, r00, r01, r10, r11)
+    }
+
     /// Apply RXX(θ) = exp(-i θ XX/2) gate
     /// This implements evolution under the XX coupling between two qubits
     ///
@@ -711,30 +725,33 @@ mod tests {
     /// # Panics
     /// Panics if the states differ in norm or relative phase beyond a small numerical tolerance.
     fn assert_states_equal(state1: &[Complex64], state2: &[Complex64]) {
-        if state1[0].norm() < 1e-10 && state2[0].norm() < 1e-10 {
+        const TOLERANCE: f64 = 1e-10;
+
+        if state1[0].norm() < TOLERANCE && state2[0].norm() < TOLERANCE {
             // Both first components near zero, compare other components directly
-            for (a, b) in state1.iter().zip(state2.iter()) {
+            for (index, (a, b)) in state1.iter().zip(state2.iter()).enumerate() {
                 assert!(
-                    (a.norm() - b.norm()).abs() < 1e-10,
-                    "States differ in magnitude: {a} vs {b}"
+                    (a.norm() - b.norm()).abs() < TOLERANCE,
+                    "States differ in magnitude at index {index}: {a} vs {b}"
                 );
             }
         } else {
-            // Get phase from first non-zero component
+            // Get phase from the first pair of non-zero components
             let ratio = match state1
                 .iter()
                 .zip(state2.iter())
-                .find(|(a, b)| a.norm() > 1e-10 && b.norm() > 1e-10)
+                .find(|(a, b)| a.norm() > TOLERANCE && b.norm() > TOLERANCE)
             {
                 Some((a, b)) => b / a,
                 None => panic!("States have no corresponding non-zero components"),
             };
             println!("Phase ratio between states: {ratio:?}");
 
-            for (a, b) in state1.iter().zip(state2.iter()) {
+            for (index, (a, b)) in state1.iter().zip(state2.iter()).enumerate() {
                 assert!(
-                    (a * ratio - b).norm() < 1e-10,
-                    "States differ: {a} vs {b} (ratio: {ratio})"
+                    (a * ratio - b).norm() < TOLERANCE,
+                    "States differ at index {index}: {a} vs {b} (adjusted with ratio {ratio:?}), diff = {}",
+                    (a * ratio - b).norm()
                 );
             }
         }
@@ -1070,6 +1087,178 @@ mod tests {
         // Should get back to |0⟩ up to global phase
         assert!(q.state[1].norm() < 1e-10);
         assert!((q.state[0].norm() - 1.0).abs() < 1e-10);
+    }
+
+    #[test]
+    fn test_state_vec_u_vs_trait_u() {
+        // Initialize state vectors with one qubit in the |0⟩ state.
+        let mut state_vec_u = StateVec::new(1);
+        let mut trait_u = StateVec::new(1);
+
+        let theta = FRAC_PI_3;
+        let phi = FRAC_PI_4;
+        let lambda = FRAC_PI_6;
+
+        // Apply `u` from the StateVec implementation.
+        state_vec_u.u(theta, phi, lambda, 0);
+
+        // Apply `u` from the ArbitraryRotationGateable trait.
+        ArbitraryRotationGateable::u(&mut trait_u, theta, phi, lambda, 0);
+
+        assert_states_equal(&state_vec_u.state, &trait_u.state);
+    }
+
+    #[test]
+    fn test_r1xy_vs_trait_r1xy() {
+        // Initialize state vectors with one qubit in the |0⟩ state.
+        let mut state_vec_r1xy = StateVec::new(1);
+        let mut trait_r1xy = StateVec::new(1);
+
+        // Define angles for the test.
+        let theta = FRAC_PI_3;
+        let phi = FRAC_PI_4;
+
+        // Apply the manual `r1xy` implementation.
+        state_vec_r1xy.r1xy(theta, phi, 0);
+
+        // Apply the `r1xy` implementation from the `ArbitraryRotationGateable` trait.
+        ArbitraryRotationGateable::r1xy(&mut trait_r1xy, theta, phi, 0);
+
+        // Use the `assert_states_equal` function to compare the states up to a global phase.
+        assert_states_equal(&state_vec_r1xy.state, &trait_r1xy.state);
+    }
+
+    #[test]
+    fn test_r1xy_vs_u() {
+        let mut state_r1xy = StateVec::new(1);
+        let mut state_u = StateVec::new(1);
+
+        let theta = FRAC_PI_3;
+        let phi = FRAC_PI_4;
+
+        // Apply r1xy and equivalent u gates
+        state_r1xy.r1xy(theta, phi, 0);
+        state_u.u(theta, phi - FRAC_PI_2, FRAC_PI_2 - phi, 0);
+
+        assert_states_equal(&state_r1xy.state, &state_u.state);
+    }
+
+    #[test]
+    fn test_rz_vs_u() {
+        let mut state_rz = StateVec::new(1);
+        let mut state_u = StateVec::new(1);
+
+        let theta = FRAC_PI_3;
+
+        // Apply rz and u gates
+        state_rz.rz(theta, 0);
+        state_u.u(0.0, 0.0, theta, 0);
+
+        assert_states_equal(&state_rz.state, &state_u.state);
+    }
+
+    #[test]
+    fn test_u_decomposition() {
+        let mut state_u = StateVec::new(1);
+        let mut state_decomposed = StateVec::new(1);
+
+        let theta = FRAC_PI_3;
+        let phi = FRAC_PI_4;
+        let lambda = FRAC_PI_6;
+
+        // Apply U gate
+        state_u.u(theta, phi, lambda, 0);
+
+        // Apply the decomposed gates
+        state_decomposed.rz(lambda, 0);
+        state_decomposed.r1xy(theta, FRAC_PI_2, 0);
+        state_decomposed.rz(phi, 0);
+
+        // Assert that the states are equal
+        assert_states_equal(&state_u.state, &state_decomposed.state);
+    }
+
+    #[test]
+    fn test_x_vs_r1xy() {
+        let mut state = StateVec::new(1);
+        state.x(0);
+        let state_after_x = state.clone();
+
+        state.reset();
+        state.r1xy(PI, 0.0, 0);
+        let state_after_r1xy = state.clone();
+
+        assert_states_equal(&state_after_x.state, &state_after_r1xy.state);
+    }
+
+    #[test]
+    fn test_y_vs_r1xy() {
+        let mut state = StateVec::new(1);
+        state.y(0);
+        let state_after_y = state.clone();
+
+        state.reset();
+        state.r1xy(PI, FRAC_PI_2, 0);
+        let state_after_r1xy = state.clone();
+
+        assert_states_equal(&state_after_y.state, &state_after_r1xy.state);
+    }
+
+    #[test]
+    fn test_h_vs_r1xy_rz() {
+        let mut state = StateVec::new(1);
+        state.h(0); // Apply the H gate
+        let state_after_h = state.clone();
+
+        state.reset(); // Reset state to |0⟩
+        state.r1xy(FRAC_PI_2, -FRAC_PI_2, 0).rz(PI, 0);
+        let state_after_r1xy_rz = state.clone();
+
+        assert_states_equal(&state_after_h.state, &state_after_r1xy_rz.state);
+    }
+
+    #[test]
+    fn test_cx_decomposition() {
+        let mut state_cx = StateVec::new(2);
+        let mut state_decomposed = StateVec::new(2);
+
+        let control = 0;
+        let target = 1;
+
+        // Apply CX gate
+        state_cx.cx(control, target);
+
+        // Apply the decomposed gates
+        state_decomposed.r1xy(-FRAC_PI_2, FRAC_PI_2, target);
+        state_decomposed.rzz(FRAC_PI_2, control, target);
+        state_decomposed.rz(-FRAC_PI_2, control);
+        state_decomposed.r1xy(FRAC_PI_2, PI, target);
+        state_decomposed.rz(-FRAC_PI_2, target);
+
+        // Assert that the states are equal
+        assert_states_equal(&state_cx.state, &state_decomposed.state);
+    }
+
+    #[test]
+    fn test_rxx_decomposition() {
+        let mut state_rxx = StateVec::new(2);
+        let mut state_decomposed = StateVec::new(2);
+
+        let control = 0;
+        let target = 1;
+
+        // Apply RXX gate
+        state_rxx.rxx(FRAC_PI_4, control, target);
+
+        // Apply the decomposed gates
+        state_decomposed.r1xy(FRAC_PI_2, FRAC_PI_2, control);
+        state_decomposed.r1xy(FRAC_PI_2, FRAC_PI_2, target);
+        state_decomposed.rzz(FRAC_PI_4, control, target);
+        state_decomposed.r1xy(FRAC_PI_2, -FRAC_PI_2, control);
+        state_decomposed.r1xy(FRAC_PI_2, -FRAC_PI_2, target);
+
+        // Assert that the states are equal
+        assert_states_equal(&state_rxx.state, &state_decomposed.state);
     }
 
     #[test]

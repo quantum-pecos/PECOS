@@ -12,7 +12,7 @@
 
 use crate::CliffordGateable;
 use pecos_core::IndexableElement;
-use std::f64::consts::PI;
+use std::f64::consts::FRAC_PI_2;
 
 pub trait ArbitraryRotationGateable<T: IndexableElement>: CliffordGateable<T> {
     fn rx(&mut self, theta: f64, q: T) -> &mut Self;
@@ -22,11 +22,15 @@ pub trait ArbitraryRotationGateable<T: IndexableElement>: CliffordGateable<T> {
     }
     fn rz(&mut self, theta: f64, q: T) -> &mut Self;
 
-    fn u(&mut self, theta: f64, phi: f64, lambda: f64, q: T) -> &mut Self;
+    fn u(&mut self, theta: f64, phi: f64, lambda: f64, q: T) -> &mut Self {
+        self.rz(lambda, q).ry(theta, q).rz(phi, q)
+    }
 
     #[inline]
     fn r1xy(&mut self, theta: f64, phi: f64, q: T) -> &mut Self {
-        self.rz(-phi + PI, q).rx(theta, q).rz(phi - PI, q)
+        self.rz(-phi + FRAC_PI_2, q)
+            .ry(theta, q)
+            .rz(phi - FRAC_PI_2, q)
     }
 
     #[inline]
