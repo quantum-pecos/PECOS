@@ -597,8 +597,8 @@ pub trait CliffordGateable<T: IndexableElement>: QuantumSimulator {
     ///
     /// Transforms Pauli operators as:
     /// ```text
-    /// XI → -ZY
-    /// IX → -YZ TODO: verify
+    /// XI → -YZ
+    /// IX → -ZY
     /// ZI → ZI
     /// IZ → IZ
     /// ```
@@ -609,6 +609,11 @@ pub trait CliffordGateable<T: IndexableElement>: QuantumSimulator {
     #[inline]
     fn szzdg(&mut self, q1: T, q2: T) -> &mut Self {
         self.z(q1).z(q2).szz(q1, q2)
+
+        // SZZ SZZ = ZZ
+        // SZZ^4 = II
+        // SZZ SZZdg = II
+        //
     }
 
     /// SWAP: +IX -> XI;
@@ -642,11 +647,38 @@ pub trait CliffordGateable<T: IndexableElement>: QuantumSimulator {
     /// ```rust
     /// use pecos_qsim::{CliffordGateable, StdSparseStab};
     /// let mut sim = StdSparseStab::new(2);
-    /// sim.g2(0, 1); // Apply G2 operation between qubits 0 and 1
+    /// sim.g2(0, 1);
     /// ```
     #[inline]
     fn g2(&mut self, q1: T, q2: T) -> &mut Self {
         self.cz(q1, q2).h(q1).h(q2).cz(q1, q2)
+    }
+
+    /// Applies the iSWAP two-qubit Clifford operation.
+    ///
+    /// iSWAP is a two-qubit operation that transforms the Pauli operators as follows:
+    /// ```text
+    /// XI → -ZY
+    /// IX → YZ
+    /// ZI → IZ
+    /// IZ → ZI
+    /// ```
+    ///
+    /// # Arguments
+    /// * `q1` - First qubit
+    /// * `q2` - Second qubit
+    ///
+    /// # Implementation Details
+    /// iSWAP can be implemented as: (SZ⊗SZ) • (H⊗I) • CX(q1,q2) • (I⊗H)
+    ///
+    /// # Examples
+    /// ```rust
+    /// use pecos_qsim::{CliffordGateable, StdSparseStab};
+    /// let mut sim = StdSparseStab::new(2);
+    /// sim.iswap(0, 1);
+    /// ```
+    fn iswap(&mut self, q1: T, q2: T) -> &mut Self {
+        self.sz(q1).sz(q2).h(q1).cx(q1, q2).cx(q2, q1).h(q2)
     }
 
     /// Measurement of the +`X_q` operator.
