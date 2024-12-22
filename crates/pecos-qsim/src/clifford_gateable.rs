@@ -585,7 +585,7 @@ pub trait CliffordGateable<T: IndexableElement>: QuantumSimulatorState {
     /// * `q2` - Second qubit
     #[inline]
     fn szz(&mut self, q1: T, q2: T) -> &mut Self {
-        self.sydg(q1).sydg(q2).sxx(q1, q2).sy(q1).sy(q2)
+        self.h(q1).h(q2).sxx(q1, q2).h(q1).h(q2)
     }
 
     /// Performs an adjoint of the square root of ZZ operation (√ZZ).

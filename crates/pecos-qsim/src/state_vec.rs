@@ -544,6 +544,7 @@ impl ArbitraryRotationGateable<usize> for StateVec {
         self.single_qubit_rotation(target, u00, u01, u10, u11)
     }
 
+    #[inline]
     fn r1xy(&mut self, theta: f64, phi: f64, target: usize) -> &mut Self {
         let cos = (theta / 2.0).cos();
         let sin = (theta / 2.0).sin();
@@ -611,39 +612,35 @@ impl ArbitraryRotationGateable<usize> for StateVec {
     ///
     /// Panics if target qubit1 or qubit2 index is >= number of qubits or qubit1 == qubit2
     #[inline]
-    fn ryy(&mut self, theta: f64, qubit1: usize, qubit2: usize) -> &mut Self {
-        assert!(qubit1 < self.num_qubits);
-        assert!(qubit2 < self.num_qubits);
-        assert_ne!(qubit1, qubit2);
+    fn ryy(&mut self, theta: f64, q1: usize, q2: usize) -> &mut Self {
+        assert!(q1 < self.num_qubits);
+        assert!(q2 < self.num_qubits);
+        assert_ne!(q1, q2);
 
         let cos = (theta / 2.0).cos();
-        let sin = (theta / 2.0).sin();
-        let i_sin = Complex64::new(0.0, sin); // Changed name and sign
+        let i_sin = Complex64::new(0.0, 1.0) * (theta / 2.0).sin();
 
-        let (q1, q2) = if qubit1 < qubit2 {
-            (qubit1, qubit2)
-        } else {
-            (qubit2, qubit1)
-        };
+        // No need to reorder q1 and q2 since we're using explicit masks
+        let mask1 = 1 << q1;
+        let mask2 = 1 << q2;
 
-        let step1 = 1 << q1;
-        let step2 = 1 << q2;
-        for i in (0..self.state.len()).step_by(2 * step2) {
-            for j in (i..i + step2).step_by(2 * step1) {
-                let i00 = j;
-                let i01 = j ^ step2;
-                let i10 = j ^ step1;
-                let i11 = i10 ^ step2;
+        for i in 0..self.state.len() {
+            // Only process each set of 4 states once
+            if (i & (mask1 | mask2)) == 0 {
+                let i00 = i;
+                let i01 = i | mask2;
+                let i10 = i | mask1;
+                let i11 = i | mask1 | mask2;
 
                 let a00 = self.state[i00];
                 let a01 = self.state[i01];
                 let a10 = self.state[i10];
                 let a11 = self.state[i11];
 
-                self.state[i00] = cos * a00 - i_sin * a11;
+                self.state[i00] = cos * a00 + i_sin * a11;
                 self.state[i01] = cos * a01 - i_sin * a10;
                 self.state[i10] = cos * a10 - i_sin * a01;
-                self.state[i11] = cos * a11 - i_sin * a00;
+                self.state[i11] = cos * a11 + i_sin * a00;
             }
         }
         self
@@ -1537,13 +1534,13 @@ mod tests {
         assert!((q.state[0].re - expected).abs() < 1e-10);
         assert!(q.state[1].norm() < 1e-10);
         assert!(q.state[2].norm() < 1e-10);
-        assert!((q.state[3].im + expected).abs() < 1e-10);
+        assert!((q.state[3].im - expected).abs() < 1e-10);
 
-        // |11⟩ -> (1/√2)|11⟩ - i(1/√2)|00⟩
+        // |11⟩ -> i(1/√2)|00⟩ + (1/√2)|11⟩
         let mut q = StateVec::new(2);
         q.x(0).x(1); // Prepare |11⟩
         q.ryy(FRAC_PI_2, 0, 1);
-        assert!((q.state[0].im + expected).abs() < 1e-10);
+        assert!((q.state[0].im - expected).abs() < 1e-10);
         assert!(q.state[1].norm() < 1e-10);
         assert!(q.state[2].norm() < 1e-10);
         assert!((q.state[3].re - expected).abs() < 1e-10);
@@ -1620,6 +1617,155 @@ mod tests {
     }
 
     #[test]
+    fn test_ryy_qubit_order_invariance() {
+        let theta = FRAC_PI_4;
+
+        // Test on random initial states
+        let mut q1 = StateVec::new(2);
+        let mut q2 = StateVec::new(2);
+        q1.h(0).x(1); // Random state
+        q2.h(0).x(1); // Same initial state
+
+        q1.ryy(theta, 0, 1);
+        q2.ryy(theta, 1, 0);
+
+        // States should be exactly equal
+        for (a, b) in q1.state.iter().zip(q2.state.iter()) {
+            assert!(
+                (a - b).norm() < 1e-10,
+                "Qubit order test failed: a={a}, b={b}"
+            );
+        }
+    }
+
+    #[test]
+    fn test_ryy_large_system() {
+        let theta = FRAC_PI_3;
+
+        // Initialize a 5-qubit state
+        let mut q = StateVec::new(5);
+        q.h(0).h(1).h(2).h(3).h(4); // Superposition state
+
+        // Apply RYY on qubits 2 and 4
+        q.ryy(theta, 2, 4);
+
+        // Ensure state vector normalization is preserved
+        let norm: f64 = q.state.iter().map(num_complex::Complex::norm_sqr).sum();
+        assert!(
+            (norm - 1.0).abs() < 1e-10,
+            "State normalization test failed: norm={norm}"
+        );
+    }
+
+    fn assert_state_vectors_match(simulated: &[Complex64], expected: &[Complex64], tolerance: f64) {
+        assert_eq!(
+            simulated.len(),
+            expected.len(),
+            "State vectors must have the same length"
+        );
+
+        // Find the first non-zero entry in the expected vector
+        let reference_index = expected
+            .iter()
+            .position(|&x| x.norm() > tolerance)
+            .expect("Expected vector should have at least one non-zero element");
+
+        // Compute the phase correction
+        let phase = simulated[reference_index] / expected[reference_index];
+
+        // Verify all elements match up to the global phase
+        for (i, (sim, exp)) in simulated.iter().zip(expected.iter()).enumerate() {
+            let corrected_exp = exp * phase;
+            assert!(
+                (sim - corrected_exp).norm() < tolerance,
+                "Mismatch at index {i}: simulated = {sim:?}, expected = {exp:?}, corrected = {corrected_exp:?}"
+            );
+        }
+    }
+
+    #[test]
+    fn test_ryy_edge_cases() {
+        let mut q = StateVec::new(2);
+
+        // Apply RYY gate
+        q.ryy(PI, 0, 1);
+
+        // Define the expected result for RYY(π)
+        let expected = vec![
+            Complex64::new(0.0, 0.0),  // |00⟩
+            Complex64::new(0.0, 0.0),  // |01⟩
+            Complex64::new(0.0, 0.0),  // |10⟩
+            Complex64::new(-1.0, 0.0), // |11⟩
+        ];
+
+        // Compare simulated state vector to the expected result
+        assert_state_vectors_match(&q.state, &expected, 1e-10);
+    }
+
+    #[test]
+    fn test_ryy_global_phase() {
+        let mut q = StateVec::new(2);
+
+        q.ryy(PI, 0, 1);
+
+        // Define the expected result for RYY(π)
+        let expected = vec![
+            Complex64::new(0.0, 0.0),  // |00⟩
+            Complex64::new(0.0, 0.0),  // |01⟩
+            Complex64::new(0.0, 0.0),  // |10⟩
+            Complex64::new(-1.0, 0.0), // |11⟩
+        ];
+
+        // Compare states
+        assert_states_equal(&q.state, &expected);
+    }
+
+    #[test]
+    fn test_ryy_small_angles() {
+        let theta = 1e-10; // Very small angle
+        let mut q = StateVec::new(2);
+
+        // Initialize |00⟩
+        let initial = q.state.clone();
+        q.ryy(theta, 0, 1);
+
+        // Expect state to remain close to the initial state
+        for (a, b) in q.state.iter().zip(initial.iter()) {
+            assert!(
+                (a - b).norm() < 1e-10,
+                "Small angle test failed: a={a}, b={b}"
+            );
+        }
+    }
+
+    #[test]
+    fn test_ryy_randomized() {
+        use rand::Rng;
+
+        let mut rng = rand::thread_rng();
+        let theta = rng.gen_range(0.0..2.0 * PI);
+
+        let mut q1 = StateVec::new(2);
+        let mut q2 = StateVec::new(2);
+
+        // Random initial state
+        q1.h(0).h(1);
+        q2.h(0).h(1);
+
+        // Apply RYY with random qubit order
+        q1.ryy(theta, 0, 1);
+        q2.ryy(theta, 1, 0);
+
+        // Compare states
+        for (a, b) in q1.state.iter().zip(q2.state.iter()) {
+            assert!(
+                (a - b).norm() < 1e-10,
+                "Randomized test failed: a={a}, b={b}"
+            );
+        }
+    }
+
+    #[test]
     fn test_rzz() {
         // Test 1: RZZ(π) on (|00⟩ + |11⟩)/√2 should give itself
         let mut q = StateVec::new(2);
@@ -1654,6 +1800,46 @@ mod tests {
         assert!((q.state[1] - factor * exp_plus_i_pi_4).norm() < 1e-10); // |01⟩
         assert!((q.state[2] - factor * exp_plus_i_pi_4).norm() < 1e-10); // |10⟩
         assert!((q.state[3] - factor * exp_minus_i_pi_4).norm() < 1e-10); // |11⟩
+    }
+
+    #[test]
+    fn test_szz_equivalence() {
+        // Test that SZZ is equivalent to RZZ(π/2)
+        let mut q1 = StateVec::new(2);
+        let mut q2 = StateVec::new(2);
+
+        // Create some non-trivial initial state
+        q1.h(0);
+        q2.h(0);
+
+        // Compare direct SZZ vs RZZ(π/2)
+        q1.szz(0, 1);
+        q2.rzz(FRAC_PI_2, 0, 1);
+
+        assert_states_equal(q1.state(), q2.state());
+
+        // Also verify decomposition matches
+        let mut q3 = StateVec::new(2);
+        q3.h(0); // Same initial state
+        q3.h(0).h(1).sxx(0, 1).h(0).h(1);
+
+        assert_states_equal(q1.state(), q3.state());
+    }
+
+    #[test]
+    fn test_szz_trait_equivalence() {
+        let mut q1 = StateVec::new(2);
+        let mut q2 = StateVec::new(2);
+
+        // Create some non-trivial initial state
+        q1.h(0);
+        q2.h(0);
+
+        // Compare CliffordGateable trait szz vs ArbitraryRotationGateable trait rzz(π/2)
+        CliffordGateable::<usize>::szz(&mut q1, 0, 1);
+        ArbitraryRotationGateable::<usize>::rzz(&mut q2, PI / 2.0, 0, 1);
+
+        assert_states_equal(q1.state(), q2.state());
     }
 
     #[test]

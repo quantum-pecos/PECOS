@@ -15,6 +15,8 @@ from __future__ import annotations
 
 from typing import Any
 
+import numpy as np
+
 from pecos_rslib._pecos_rslib import RsStateVec as RustStateVec
 
 
@@ -29,6 +31,28 @@ class StateVecRs:
         self._sim = RustStateVec(num_qubits)
         self.num_qubits = num_qubits
         self.bindings = dict(gate_dict)
+
+    @property
+    def vector(self) -> np.ndarray:
+        raw_vector = self._sim.vector
+        print(f"[DEBUG] Raw vector: {raw_vector}")
+
+        if isinstance(raw_vector[0], (list, tuple)):
+            raw_vector = np.array([complex(r, i) for r, i in raw_vector])
+
+        # Convert vector from little-endian to big-endian ordering to match BasicSV
+        raw_vector = np.array(raw_vector).flatten()
+        num_qubits = self.num_qubits
+
+        # Convert to big-endian by reversing bit order
+        indices = np.arange(len(raw_vector))
+        binary_indices = [f"{idx:0{num_qubits}b}" for idx in indices]
+        reordered_indices = [int(bits[::-1], 2) for bits in binary_indices]
+
+        # Reorder the vector to match BasicSV's bit ordering
+        final_vector = raw_vector[reordered_indices]
+
+        return final_vector
 
     def reset(self):
         """Resets the quantum state to the all-zero state."""
@@ -106,11 +130,18 @@ gate_dict = {
     "SZ": lambda sim, q, **params: sim._sim.run_1q_gate("SZ", q, params),
     "SZdg": lambda sim, q, **params: sim._sim.run_1q_gate("SZdg", q, params),
     "H": lambda sim, q, **params: sim._sim.run_1q_gate("H", q, params),
+    "H1": lambda sim, q, **params: sim._sim.run_1q_gate("H", q, params),
     "H2": lambda sim, q, **params: sim._sim.run_1q_gate("H2", q, params),
     "H3": lambda sim, q, **params: sim._sim.run_1q_gate("H3", q, params),
     "H4": lambda sim, q, **params: sim._sim.run_1q_gate("H4", q, params),
     "H5": lambda sim, q, **params: sim._sim.run_1q_gate("H5", q, params),
     "H6": lambda sim, q, **params: sim._sim.run_1q_gate("H6", q, params),
+    "H+z+x": lambda sim, q, **params: sim._sim.run_1q_gate("H", q, params),
+    "H-z-x": lambda sim, q, **params: sim._sim.run_1q_gate("H2", q, params),
+    "H+y-z": lambda sim, q, **params: sim._sim.run_1q_gate("H3", q, params),
+    "H-y-z": lambda sim, q, **params: sim._sim.run_1q_gate("H4", q, params),
+    "H-x+y": lambda sim, q, **params: sim._sim.run_1q_gate("H5", q, params),
+    "H-x-y": lambda sim, q, **params: sim._sim.run_1q_gate("H6", q, params),
     "F": lambda sim, q, **params: sim._sim.run_1q_gate("F", q, params),
     "Fdg": lambda sim, q, **params: sim._sim.run_1q_gate("Fdg", q, params),
     "F2": lambda sim, q, **params: sim._sim.run_1q_gate("F2", q, params),
@@ -140,6 +171,7 @@ gate_dict = {
     "PX": lambda sim, q, **params: sim._sim.run_1q_gate("PX", q, params),
     "PY": lambda sim, q, **params: sim._sim.run_1q_gate("PY", q, params),
     "PnZ": lambda sim, q, **params: sim._sim.run_1q_gate("PnZ", q, params),
+    "Init": lambda sim, q, **params: sim._sim.run_1q_gate("PZ", q, params),
     "Init +Z": lambda sim, q, **params: sim._sim.run_1q_gate("PZ", q, params),
     "Init -Z": lambda sim, q, **params: sim._sim.run_1q_gate("PnZ", q, params),
     "Init +X": lambda sim, q, **params: sim._sim.run_1q_gate("PX", q, params),
@@ -166,7 +198,6 @@ gate_dict = {
     "Rd": lambda sim, q, **params: sim._sim.run_1q_gate("SYdg", q, params),
     "S": lambda sim, q, **params: sim._sim.run_1q_gate("SZ", q, params),
     "Sd": lambda sim, q, **params: sim._sim.run_1q_gate("SZdg", q, params),
-    "H1": lambda sim, q, **params: sim._sim.run_1q_gate("H1", q, params),
     "F1": lambda sim, q, **params: sim._sim.run_1q_gate("F", q, params),
     "F1d": lambda sim, q, **params: sim._sim.run_1q_gate("Fdg", q, params),
     "F2d": lambda sim, q, **params: sim._sim.run_1q_gate("F2dg", q, params),
@@ -175,6 +206,7 @@ gate_dict = {
     "SqrtXX": lambda sim, qs, **params: sim._sim.run_2q_gate("SXX", qs, params),
     "SqrtYY": lambda sim, qs, **params: sim._sim.run_2q_gate("SYY", qs, params),
     "SqrtZZ": lambda sim, qs, **params: sim._sim.run_2q_gate("SZZ", qs, params),
+    "Measure": lambda sim, q, **params: sim._sim.run_1q_gate("MZ", q, params),
     "measure Z": lambda sim, q, **params: sim._sim.run_1q_gate("MZ", q, params),
     # "MZForced": lambda sim, q, **params: sim._sim.run_1q_gate("MZForced", q, params),
     # "PZForced": lambda sim, q, **params: sim._sim.run_1q_gate("PZForced", q, params),
@@ -187,6 +219,53 @@ gate_dict = {
     "SqrtYd": lambda sim, q, **params: sim._sim.run_1q_gate("SYdg", q, params),
     "SqrtZ": lambda sim, q, **params: sim._sim.run_1q_gate("SZ", q, params),
     "SqrtZd": lambda sim, q, **params: sim._sim.run_1q_gate("SZdg", q, params),
+    "RX": lambda sim, q, **params: sim._sim.run_1q_gate(
+        "RX",
+        q,
+        {"angle": params["angles"][0]} if "angles" in params else {"angle": 0},
+    ),
+    "RY": lambda sim, q, **params: sim._sim.run_1q_gate(
+        "RY",
+        q,
+        {"angle": params["angles"][0]} if "angles" in params else {"angle": 0},
+    ),
+    "RZ": lambda sim, q, **params: sim._sim.run_1q_gate(
+        "RZ",
+        q,
+        {"angle": params["angles"][0]} if "angles" in params else {"angle": 0},
+    ),
+    "R1XY": lambda sim, q, **params: sim._sim.run_1q_gate(
+        "R1XY",
+        q,
+        {"angles": params["angles"]},  # Changed from "angle" to "angles"
+    ),
+    "T": lambda sim, q, **params: sim._sim.run_1q_gate("T", q, params),
+    "Tdg": lambda sim, q, **params: sim._sim.run_1q_gate("Tdg", q, params),
+    "RXX": lambda sim, qs, **params: sim._sim.run_2q_gate(
+        "RXX",
+        qs,
+        {"angle": params["angles"][0]} if "angles" in params else {"angle": 0},
+    ),
+    "RYY": lambda sim, qs, **params: sim._sim.run_2q_gate(
+        "RYY",
+        qs,
+        {"angle": params["angles"][0]} if "angles" in params else {"angle": 0},
+    ),
+    "RZZ": lambda sim, qs, **params: sim._sim.run_2q_gate(
+        "RZZ",
+        qs,
+        {"angle": params["angles"][0]} if "angles" in params else {"angle": 0},
+    ),
+    "RXXRYYRZZ": lambda sim, qs, **params: sim._sim.run_2q_gate(
+        "RXXRYYRZZ",
+        qs,
+        {"angles": params["angles"]} if "angles" in params else {"angles": [0, 0, 0]},
+    ),
+    "R2XXYYZZ": lambda sim, qs, **params: sim._sim.run_2q_gate(
+        "RXXRYYRZZ",
+        qs,
+        {"angles": params["angles"]} if "angles" in params else {"angles": [0, 0, 0]},
+    ),
 }
 
 # "force output": qmeas.force_output,

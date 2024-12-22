@@ -12,16 +12,18 @@
 
 use crate::CliffordGateable;
 use pecos_core::IndexableElement;
-use std::f64::consts::FRAC_PI_2;
+use std::f64::consts::{FRAC_PI_2, FRAC_PI_4};
 
 pub trait ArbitraryRotationGateable<T: IndexableElement>: CliffordGateable<T> {
     fn rx(&mut self, theta: f64, q: T) -> &mut Self;
+
     #[inline]
     fn ry(&mut self, theta: f64, q: T) -> &mut Self {
         self.sz(q).rx(theta, q).szdg(q)
     }
     fn rz(&mut self, theta: f64, q: T) -> &mut Self;
 
+    #[inline]
     fn u(&mut self, theta: f64, phi: f64, lambda: f64, q: T) -> &mut Self {
         self.rz(lambda, q).ry(theta, q).rz(phi, q)
     }
@@ -34,6 +36,16 @@ pub trait ArbitraryRotationGateable<T: IndexableElement>: CliffordGateable<T> {
     }
 
     #[inline]
+    fn t(&mut self, q: T) -> &mut Self {
+        self.rz(FRAC_PI_4, q)
+    }
+
+    #[inline]
+    fn tdg(&mut self, q: T) -> &mut Self {
+        self.rz(-FRAC_PI_4, q)
+    }
+
+    #[inline]
     fn rxx(&mut self, theta: f64, q1: T, q2: T) -> &mut Self {
         self.h(q1).h(q2).rzz(theta, q1, q2).h(q1).h(q2)
     }
@@ -43,4 +55,10 @@ pub trait ArbitraryRotationGateable<T: IndexableElement>: CliffordGateable<T> {
         self.sx(q1).sx(q2).rzz(theta, q1, q2).sxdg(q1).sxdg(q2)
     }
     fn rzz(&mut self, theta: f64, q1: T, q2: T) -> &mut Self;
+
+    #[inline]
+    fn rxxryyrzz(&mut self, theta: f64, phi: f64, lambda: f64, q1: T, q2: T) -> &mut Self {
+        // TODO: This is likely backwards..
+        self.rxx(theta, q1, q2).ryy(phi, q1, q2).rzz(lambda, q1, q2)
+    }
 }

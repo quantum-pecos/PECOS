@@ -31,12 +31,12 @@ impl RsStateVec {
     ///
     /// Returns an optional result, usually `None` unless a measurement is performed
     #[allow(clippy::too_many_lines)]
-    #[pyo3(signature = (symbol, location, _params=None))]
+    #[pyo3(signature = (symbol, location, params=None))]
     fn run_1q_gate(
         &mut self,
         symbol: &str,
         location: usize,
-        _params: Option<&Bound<'_, PyDict>>,
+        params: Option<&Bound<'_, PyDict>>,
     ) -> PyResult<Option<u8>> {
         match symbol {
             "X" => {
@@ -51,6 +51,120 @@ impl RsStateVec {
                 self.inner.z(location);
                 Ok(None)
             }
+            "RX" => {
+                if let Some(params) = params {
+                    match params.get_item("angle") {
+                        Ok(Some(py_any)) => {
+                            if let Ok(angle) = py_any.extract::<f64>() {
+                                self.inner.rx(angle, location);
+                            } else {
+                                return Err(PyErr::new::<pyo3::exceptions::PyValueError, _>(
+                                    "Expected a valid angle parameter for RX gate",
+                                ));
+                            }
+                        }
+                        Ok(None) => {
+                            return Err(PyErr::new::<pyo3::exceptions::PyValueError, _>(
+                                "Angle parameter missing for RX gate",
+                            ));
+                        }
+                        Err(err) => {
+                            return Err(err);
+                        }
+                    }
+                }
+                Ok(None)
+            }
+            "RY" => {
+                if let Some(params) = params {
+                    match params.get_item("angle") {
+                        Ok(Some(py_any)) => {
+                            if let Ok(angle) = py_any.extract::<f64>() {
+                                self.inner.ry(angle, location);
+                            } else {
+                                return Err(PyErr::new::<pyo3::exceptions::PyValueError, _>(
+                                    "Expected a valid angle parameter for RY gate",
+                                ));
+                            }
+                        }
+                        Ok(None) => {
+                            return Err(PyErr::new::<pyo3::exceptions::PyValueError, _>(
+                                "Angle parameter missing for RY gate",
+                            ));
+                        }
+                        Err(err) => {
+                            return Err(err);
+                        }
+                    }
+                }
+                Ok(None)
+            }
+            "RZ" => {
+                if let Some(params) = params {
+                    match params.get_item("angle") {
+                        Ok(Some(py_any)) => {
+                            if let Ok(angle) = py_any.extract::<f64>() {
+                                self.inner.rz(angle, location);
+                            } else {
+                                return Err(PyErr::new::<pyo3::exceptions::PyValueError, _>(
+                                    "Expected a valid angle parameter for RZ gate",
+                                ));
+                            }
+                        }
+                        Ok(None) => {
+                            return Err(PyErr::new::<pyo3::exceptions::PyValueError, _>(
+                                "Angle parameter missing for RZ gate",
+                            ));
+                        }
+                        Err(err) => {
+                            return Err(err);
+                        }
+                    }
+                }
+                Ok(None)
+            }
+            "R1XY" => {
+                if let Some(params) = params {
+                    match params.get_item("angles") {
+                        Ok(Some(py_any)) => {
+                            // Extract as a sequence of f64 values
+                            if let Ok(angles) = py_any.extract::<Vec<f64>>() {
+                                if angles.len() >= 2 {
+                                    self.inner.r1xy(angles[0], angles[1], location);
+                                } else {
+                                    return Err(PyErr::new::<pyo3::exceptions::PyValueError, _>(
+                                        "R1XY gate requires two angle parameters",
+                                    ));
+                                }
+                            } else {
+                                return Err(PyErr::new::<pyo3::exceptions::PyValueError, _>(
+                                    "Expected valid angle parameters for R1XY gate",
+                                ));
+                            }
+                        }
+                        Ok(None) => {
+                            return Err(PyErr::new::<pyo3::exceptions::PyValueError, _>(
+                                "Angle parameters missing for R1XY gate",
+                            ));
+                        }
+                        Err(err) => {
+                            return Err(err);
+                        }
+                    }
+                }
+                Ok(None)
+            }
+
+            "T" => {
+                self.inner.t(location);
+                Ok(None)
+            }
+
+            "Tdg" => {
+                self.inner.tdg(location);
+                Ok(None)
+            }
+
             "H" => {
                 self.inner.h(location);
                 Ok(None)
@@ -177,12 +291,13 @@ impl RsStateVec {
     /// `params`: Optional parameters for parameterized gates (currently unused here)
     ///
     /// Returns an optional result, usually `None` unless a measurement is performed
-    #[pyo3(signature = (symbol, location, _params))]
+    #[allow(clippy::too_many_lines)]
+    #[pyo3(signature = (symbol, location, params))]
     fn run_2q_gate(
         &mut self,
         symbol: &str,
         location: &Bound<'_, PyTuple>,
-        _params: Option<&Bound<'_, PyDict>>,
+        params: Option<&Bound<'_, PyDict>>,
     ) -> PyResult<Option<u8>> {
         if location.len() != 2 {
             return Err(PyErr::new::<pyo3::exceptions::PyValueError, _>(
@@ -238,6 +353,111 @@ impl RsStateVec {
                 self.inner.g2(q1, q2);
                 Ok(None)
             }
+            "RXX" => {
+                if let Some(params) = params {
+                    match params.get_item("angle") {
+                        Ok(Some(py_any)) => {
+                            if let Ok(angle) = py_any.extract::<f64>() {
+                                self.inner.rxx(angle, q1, q2);
+                            } else {
+                                return Err(PyErr::new::<pyo3::exceptions::PyValueError, _>(
+                                    "Expected a valid angle parameter for RXX gate",
+                                ));
+                            }
+                        }
+                        Ok(None) => {
+                            return Err(PyErr::new::<pyo3::exceptions::PyValueError, _>(
+                                "Angle parameter missing for RXX gate",
+                            ));
+                        }
+                        Err(err) => {
+                            return Err(err);
+                        }
+                    }
+                }
+                Ok(None)
+            }
+            "RYY" => {
+                if let Some(params) = params {
+                    match params.get_item("angle") {
+                        Ok(Some(py_any)) => {
+                            if let Ok(angle) = py_any.extract::<f64>() {
+                                self.inner.ryy(angle, q1, q2);
+                            } else {
+                                return Err(PyErr::new::<pyo3::exceptions::PyValueError, _>(
+                                    "Expected a valid angle parameter for RYY gate",
+                                ));
+                            }
+                        }
+                        Ok(None) => {
+                            return Err(PyErr::new::<pyo3::exceptions::PyValueError, _>(
+                                "Angle parameter missing for RYY gate",
+                            ));
+                        }
+                        Err(err) => {
+                            return Err(err);
+                        }
+                    }
+                }
+                Ok(None)
+            }
+            "RZZ" => {
+                if let Some(params) = params {
+                    match params.get_item("angle") {
+                        Ok(Some(py_any)) => {
+                            if let Ok(angle) = py_any.extract::<f64>() {
+                                self.inner.rzz(angle, q1, q2);
+                            } else {
+                                return Err(PyErr::new::<pyo3::exceptions::PyValueError, _>(
+                                    "Expected a valid angle parameter for RZZ gate",
+                                ));
+                            }
+                        }
+                        Ok(None) => {
+                            return Err(PyErr::new::<pyo3::exceptions::PyValueError, _>(
+                                "Angle parameter missing for RZZ gate",
+                            ));
+                        }
+                        Err(err) => {
+                            return Err(err);
+                        }
+                    }
+                }
+                Ok(None)
+            }
+
+            "RXXRYYRZZ" => {
+                if let Some(params) = params {
+                    match params.get_item("angles") {
+                        Ok(Some(py_any)) => {
+                            if let Ok(angles) = py_any.extract::<Vec<f64>>() {
+                                if angles.len() >= 3 {
+                                    self.inner
+                                        .rxxryyrzz(angles[0], angles[1], angles[2], q1, q2);
+                                } else {
+                                    return Err(PyErr::new::<pyo3::exceptions::PyValueError, _>(
+                                        "RXXRYYRZZ gate requires three angle parameters",
+                                    ));
+                                }
+                            } else {
+                                return Err(PyErr::new::<pyo3::exceptions::PyValueError, _>(
+                                    "Expected valid angle parameters for RXXRYYRZZ gate",
+                                ));
+                            }
+                        }
+                        Ok(None) => {
+                            return Err(PyErr::new::<pyo3::exceptions::PyValueError, _>(
+                                "Angle parameters missing for RXXRYYRZZ gate",
+                            ));
+                        }
+                        Err(err) => {
+                            return Err(err);
+                        }
+                    }
+                }
+                Ok(None)
+            }
+
             _ => Err(PyErr::new::<pyo3::exceptions::PyValueError, _>(
                 "Unsupported two-qubit gate",
             )),
@@ -266,5 +486,15 @@ impl RsStateVec {
                 "Gate location must be specified for either 1 or 2 qubits",
             )),
         }
+    }
+
+    /// Provides direct access to the current state vector as a Python property
+    #[getter]
+    fn vector(&self) -> Vec<(f64, f64)> {
+        self.inner
+            .state()
+            .iter()
+            .map(|complex| (complex.re, complex.im))
+            .collect()
     }
 }
