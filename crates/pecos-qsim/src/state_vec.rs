@@ -12,7 +12,7 @@
 
 use super::arbitrary_rotation_gateable::ArbitraryRotationGateable;
 use super::clifford_gateable::{CliffordGateable, MeasurementResult};
-use super::quantum_simulator_state::QuantumSimulatorState;
+use super::quantum_simulator::QuantumSimulator;
 
 use num_complex::Complex64;
 use rand::Rng;
@@ -32,6 +32,24 @@ impl StateVec {
         let mut state = vec![Complex64::new(0.0, 0.0); size];
         state[0] = Complex64::new(1.0, 0.0); // Prep |0...0>
         StateVec { num_qubits, state }
+    }
+
+    /// Returns the number of qubits in the system
+    ///
+    /// # Returns
+    /// * `usize` - The total number of qubits this simulator is configured to handle
+    ///
+    /// # Examples
+    /// ```rust
+    /// use pecos_qsim::{QuantumSimulator, StateVec};
+    /// let state = StateVec::new(2);
+    /// let num = state.num_qubits();
+    /// assert_eq!(num, 2);
+    /// ```
+    #[must_use]
+    #[inline]
+    pub fn num_qubits(&self) -> usize {
+        self.num_qubits
     }
 
     /// Initialize from a custom state vector
@@ -203,14 +221,7 @@ impl StateVec {
     }
 }
 
-impl QuantumSimulatorState for StateVec {
-    /// Returns the number of qubits in the system
-    #[must_use]
-    #[inline]
-    fn num_qubits(&self) -> usize {
-        self.num_qubits
-    }
-
+impl QuantumSimulator for StateVec {
     #[inline]
     fn reset(&mut self) -> &mut Self {
         self.prepare_computational_basis(0)

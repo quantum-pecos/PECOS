@@ -16,7 +16,7 @@ pub mod pauli_prop;
 // pub mod paulis;
 pub mod arbitrary_rotation_gateable;
 pub mod prelude;
-pub mod quantum_simulator_state;
+pub mod quantum_simulator;
 pub mod sparse_stab;
 pub mod state_vec;
 
@@ -24,6 +24,7 @@ pub use arbitrary_rotation_gateable::ArbitraryRotationGateable;
 pub use clifford_gateable::{CliffordGateable, MeasurementResult};
 pub use gens::Gens;
 // pub use paulis::Paulis;
-pub use quantum_simulator_state::QuantumSimulatorState;
+pub use pauli_prop::{PauliProp, StdPauliProp};
+pub use quantum_simulator::QuantumSimulator;
 pub use sparse_stab::{SparseStab, StdSparseStab};
 pub use state_vec::StateVec;

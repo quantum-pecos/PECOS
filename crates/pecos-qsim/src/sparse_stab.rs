@@ -10,7 +10,7 @@
 // or implied. See the License for the specific language governing permissions and limitations under
 // the License.
 
-use crate::{CliffordGateable, Gens, MeasurementResult, QuantumSimulatorState};
+use crate::{CliffordGateable, Gens, MeasurementResult, QuantumSimulator};
 use core::fmt::Debug;
 use core::mem;
 use pecos_core::{IndexableElement, Set};
@@ -45,7 +45,7 @@ pub type StdSparseStab = SparseStab<VecSet<usize>, usize>;
 /// # Examples
 /// ```rust
 /// use pecos_core::VecSet;
-/// use pecos_qsim::{QuantumSimulatorState, CliffordGateable, SparseStab};
+/// use pecos_qsim::{QuantumSimulator, CliffordGateable, SparseStab};
 ///
 /// // Create a new 2-qubit stabilizer state
 /// let mut sim = SparseStab::<VecSet<u32>, u32>::new(2);
@@ -125,6 +125,23 @@ where
     pub fn new(num_qubits: usize) -> Self {
         let rng = SimRng::from_entropy();
         Self::with_rng(num_qubits, rng)
+    }
+
+    /// Returns the number of qubits in the system
+    ///
+    /// # Returns
+    /// * `usize` - The total number of qubits this simulator is configured to handle
+    ///
+    /// # Examples
+    /// ```rust
+    /// use pecos_qsim::{QuantumSimulator, StdSparseStab};
+    /// let state = StdSparseStab::new(2);
+    /// let num = state.num_qubits();
+    /// assert_eq!(num, 2);
+    /// ```
+    #[inline]
+    pub fn num_qubits(&self) -> usize {
+        self.num_qubits
     }
 
     #[inline]
@@ -444,17 +461,12 @@ where
     }
 }
 
-impl<T, E, R> QuantumSimulatorState for SparseStab<T, E, R>
+impl<T, E, R> QuantumSimulator for SparseStab<T, E, R>
 where
     E: IndexableElement,
     R: SimRng,
     T: for<'a> Set<'a, Element = E>,
 {
-    #[inline]
-    fn num_qubits(&self) -> usize {
-        self.num_qubits
-    }
-
     #[inline]
     fn reset(&mut self) -> &mut Self {
         Self::reset(self)
@@ -587,7 +599,7 @@ where
     /// # Example
     /// ```rust
     /// use pecos_core::VecSet;
-    /// use pecos_qsim::{QuantumSimulatorState, CliffordGateable, SparseStab};
+    /// use pecos_qsim::{QuantumSimulator, CliffordGateable, SparseStab};
     /// let mut state = SparseStab::<VecSet<u32>, u32>::new(2);
     ///
     /// // Create Bell state |Φ+⟩ = (|00⟩ + |11⟩)/√2
@@ -674,7 +686,7 @@ where
     /// # Example
     /// ```rust
     /// use pecos_core::VecSet;
-    /// use pecos_qsim::{QuantumSimulatorState, CliffordGateable, SparseStab};
+    /// use pecos_qsim::{QuantumSimulator, CliffordGateable, SparseStab};
     /// let mut state = SparseStab::<VecSet<u32>, u32>::new(2);
     ///
     /// let outcome = state.mz(0);

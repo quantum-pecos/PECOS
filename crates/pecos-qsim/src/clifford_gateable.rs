@@ -10,7 +10,7 @@
 // or implied. See the License for the specific language governing permissions and limitations under
 // the License.
 
-use super::quantum_simulator_state::QuantumSimulatorState;
+use super::quantum_simulator::QuantumSimulator;
 use pecos_core::IndexableElement;
 
 pub struct MeasurementResult {
@@ -105,7 +105,7 @@ pub struct MeasurementResult {
 /// - Gottesman, "The Heisenberg Representation of Quantum Computers"
 ///   <https://arxiv.org/abs/quant-ph/9807006>
 #[expect(clippy::min_ident_chars)]
-pub trait CliffordGateable<T: IndexableElement>: QuantumSimulatorState {
+pub trait CliffordGateable<T: IndexableElement>: QuantumSimulator {
     /// Identity on qubit q. X -> X, Z -> Z
     #[inline]
     fn identity(&mut self, _q: T) -> &mut Self {

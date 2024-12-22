@@ -16,7 +16,7 @@ pub use pecos_core::{IndexableElement, VecSet};
 // re-exporting pecos-qsim
 pub use pecos_qsim::ArbitraryRotationGateable;
 pub use pecos_qsim::CliffordGateable;
-pub use pecos_qsim::QuantumSimulatorState;
+pub use pecos_qsim::QuantumSimulator;
 pub use pecos_qsim::SparseStab;
 pub use pecos_qsim::StateVec;
 
