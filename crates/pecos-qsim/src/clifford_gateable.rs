@@ -81,8 +81,7 @@ pub struct MeasurementResult {
 /// let mut sim = StdSparseStab::new(2);
 ///
 /// // Create Bell state
-/// sim.h(0);
-/// sim.cx(0, 1);
+/// sim.h(0).cx(0, 1);
 ///
 /// // Measure in Z basis
 /// let outcome = sim.mz(0);
@@ -90,13 +89,10 @@ pub struct MeasurementResult {
 ///
 /// # Required Implementations
 /// When implementing this trait, the following methods must be provided at minimum:
-/// - `mz()`: Z-basis measurement
-/// - `x()`: Pauli X gate
-/// - `y()`: Pauli Y gate
-/// - `z()`: Pauli Z gate
+/// - `sz()`: Square root of Z gate (a.k.a., the S or P gate)
 /// - `h()`: Hadamard gate
-/// - `sz()`: Square root of Z gate
 /// - `cx()`: Controlled-NOT gate
+/// - `mz()`: Z-basis measurement
 ///
 /// All other operations have default implementations in terms of these basic gates.
 /// Implementors may override any default implementation for efficiency.
@@ -181,8 +177,7 @@ pub trait CliffordGateable<T: IndexableElement>: QuantumSimulator {
     /// ```
     #[inline]
     fn z(&mut self, q: T) -> &mut Self {
-        self.sz(q).sz(q);
-        self
+        self.sz(q).sz(q)
     }
 
     /// Sqrt of X gate.
@@ -192,10 +187,7 @@ pub trait CliffordGateable<T: IndexableElement>: QuantumSimulator {
     ///     Y -> Z
     #[inline]
     fn sx(&mut self, q: T) -> &mut Self {
-        self.h(q);
-        self.sz(q);
-        self.h(q);
-        self
+        self.h(q).sz(q).h(q)
     }
 
     /// Adjoint of Sqrt X gate.
@@ -205,10 +197,7 @@ pub trait CliffordGateable<T: IndexableElement>: QuantumSimulator {
     ///     Y -> -Z
     #[inline]
     fn sxdg(&mut self, q: T) -> &mut Self {
-        self.h(q);
-        self.szdg(q);
-        self.h(q);
-        self
+        self.h(q).szdg(q).h(q)
     }
 
     /// Applies a square root of Y gate to the specified qubit.
@@ -242,9 +231,7 @@ pub trait CliffordGateable<T: IndexableElement>: QuantumSimulator {
     /// Will panic if qubit ids don't convert to usize.
     #[inline]
     fn sy(&mut self, q: T) -> &mut Self {
-        self.h(q);
-        self.x(q);
-        self
+        self.h(q).x(q)
     }
 
     /// Adjoint of sqrt of Y gate.
@@ -256,9 +243,7 @@ pub trait CliffordGateable<T: IndexableElement>: QuantumSimulator {
     /// Will panic if qubit ids don't convert to usize.
     #[inline]
     fn sydg(&mut self, q: T) -> &mut Self {
-        self.x(q);
-        self.h(q);
-        self
+        self.x(q).h(q)
     }
 
     /// Applies a square root of Z gate (S or SZ gate) to the specified qubit.
@@ -289,9 +274,7 @@ pub trait CliffordGateable<T: IndexableElement>: QuantumSimulator {
     ///     Y -> X
     #[inline]
     fn szdg(&mut self, q: T) -> &mut Self {
-        self.z(q);
-        self.sz(q);
-        self
+        self.z(q).sz(q)
     }
 
     /// Applies a Hadamard gate to the specified qubit.
@@ -334,41 +317,31 @@ pub trait CliffordGateable<T: IndexableElement>: QuantumSimulator {
     /// - H2 differs from H by introducing additional minus signs
     #[inline]
     fn h2(&mut self, q: T) -> &mut Self {
-        self.sy(q);
-        self.z(q);
-        self
+        self.sy(q).z(q)
     }
 
     /// X -> Y, Z -> -Z, Y -> X
     #[inline]
     fn h3(&mut self, q: T) -> &mut Self {
-        self.sz(q);
-        self.y(q);
-        self
+        self.sz(q).y(q)
     }
 
     /// X -> -Y, Z -> -Z, Y -> -X
     #[inline]
     fn h4(&mut self, q: T) -> &mut Self {
-        self.sz(q);
-        self.x(q);
-        self
+        self.sz(q).x(q)
     }
 
     /// X -> -X, Z -> Y, Y -> Z
     #[inline]
     fn h5(&mut self, q: T) -> &mut Self {
-        self.sx(q);
-        self.z(q);
-        self
+        self.sx(q).z(q)
     }
 
     /// X -> -X, Z -> -Y, Y -> -Z
     #[inline]
     fn h6(&mut self, q: T) -> &mut Self {
-        self.sx(q);
-        self.y(q);
-        self
+        self.sx(q).y(q)
     }
 
     /// Applies a Face gate (F) to the specified qubit.
@@ -609,11 +582,6 @@ pub trait CliffordGateable<T: IndexableElement>: QuantumSimulator {
     #[inline]
     fn szzdg(&mut self, q1: T, q2: T) -> &mut Self {
         self.z(q1).z(q2).szz(q1, q2)
-
-        // SZZ SZZ = ZZ
-        // SZZ^4 = II
-        // SZZ SZZdg = II
-        //
     }
 
     /// SWAP: +IX -> XI;
@@ -684,10 +652,8 @@ pub trait CliffordGateable<T: IndexableElement>: QuantumSimulator {
     /// Measurement of the +`X_q` operator.
     #[inline]
     fn mx(&mut self, q: T) -> MeasurementResult {
-        // +X -> +Z
         self.h(q);
         let meas = self.mz(q);
-        // +Z -> +X
         self.h(q);
 
         meas
@@ -696,13 +662,9 @@ pub trait CliffordGateable<T: IndexableElement>: QuantumSimulator {
     /// Measurement of the -`X_q` operator.
     #[inline]
     fn mnx(&mut self, q: T) -> MeasurementResult {
-        // -X -> +Z
-        self.h(q);
-        self.x(q);
+        self.h(q).x(q);
         let meas = self.mz(q);
-        // +Z -> -X
-        self.x(q);
-        self.h(q);
+        self.x(q).h(q);
 
         meas
     }
@@ -712,10 +674,8 @@ pub trait CliffordGateable<T: IndexableElement>: QuantumSimulator {
     /// Will panic if qubit ids don't convert to usize.
     #[inline]
     fn my(&mut self, q: T) -> MeasurementResult {
-        // +Y -> +Z
         self.sx(q);
         let meas = self.mz(q);
-        // +Z -> +Y
         self.sxdg(q);
 
         meas
@@ -767,10 +727,8 @@ pub trait CliffordGateable<T: IndexableElement>: QuantumSimulator {
     /// Will panic if qubit ids don't convert to usize.
     #[inline]
     fn mnz(&mut self, q: T) -> MeasurementResult {
-        // -Z -> +Z
         self.x(q);
         let meas = self.mz(q);
-        // +Z -> -Z
         self.x(q);
 
         meas
