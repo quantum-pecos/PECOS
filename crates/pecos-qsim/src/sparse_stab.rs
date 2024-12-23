@@ -895,7 +895,7 @@ mod tests {
     fn test_nondeterministic_px() {
         for _ in 1_u32..=100 {
             let mut state = prep_state(&["Z"], &["X"]);
-            let r0 = state.px(0);
+            let r0 = state.mpx(0);
             let meas = state.mx(0);
             let m1 = meas.outcome;
             let d1 = meas.is_deterministic;
@@ -910,7 +910,7 @@ mod tests {
     #[test]
     fn test_deterministic_px() {
         let mut state = prep_state(&["X"], &["Z"]);
-        let r0 = state.px(0);
+        let r0 = state.mpx(0);
         let m0_int = u8::from(r0.outcome);
 
         assert!(r0.is_deterministic); // Deterministic
@@ -921,7 +921,7 @@ mod tests {
     fn test_nondeterministic_pnx() {
         for _ in 1_u32..=100 {
             let mut state = prep_state(&["Z"], &["X"]);
-            let r0 = state.pnx(0);
+            let r0 = state.mpnx(0);
             let result = state.mx(0);
             let m1_int = u8::from(result.outcome);
 
@@ -934,7 +934,7 @@ mod tests {
     #[test]
     fn test_deterministic_pnx() {
         let mut state = prep_state(&["-X"], &["Z"]);
-        let r0 = state.pnx(0);
+        let r0 = state.mpnx(0);
         let m0_int = u8::from(r0.outcome);
 
         assert!(r0.is_deterministic); // Deterministic
@@ -945,7 +945,7 @@ mod tests {
     fn test_nondeterministic_py() {
         for _ in 1_u32..=100 {
             let mut state = prep_state(&["Z"], &["X"]);
-            let r0 = state.py(0);
+            let r0 = state.mpy(0);
             let r1 = state.my(0);
             let m1_int = u8::from(r1.outcome);
 
@@ -958,7 +958,7 @@ mod tests {
     #[test]
     fn test_deterministic_py() {
         let mut state = prep_state(&["iW"], &["Z"]);
-        let r0 = state.py(0);
+        let r0 = state.mpy(0);
         let m0_int = u8::from(r0.outcome);
 
         assert!(r0.is_deterministic); // Deterministic
@@ -969,7 +969,7 @@ mod tests {
     fn test_nondeterministic_pny() {
         for _ in 1_u32..=100 {
             let mut state = prep_state(&["Z"], &["X"]);
-            let r0 = state.pny(0);
+            let r0 = state.mpny(0);
             let r1 = state.my(0);
             let m1_int = u8::from(r1.outcome);
 
@@ -982,7 +982,7 @@ mod tests {
     #[test]
     fn test_deterministic_pny() {
         let mut state = prep_state(&["-iW"], &["Z"]);
-        let r0 = state.pny(0);
+        let r0 = state.mpny(0);
         let m0_int = u8::from(r0.outcome);
 
         assert!(r0.is_deterministic); // Deterministic
@@ -993,7 +993,7 @@ mod tests {
     fn test_nondeterministic_pz() {
         for _ in 1_u32..=100 {
             let mut state = prep_state(&["X"], &["Z"]);
-            let r0 = state.pz(0);
+            let r0 = state.mpz(0);
             let r1 = state.mz(0);
             let m1_int = u8::from(r1.outcome);
 
@@ -1006,7 +1006,7 @@ mod tests {
     #[test]
     fn test_deterministic_pz() {
         let mut state = prep_state(&["Z"], &["X"]);
-        let r0 = state.pz(0);
+        let r0 = state.mpz(0);
         let m0_int = u8::from(r0.outcome);
 
         assert!(r0.is_deterministic); // Deterministic
@@ -1017,7 +1017,7 @@ mod tests {
     fn test_nondeterministic_pnz() {
         for _ in 1_u32..=100 {
             let mut state = prep_state(&["X"], &["Z"]);
-            let r0 = state.pnz(0);
+            let r0 = state.mpnz(0);
             let r1 = state.mz(0);
             let m1_int = u8::from(r1.outcome);
 
@@ -1030,7 +1030,7 @@ mod tests {
     #[test]
     fn test_deterministic_pnz() {
         let mut state = prep_state(&["-Z"], &["X"]);
-        let r0 = state.pnz(0);
+        let r0 = state.mpnz(0);
         let m0_int = u8::from(r0.outcome);
 
         assert!(r0.is_deterministic); // Deterministic
@@ -2091,22 +2091,22 @@ mod tests {
 
         // +IX -> +XI
         let mut state = prep_state(&["IX"], &["IZ"]);
-        state.g2(0, 1);
+        state.g(0, 1);
         check_state(&state, &["XI"], &["ZX"]);
 
         // +IZ -> +ZX
         let mut state = prep_state(&["IZ"], &["IX"]);
-        state.g2(0, 1);
+        state.g(0, 1);
         check_state(&state, &["ZX"], &["XI"]);
 
         // +XI -> +IX
         let mut state = prep_state(&["XI"], &["ZI"]);
-        state.g2(0, 1);
+        state.g(0, 1);
         check_state(&state, &["IX"], &["XZ"]);
 
         // +ZI -> +XZ
         let mut state = prep_state(&["ZI"], &["XI"]);
-        state.g2(0, 1);
+        state.g(0, 1);
         check_state(&state, &["XZ"], &["IX"]);
     }
 

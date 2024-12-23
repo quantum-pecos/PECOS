@@ -263,7 +263,7 @@ impl SparseSim {
                 Ok(None)
             }
             "G2" => {
-                self.inner.g2(q1, q2);
+                self.inner.g(q1, q2);
                 Ok(None)
             }
             _ => Err(PyErr::new::<pyo3::exceptions::PyValueError, _>(
