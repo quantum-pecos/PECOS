@@ -21,7 +21,13 @@ from matplotlib.path import Path
 from pecos.qeclib.surface.surface_4444_rot.lattices.reglat_4_4_4_4 import gen_layout
 
 
-def plot_surf_patch(distance: int | tuple, plot_points=True):
+def plot_surf_patch(
+    distance: int | tuple,
+    figsize=(8, 8),
+    curve_height=0.4,
+    curvature=0.4,
+    plot_points=True,
+):
     if isinstance(distance, int):
         width = distance
         height = distance
@@ -32,7 +38,9 @@ def plot_surf_patch(distance: int | tuple, plot_points=True):
     return plot_two_colored_cups(
         polygons,
         node_coordinates_set1,
-        # figsize=(8,8), curve_height=0.4, curvature=0.4
+        figsize=figsize,
+        curve_height=curve_height,
+        curvature=curvature,
         plot_points=plot_points,
     )
 
@@ -170,6 +178,7 @@ def plot_two_colored_cups(
     curve_height=0.5,
     curvature=0.5,
     plot_points=True,
+    figsize=None,
 ):
     """
     Plot polygons with cups replaced for triangles and two-colored based on adjacency.
@@ -180,6 +189,10 @@ def plot_two_colored_cups(
         curve_height (float): Height of the non-base point relative to the base length.
         curvature (float): Degree to which the curve broadens horizontally. Negative values invert the curvature.
     """
+
+    if figsize is None:
+        figsize = (8, 8)
+
     # Build the adjacency graph
     polygon_graph = build_adjacency_graph(polygons)
 
@@ -190,7 +203,7 @@ def plot_two_colored_cups(
     two_color_palette = ["#6666FF", "#FF6666"]
 
     # Plot setup
-    fig, ax = plt.subplots(figsize=(8, 8))
+    fig, ax = plt.subplots(figsize=figsize)
     fig.patch.set_facecolor("#EDEDED")  # Slightly darker neutral background
 
     # Label points_to_plot
