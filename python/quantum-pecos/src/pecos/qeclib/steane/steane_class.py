@@ -453,7 +453,7 @@ class Steane(Vars):
         rus_limit: int | None = None,
     ) -> Block:
         """Run a Steane-type error-correction cycle for X errors."""
-        warn("Using experimental feature: qec_steane_z", stacklevel=2)
+        warn("Using experimental feature: qec_steane_x", stacklevel=2)
         block = Block(
             aux.px(reject=reject, rus_limit=rus_limit),
             self.cx(aux),
@@ -484,7 +484,7 @@ class Steane(Vars):
         rus_limit: int | None = None,
     ) -> Block:
         """Run a Steane-type error-correction cycle for Z errors."""
-        warn("Using experimental feature: qec_steane_x", stacklevel=2)
+        warn("Using experimental feature: qec_steane_z", stacklevel=2)
         block = Block(
             aux.pz(reject=reject, rus_limit=rus_limit),
             aux.cx(self),
