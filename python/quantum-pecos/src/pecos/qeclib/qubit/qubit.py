@@ -1,4 +1,4 @@
-from pecos.slr import Qubit
+from pecos.slr import Qubit, Bit
 from pecos.qeclib.qubit import sq_paulis, sq_sqrt_paulis, sq_hadamards, tq_cliffords, measures
 
 # TODO accept multiple arguments like the underlying implementations
@@ -36,6 +36,6 @@ class PhysicalQubit:
         return sq_hadamards.H(qubit)
 
     @staticmethod
-    def mz(self, qubit: Qubit):
+    def mz(qubit: Qubit, output: Bit):
         """Measurement gate"""
-        return measures.Measure(qubit)
+        return measures.Measure(qubit) > output
