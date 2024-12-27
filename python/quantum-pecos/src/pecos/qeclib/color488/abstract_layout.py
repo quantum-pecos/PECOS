@@ -1,3 +1,17 @@
+# Copyright 2018 The PECOS Developers
+# Copyright 2018 National Technology & Engineering Solutions of Sandia, LLC (NTESS). Under the terms of Contract
+# DE-NA0003525 with NTESS, the U.S. Government retains certain rights in this software.
+#
+# Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except in compliance with
+# the License.You may obtain a copy of the License at
+#
+#     https://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software distributed under the License is distributed on an
+# "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the License for the
+# specific language governing permissions and limitations under the License.
+
+
 def gen_layout(distance: int):
     """Creates an abstract layout which represents the location of the qubits in the code for a fixed 2D geometry."""
     lattice_height = 4 * distance - 4
@@ -56,7 +70,6 @@ def get_boundaries(nodeid2pos):
         Three lists: 1) nodes of the left, 2) bottom, and  3) right boundaries of a triangular 4.8.8 color code.
     """
     # TODO: do this...
-    pass
 
 
 def found_square(x, y, pos2nodeid):

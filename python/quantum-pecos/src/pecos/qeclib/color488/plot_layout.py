@@ -1,8 +1,18 @@
+# Copyright 2024 The PECOS Developers
+#
+# Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except in compliance with
+# the License.You may obtain a copy of the License at
+#
+#     https://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software distributed under the License is distributed on an
+# "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the License for the
+# specific language governing permissions and limitations under the License.
+
 import matplotlib.pyplot as plt
 import networkx as nx
-import numpy as np
 
-from pecos.qeclib.color488.abtract_layout import gen_layout
+from pecos.qeclib.color488.abstract_layout import gen_layout
 
 
 def plot_layout(distance, numbered_qubits=False, numbered_poly=False):
@@ -22,11 +32,11 @@ def plot_layout(distance, numbered_qubits=False, numbered_poly=False):
     pos_poly = sorted(pos_poly, key=lambda point: (-point[1], point[0]))
     ployid2pos = {i: pos_poly[i] for i in range(len(pos_poly))}
 
-    G = nx.Graph()
+    g = nx.Graph()
 
     # Add nodes representing data qubits
     for node_id, (x, y) in positions.items():
-        G.add_node(node_id, pos=(x, y))
+        g.add_node(node_id, pos=(x, y))
 
     def get_edges_from_polygon(node_ids):
         """Extract edges from polygon node ids
@@ -70,20 +80,34 @@ def plot_layout(distance, numbered_qubits=False, numbered_poly=False):
         color = polygon[-1]
 
         polygon_coords = [positions[node_id] for node_id in node_ids]
-        polygon_coords.append(polygon_coords[0])  # Close the polygon by repeating the first point
+        polygon_coords.append(
+            polygon_coords[0],
+        )  # Close the polygon by repeating the first point
 
         x_coords, y_coords = zip(*polygon_coords)
 
-        plt.fill(x_coords, y_coords, color=color, alpha=0.5)  # Fill polygon with color and transparency
+        plt.fill(
+            x_coords,
+            y_coords,
+            color=color,
+            alpha=0.5,
+        )  # Fill polygon with color and transparency
 
     # Plot the graph nodes on top (with black borders)
-    pos = nx.get_node_attributes(G, "pos")
+    pos = nx.get_node_attributes(g, "pos")
     if numbered_qubits:
         nx.draw(
-            G, pos, with_labels=True, node_size=250, node_color="white", edgecolors="black", font_size=10, linewidths=2
+            g,
+            pos,
+            with_labels=True,
+            node_size=250,
+            node_color="white",
+            edgecolors="black",
+            font_size=10,
+            linewidths=2,
         )
     else:
-        nx.draw(G, pos, with_labels=False, node_size=20, node_color="black")
+        nx.draw(g, pos, with_labels=False, node_size=20, node_color="black")
 
     if numbered_poly:
         # Add white nodes with black borders for ployid2pos
@@ -98,7 +122,15 @@ def plot_layout(distance, numbered_qubits=False, numbered_poly=False):
                 marker="s",
                 linewidths=1.5,
             )  # Draw node
-            plt.text(x, y, str(ploy_id), ha="center", va="center", fontsize=10, zorder=4)  # Add label
+            plt.text(
+                x,
+                y,
+                str(ploy_id),
+                ha="center",
+                va="center",
+                fontsize=10,
+                zorder=4,
+            )  # Add label
 
     # Set equal aspect ratio
     plt.axis("equal")
