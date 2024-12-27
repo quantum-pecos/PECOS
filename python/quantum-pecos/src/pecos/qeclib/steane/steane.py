@@ -110,7 +110,12 @@ class Steane(Vars):
         self.default_rus_limit = default_rus_limit
 
     @staticmethod
-    def p(qubit: Steane, state: str, reject: Bit | None = None, rus_limit: int | None = None):
+    def p(
+        qubit: Steane,
+        state: str,
+        reject: Bit | None = None,
+        rus_limit: int | None = None,
+    ):
         """Prepare a logical qubit in a logical Pauli basis state."""
         block = PrepRUS(
             q=qubit.d,
@@ -124,35 +129,47 @@ class Steane(Vars):
             block.extend(reject.set(qubit.verify_prep[0]))
         return block
 
-    @classmethod
-    def px(cls, qubit: Steane, reject: Bit | None = None, rus_limit: int | None = None):
+    @staticmethod
+    def px(qubit: Steane, reject: Bit | None = None, rus_limit: int | None = None):
         """Prepare logical |+X>, a.k.a. |+>"""
-        return cls.p(qubit, "+X", reject=reject, rus_limit=rus_limit)
+        return qubit.p(qubit, "+X", reject=reject, rus_limit=rus_limit)
 
-    @classmethod
-    def pnx(cls, qubit: Steane, reject: Bit | None = None, rus_limit: int | None = None):
+    @staticmethod
+    def pnx(
+        qubit: Steane,
+        reject: Bit | None = None,
+        rus_limit: int | None = None,
+    ):
         """Prepare logical |-X>, a.k.a. |->"""
-        return cls.p(qubit,"-X", reject=reject, rus_limit=rus_limit)
+        return qubit.p(qubit, "-X", reject=reject, rus_limit=rus_limit)
 
-    @classmethod
-    def py(cls, qubit: Steane, reject: Bit | None = None, rus_limit: int | None = None):
+    @staticmethod
+    def py(qubit: Steane, reject: Bit | None = None, rus_limit: int | None = None):
         """Prepare logical |+Y>, a.k.a. |+i>"""
-        return cls.p(qubit, "+Y", reject=reject, rus_limit=rus_limit)
+        return qubit.p(qubit, "+Y", reject=reject, rus_limit=rus_limit)
 
-    @classmethod
-    def pny(cls, qubit: Steane, reject: Bit | None = None, rus_limit: int | None = None):
+    @staticmethod
+    def pny(
+        qubit: Steane,
+        reject: Bit | None = None,
+        rus_limit: int | None = None,
+    ):
         """Prepare logical |-Y>, a.k.a. |-i>"""
-        return cls.p(qubit,"-Y", reject=reject, rus_limit=rus_limit)
+        return qubit.p(qubit, "-Y", reject=reject, rus_limit=rus_limit)
 
-    @classmethod
-    def pz(cls, qubit: Steane, reject: Bit | None = None, rus_limit: int | None = None):
+    @staticmethod
+    def pz(qubit: Steane, reject: Bit | None = None, rus_limit: int | None = None):
         """Prepare logical |+Z>, a.k.a. |0>"""
-        return cls.p(qubit, "+Z", reject=reject, rus_limit=rus_limit)
+        return qubit.p(qubit, "+Z", reject=reject, rus_limit=rus_limit)
 
-    @classmethod
-    def pnz(cls, qubit: Steane, reject: Bit | None = None, rus_limit: int | None = None):
+    @staticmethod
+    def pnz(
+        qubit: Steane,
+        reject: Bit | None = None,
+        rus_limit: int | None = None,
+    ):
         """Prepare logical |-Z>, a.k.a. |1>"""
-        return cls.p(qubit, "-Z", reject=reject, rus_limit=rus_limit)
+        return qubit.p(qubit, "-Z", reject=reject, rus_limit=rus_limit)
 
     @classmethod
     def nonft_prep_t_plus_state(cls, qubit: Steane):
@@ -162,9 +179,8 @@ class Steane(Vars):
             q=qubit.d,
         )
 
-    @classmethod
+    @staticmethod
     def prep_t_plus_state(
-        cls,
         qubit: Steane,
         reject: Bit | None = None,
         rus_limit: int | None = None,
@@ -191,29 +207,28 @@ class Steane(Vars):
             block.extend(reject.set(qubit.scratch[2]))
         return block
 
-    @classmethod
-    def nonft_prep_tdg_plus_state(cls, qubit: Steane):
+    @staticmethod
+    def nonft_prep_tdg_plus_state(qubit: Steane):
         """Prepare logical Tdg|+X> in a non-fault tolerant manner."""
         return Block(
-            cls.nonft_prep_t_plus_state(qubit),
-            cls.z(qubit),
+            qubit.nonft_prep_t_plus_state(qubit),
+            qubit.z(qubit),
         )
 
-    @classmethod
+    @staticmethod
     def prep_tdg_plus_state(
-        cls,
-            qubit: Steane,
+        qubit: Steane,
         reject: Bit | None = None,
         rus_limit: int | None = None,
     ):
         """Prepare logical Tdg|+X> in a fault-tolerant manner."""
         return Block(
-            cls.prep_t_plus_state(qubit=qubit, reject=reject, rus_limit=rus_limit),
-            cls.szdg(qubit),
+            qubit.prep_t_plus_state(qubit=qubit, reject=reject, rus_limit=rus_limit),
+            qubit.szdg(qubit),
         )
 
     @staticmethod
-    def x(cls, qubit: Steane):
+    def x(qubit: Steane):
         """Logical Pauli X gate"""
         return paulis.X(qubit.d)
 
@@ -250,54 +265,71 @@ class Steane(Vars):
     @staticmethod
     def sydg(qubit: Steane):
         """Adjoint of sqrt of Y."""
-        return sqrt_paulis.SYdg(self.d)
+        return sqrt_paulis.SYdg(qubit.d)
 
-    def sz(self, qubit: Steane):
+    @staticmethod
+    def sz(qubit: Steane):
         """Sqrt of Z. Also known as the S gate."""
-        return sqrt_paulis.SZ(self.d)
+        return sqrt_paulis.SZ(qubit.d)
 
-    def nonft_t(self, qubit: Steane, aux: Steane):
+    @staticmethod
+    def szdg(qubit: Steane):
+        """Adjoint of sqrt of Z. Also known as the Sdg gate."""
+        return sqrt_paulis.SZdg(qubit.d)
+
+    @staticmethod
+    def nonft_t(qubit: Steane, aux: Steane):
         """T gate via teleportation using non-fault-tolerant initialization of the T|+> state."""
         return Block(
-            self.nonft_prep_t_plus_state(aux),
-            self.cx(qubit, aux),
-            self.mz(qubit, self.t_meas),
-            If(self.t_meas == 1).Then(self.sz(qubit)),
+            qubit.nonft_prep_t_plus_state(aux),
+            qubit.cx(qubit, aux),
+            qubit.mz(qubit, qubit.t_meas),
+            If(qubit.t_meas == 1).Then(qubit.sz(qubit)),
         )
 
-    @classmethod
-    def t(cls, qubit: Steane, aux: Steane, reject: Bit | None = None, rus_limit: int | None = None):
+    @staticmethod
+    def t(
+        qubit: Steane,
+        aux: Steane,
+        reject: Bit | None = None,
+        rus_limit: int | None = None,
+    ):
         """T gate via teleportation using fault-tolerant initialization of the T|+> state."""
         return Block(
-            cls.prep_t_plus_state(aux, reject=reject, rus_limit=rus_limit),
-            cls.cx(qubit, aux),
-            cls.mz(qubit, qubit.t_meas),
-            If(qubit.t_meas == 1).Then(cls.sz(qubit)),  # SZ/S correction.
+            qubit.prep_t_plus_state(aux, reject=reject, rus_limit=rus_limit),
+            qubit.cx(qubit, aux),
+            qubit.mz(qubit, qubit.t_meas),
+            If(qubit.t_meas == 1).Then(qubit.sz(qubit)),  # SZ/S correction.
         )
 
-    @classmethod
-    def nonft_tdg(cls, qubit: Steane, aux: Steane):
+    @staticmethod
+    def nonft_tdg(qubit: Steane, aux: Steane):
         """Tdg gate via teleportation using non-fault-tolerant initialization of the Tdg|+> state."""
         return Block(
-            cls.nonft_prep_tdg_plus_state(qubit, aux),
-            cls.cx(qubit, aux),
-            cls.mz(qubit, qubit.tdg_meas),
-            If(qubit.tdg_meas == 1).Then(cls.szdg(qubit)),
+            qubit.nonft_prep_tdg_plus_state(qubit),
+            qubit.cx(qubit, aux),
+            qubit.mz(qubit, qubit.tdg_meas),
+            If(qubit.tdg_meas == 1).Then(qubit.szdg(qubit)),
         )
 
-    @classmethod
-    def tdg(cls, qubit: Steane, aux: Steane, reject: Bit | None = None, rus_limit: int | None = None):
+    @staticmethod
+    def tdg(
+        qubit: Steane,
+        aux: Steane,
+        reject: Bit | None = None,
+        rus_limit: int | None = None,
+    ):
         """Tdg gate via teleportation using fault-tolerant initialization of the Tdg|+> state."""
         return Block(
-            cls.prep_tdg_plus_state(qubit, reject=reject, rus_limit=rus_limit),
-            cls.cx(qubit, aux),
-            cls.mz(aux, aux.tdg_meas),
-            If(qubit.tdg_meas == 1).Then(cls.szdg(qubit)),  # SZdg/Sdg correction.
+            qubit.prep_tdg_plus_state(qubit, reject=reject, rus_limit=rus_limit),
+            qubit.cx(qubit, aux),
+            qubit.mz(aux, aux.tdg_meas),
+            If(qubit.tdg_meas == 1).Then(qubit.szdg(qubit)),  # SZdg/Sdg correction.
         )
 
     #  Begin Experimental: ------------------------------------
-    @classmethod
-    def nonft_t_tel(cls, qubit: Steane, aux: Steane):
+    @staticmethod
+    def nonft_t_tel(qubit: Steane, aux: Steane):
         """Warning:
             This is experimental.
 
@@ -308,15 +340,16 @@ class Steane(Vars):
         """
         warn("Using experimental feature: nonft_t_tel", stacklevel=2)
         return Block(
-            cls.nonft_prep_t_plus_state(aux),
-            cls.cx(aux, qubit),
-            self.mz(self.t_meas),
-            If(self.t_meas == 1).Then(aux.x(), aux.sz()),
-            Permute(self.d, aux.d),
+            qubit.nonft_prep_t_plus_state(aux),
+            qubit.cx(aux, qubit),
+            qubit.mz(qubit.t_meas),
+            If(qubit.t_meas == 1).Then(aux.x(aux), aux.sz(aux)),
+            Permute(qubit.d, aux.d),
         )
 
+    @staticmethod
     def t_tel(
-        self,
+        qubit: Steane,
         aux: Steane,
         reject: Bit | None = None,
         rus_limit: int | None = None,
@@ -331,14 +364,15 @@ class Steane(Vars):
         """
         warn("Using experimental feature: t_tel", stacklevel=2)
         return Block(
-            aux.prep_t_plus_state(reject=reject, rus_limit=rus_limit),
-            aux.cx(self),
-            self.mz(self.t_meas),
-            If(self.t_meas == 1).Then(aux.x(), aux.sz()),  # SZ/S correction.
-            Permute(self.d, aux.d),
+            aux.prep_t_plus_state(aux, reject=reject, rus_limit=rus_limit),
+            aux.cx(aux, qubit),
+            qubit.mz(qubit.t_meas),
+            If(qubit.t_meas == 1).Then(aux.x(aux), aux.sz(aux)),  # SZ/S correction.
+            Permute(qubit.d, aux.d),
         )
 
-    def nonft_tdg_tel(self, aux: Steane):
+    @staticmethod
+    def nonft_tdg_tel(qubit: Steane, aux: Steane):
         """Warning:
             This is experimental.
 
@@ -349,15 +383,16 @@ class Steane(Vars):
         """
         warn("Using experimental feature: nonft_tdg_tel", stacklevel=2)
         return Block(
-            aux.nonft_prep_tdg_plus_state(),
-            aux.cx(self),
-            self.mz(self.tdg_meas),
-            If(self.tdg_meas == 1).Then(aux.x(), aux.szdg()),
-            Permute(self.d, aux.d),
+            aux.nonft_prep_tdg_plus_state(aux),
+            aux.cx(aux, qubit),
+            qubit.mz(qubit, qubit.tdg_meas),
+            If(qubit.tdg_meas == 1).Then(aux.x(aux), aux.szdg(aux)),
+            Permute(qubit.d, aux.d),
         )
 
+    @staticmethod
     def tdg_tel(
-        self,
+        qubit: Steane,
         aux: Steane,
         reject: Bit | None = None,
         rus_limit: int | None = None,
@@ -372,62 +407,68 @@ class Steane(Vars):
         """
         warn("Using experimental feature: tdg_tel", stacklevel=2)
         return Block(
-            aux.prep_tdg_plus_state(reject=reject, rus_limit=rus_limit),
-            aux.cx(self),
-            self.mz(self.tdg_meas),
-            If(self.t_meas == 1).Then(aux.x(), aux.szdg()),  # SZdg/Sdg correction.
-            Permute(self.d, aux.d),
+            aux.prep_tdg_plus_state(aux, reject=reject, rus_limit=rus_limit),
+            aux.cx(aux, qubit),
+            qubit.mz(qubit, qubit.tdg_meas),
+            If(qubit.t_meas == 1).Then(
+                aux.x(aux),
+                aux.szdg(aux),
+            ),  # SZdg/Sdg correction.
+            Permute(aux.d, aux.d),
         )
 
     # End Experimental: ------------------------------------
 
-    def szdg(self):
-        """Adjoint of Sqrt of Z. Also known as the Sdg gate."""
-        return sqrt_paulis.SZdg(self.d)
-
-    def cx(self, target: Steane):
+    @staticmethod
+    def cx(qubit: Steane, target: Steane):
         """Logical CX"""
-        return transversal_tq.CX(self.d, target.d)
+        return transversal_tq.CX(qubit.d, target.d)
 
-    def cy(self, target: Steane):
+    @staticmethod
+    def cy(qubit: Steane, target: Steane):
         """Logical CY"""
-        return transversal_tq.CY(self.d, target.d)
+        return transversal_tq.CY(qubit.d, target.d)
 
-    def cz(self, target: Steane):
+    @staticmethod
+    def cz(qubit: Steane, target: Steane):
         """Logical CZ"""
-        return transversal_tq.CZ(self.d, target.d)
+        return transversal_tq.CZ(qubit.d, target.d)
 
-    def m(self, meas_basis: str, log: Bit | None = None):
+    @staticmethod
+    def m(qubit: Steane, meas_basis: str, log: Bit | None = None):
         """Destructively measure the logical qubit in some Pauli basis."""
         block = Block(
             MeasDecode(
-                q=self.d,
+                q=qubit.d,
                 meas_basis=meas_basis,
-                meas=self.raw_meas,
-                log_raw=self.log_raw,
-                log=self.log,
-                syn_meas=self.syn_meas,
-                pf_x=self.pf_x,
-                pf_z=self.pf_z,
-                last_raw_syn_x=self.last_raw_syn_x,
-                last_raw_syn_z=self.last_raw_syn_z,
+                meas=qubit.raw_meas,
+                log_raw=qubit.log_raw,
+                log=qubit.log,
+                syn_meas=qubit.syn_meas,
+                pf_x=qubit.pf_x,
+                pf_z=qubit.pf_z,
+                last_raw_syn_x=qubit.last_raw_syn_x,
+                last_raw_syn_z=qubit.last_raw_syn_z,
             ),
         )
         if log is not None:
-            block.extend(log.set(self.log))
+            block.extend(log.set(qubit.log))
         return block
 
-    def mx(self, log: Bit | None = None):
+    @staticmethod
+    def mx(qubit, log: Bit | None = None):
         """Logical destructive measurement of the logical X operator."""
-        return self.m("X", log=log)
+        return qubit.m("X", log=log)
 
-    def my(self, log: Bit | None = None):
+    @staticmethod
+    def my(qubit, log: Bit | None = None):
         """Logical destructive measurement of the logical Y operator."""
-        return self.m("Y", log=log)
+        return qubit.m("Y", log=log)
 
-    def mz(self, log: Bit | None = None):
+    @staticmethod
+    def mz(qubit, log: Bit | None = None):
         """Logical destructive measurement of the logical Z operator."""
-        return self.m("Z", log=log)
+        return qubit.m("Z", log=log)
 
     def qec(self, flag_bit: Bit | None = None):
         block = ParallelFlagQECActiveCorrection(

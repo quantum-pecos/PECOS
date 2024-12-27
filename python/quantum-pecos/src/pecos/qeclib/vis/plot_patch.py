@@ -18,7 +18,7 @@ import numpy as np
 from matplotlib.patches import Circle, PathPatch
 from matplotlib.path import Path
 
-from pecos.qeclib.surface.surface_4444_rot.lattices.reglat_4_4_4_4 import gen_layout
+from pecos.qeclib.surface.patch_layouts.layout_4_4_4_4_rotated import gen_layout
 
 
 def plot_surf_patch(
@@ -26,6 +26,7 @@ def plot_surf_patch(
     figsize=(8, 8),
     curve_height=0.4,
     curvature=0.4,
+    plot_cups=True,
     plot_points=True,
 ):
     if isinstance(distance, int):
@@ -35,12 +36,13 @@ def plot_surf_patch(
         width, height = distance
 
     node_coordinates_set1, node_coordinates_set2, polygons = gen_layout(width, height)
-    return plot_two_colored_cups(
+    return plot_two_colored(
         polygons,
         node_coordinates_set1,
         figsize=figsize,
         curve_height=curve_height,
         curvature=curvature,
+        plot_cups=plot_cups,
         plot_points=plot_points,
     )
 
@@ -172,11 +174,12 @@ def bfs_two_color(graph):
     return color
 
 
-def plot_two_colored_cups(
+def plot_two_colored(
     polygons,
     points_to_plot,
     curve_height=0.5,
     curvature=0.5,
+    plot_cups=True,
     plot_points=True,
     figsize=None,
 ):
@@ -224,7 +227,7 @@ def plot_two_colored_cups(
 
     # Process the polygons
     for i, polygon in enumerate(polygons):
-        if len(polygon) == 3:  # For triangles, replace them with cups
+        if len(polygon) == 3 and plot_cups:  # For triangles, replace them with cups
             # Identify the base points and the non-base point
             if polygon[0][0] == polygon[1][0] or polygon[0][1] == polygon[1][1]:
                 base1, base2, non_base = polygon[0], polygon[1], polygon[2]

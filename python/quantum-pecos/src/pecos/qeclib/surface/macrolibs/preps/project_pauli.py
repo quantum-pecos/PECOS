@@ -9,10 +9,29 @@
 # "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the License for the
 # specific language governing permissions and limitations under the License.
 
-from pecos.slr import Block
+from pecos.qeclib.qubit.qubit import PhysicalQubit as Q
+from pecos.slr import Block, QReg, Qubit
 
-# from pecos.qeclib.qubit
+
+class PrepZ(Block):
+    """Prepare the +Z operator."""
+
+    def __init__(self, q: QReg, data_indices: list[int]):
+        super().__init__()
+
+        for i in data_indices:
+            self.extend(
+                Q.pz(q[i]),
+            )
 
 
 class PrepProjectZ(Block):
     """Prepare the +Z operator."""
+
+    def __init__(self, qs: list[Qubit]):
+        super().__init__()
+
+        self.extend(
+            PrepZ(*qs),
+        )
+        # TODO: Measure the X checks

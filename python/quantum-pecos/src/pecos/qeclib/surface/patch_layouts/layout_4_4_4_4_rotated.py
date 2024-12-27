@@ -13,13 +13,14 @@
 
 
 def gen_layout(width: int, height: int):
-    """Generate lattice layout for a 4.4.4.4"""
+    """Generate rectangular rotated surface code patch layout for a 4.4.4.4 lattice."""
     lattice_height = height * 2
     lattice_width = width * 2
 
     nodes = []
     dual_nodes = []
-    polygons = []
+    polygons_0 = []
+    polygons_1 = []
 
     for x in range(lattice_width + 1):
         for y in range(lattice_height + 1):
@@ -37,7 +38,7 @@ def gen_layout(width: int, height: int):
                         (x + 1, y - 1),
                         (x + 1, y + 1),
                     ]
-                    polygons.append(poly)
+                    polygons_1.append(poly)
 
             elif 0 < x < lattice_width or 0 < y < lattice_height:
                 # Not the corners or the interior
@@ -48,16 +49,15 @@ def gen_layout(width: int, height: int):
                     if x != 0 and x % 4 == 0:
                         dual_nodes.append((x, y))
                         poly = [(x, y), (x - 1, y + 1), (x + 1, y + 1)]
-                        polygons.append(poly)
+                        polygons_0.append(poly)
 
                 elif x == 0:
-                    # Left column
-                    # X checks
+                    # Left column: X checks
 
                     if (y - 2) % 4 == 0:
                         dual_nodes.append((x, y))
                         poly = [(x, y), (x + 1, y + 1), (x + 1, y - 1)]
-                        polygons.append(poly)
+                        polygons_0.append(poly)
 
                 if y == lattice_height:
                     # Bottom: X checks
@@ -66,26 +66,30 @@ def gen_layout(width: int, height: int):
                         if x != 0 and x % 4 == 0:
                             dual_nodes.append((x, y))
                             poly = [(x, y), (x - 1, y - 1), (x + 1, y - 1)]
-                            polygons.append(poly)
+                            polygons_0.append(poly)
 
                     else:
                         if (x - 2) % 4 == 0:
                             dual_nodes.append((x, y))
                             poly = [(x, y), (x - 1, y - 1), (x + 1, y - 1)]
-                            polygons.append(poly)
+                            polygons_0.append(poly)
 
                 elif x == lattice_width:
-                    # Right column
-                    # X checks
+                    # Right column: X checks
 
                     if width % 2 == 1:
                         if y != 0 and y % 4 == 0:
                             dual_nodes.append((x, y))
                             poly = [(x, y), (x - 1, y - 1), (x - 1, y + 1)]
-                            polygons.append(poly)
+                            polygons_0.append(poly)
                     else:
                         if (y - 2) % 4 == 0:
                             dual_nodes.append((x, y))
                             poly = [(x, y), (x - 1, y - 1), (x - 1, y + 1)]
-                            polygons.append(poly)
+                            polygons_0.append(poly)
+
+    polygons = []
+    polygons.extend(polygons_0)
+    polygons.extend(polygons_1)
+
     return nodes, dual_nodes, polygons

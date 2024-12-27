@@ -1,7 +1,14 @@
-from pecos.slr import Qubit, Bit
-from pecos.qeclib.qubit import sq_paulis, sq_sqrt_paulis, sq_hadamards, tq_cliffords, measures, preps
+from pecos.qeclib.qubit import (
+    measures,
+    preps,
+    sq_hadamards,
+    sq_paulis,
+    sq_sqrt_paulis,
+    tq_cliffords,
+)
 
-# TODO accept multiple arguments like the underlying implementations
+# TODO: accept multiple arguments like the underlying implementations
+
 
 class PhysicalQubit:
 
