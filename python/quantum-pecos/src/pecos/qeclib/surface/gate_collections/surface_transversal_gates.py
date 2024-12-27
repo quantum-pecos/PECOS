@@ -3,29 +3,29 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
-    from pecos.qeclib.surface.patches.surface_4444_rot_patch import Surface4444RotPatch
+    from pecos.qeclib.surface.surface_patch import SurfacePatch
 
 
 class SurfaceTransversalGates:
     """A collection of transversal gate implementations for the `Surface4444RotPatch`."""
 
     @staticmethod
-    def x(*patches: Surface4444RotPatch) -> Surface4444RotPatch:
+    def x(*patches: SurfacePatch) -> SurfacePatch:
         """Apply logical Pauli X on surface code patches."""
         # TODO: ...
 
     @staticmethod
-    def y(*patches: Surface4444RotPatch):
+    def y(*patches: SurfacePatch):
         """Apply logical Pauli Y on surface code patches."""
         # TODO: ...
 
     @staticmethod
-    def z(*patches: Surface4444RotPatch):
+    def z(*patches: SurfacePatch):
         """Apply logical Pauli Z on surface code patches."""
         # TODO: ...
 
     @staticmethod
-    def h(*patches: Surface4444RotPatch, permute=True):
+    def h(*patches: SurfacePatch, permute=True):
         """Apply transversal Hadamard on surface code patches followed by a Permutation/Relabeling.
 
         Examples:
@@ -40,7 +40,7 @@ class SurfaceTransversalGates:
 
     @staticmethod
     def cx(
-        *patches: Surface4444RotPatch | tuple[Surface4444RotPatch, Surface4444RotPatch],
+        *patches: SurfacePatch | tuple[SurfacePatch, SurfacePatch],
     ):
         """Apply transversal CX on surface code patches.
 

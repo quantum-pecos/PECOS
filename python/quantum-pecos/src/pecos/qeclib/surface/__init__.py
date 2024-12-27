@@ -10,4 +10,4 @@
 # specific language governing permissions and limitations under the License.
 
 from pecos.qeclib.surface.gate_collections.surface_std_gates import SurfaceStdGates
-from pecos.qeclib.surface.patches.surface_patch import SurfacePatch
+from pecos.qeclib.surface.surface_patch import SurfacePatch

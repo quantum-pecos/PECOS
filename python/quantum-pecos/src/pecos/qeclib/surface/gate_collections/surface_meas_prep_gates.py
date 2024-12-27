@@ -1,11 +1,11 @@
 from pecos.qeclib.surface.macrolibs.preps.project_pauli import PrepProjectZ
-from pecos.qeclib.surface.patches.surface_4444_rot_patch import Surface4444RotPatch
+from pecos.qeclib.surface.surface_patch import SurfacePatch
 
 
 class SurfaceMeasPrepGates:
 
     @staticmethod
-    def pz(*patches: Surface4444RotPatch) -> list[PrepProjectZ]:
+    def pz(*patches: SurfacePatch) -> list[PrepProjectZ]:
         return [PrepProjectZ(p.data) for p in patches]
 
     @staticmethod
