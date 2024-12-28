@@ -19,7 +19,7 @@ class SquareRotatedLayout:
 
     @staticmethod
     def get_stabilizers_gens(dx: int, dz: int) -> list[tuple[str, tuple[int, ...]]]:
-        return get_stab_gens(dx, dz)  # Current implementation
+        return get_stab_gens(dx, dz)
 
     @staticmethod
     def get_data_positions(dx: int, dz: int) -> list[tuple[int, int]]:
@@ -71,7 +71,12 @@ class SquareRotatedLayout:
 
         nodes = [calc_id2pos(i, dz, dx) for i in range(dx * dz)]
 
-        return VisData(nodes=nodes, polygons=polygons, polygon_colors=polygon_colors)
+        return VisData(
+            nodes=nodes,
+            polygons=polygons,
+            polygon_colors=polygon_colors,
+            plot_cups=True,
+        )
 
 
 def calc_id2pos(i, width, height):
@@ -215,122 +220,3 @@ def order_coords_counter_clockwise(coords):
             return 3, y
 
     return sorted(coords, key=sort_key)
-
-
-def get_plot_info(dz, dx, stab_gens):
-    polygon_colors = {}
-    for i, (pauli, _) in enumerate(stab_gens):
-        polygon_colors[i] = 0 if pauli == "X" else 1
-
-    polygons = []
-    for _, datas in stab_gens:
-        temp = []
-        for id_ in datas:
-            temp.append(calc_id2pos(id_, dz, dx))
-
-        polygons.append(temp)
-
-    polygons = [order_coords_counter_clockwise(coords) for coords in polygons]
-
-    for coords in polygons:
-        # make a triangle
-        if len(coords) == 2:
-            # Work out the original (x, y) of the dual node
-            (x1, y1), (x2, y2) = coords
-            if y1 == y2 == 1:
-                coords.insert(0, (x1 + 1, 0))
-            elif y1 == y2 == 2 * dx - 1:
-                coords.insert(0, (x1 + 1, y1 + 1))
-            elif x1 == x2 == 1:
-                coords.insert(0, (x1 - 1, y1 - 1))
-            elif x1 == x2 == 2 * dz - 1:
-                coords.insert(0, (x1 + 1, y1 + 1))
-            else:
-                msg = f"Unexpected digon coordinates: {coords}"
-                raise Exception(msg)
-
-    nodes = [calc_id2pos(i, dz, dx) for i in range(dx * dz)]
-
-    return polygons, polygon_colors, nodes
-
-
-def gen_layout(width: int, height: int):
-    """Generate rectangular rotated surface code patch layout for a 4.4.4.4 lattice."""
-    lattice_height = height * 2
-    lattice_width = width * 2
-
-    nodes = []
-    dual_nodes = []
-    polygons_0 = []
-    polygons_1 = []
-
-    for x in range(lattice_width + 1):
-        for y in range(lattice_height + 1):
-            if 0 < x < lattice_width and 0 < y < lattice_height:
-                # Interior
-
-                if x % 2 == 1 and y % 2 == 1:  # That is, both coordinates are odd...
-                    nodes.append((x, y))
-
-                elif x % 2 == 0 and y % 2 == 0:
-                    dual_nodes.append((x, y))
-                    poly = [
-                        (x - 1, y + 1),
-                        (x - 1, y - 1),
-                        (x + 1, y - 1),
-                        (x + 1, y + 1),
-                    ]
-                    polygons_1.append(poly)
-
-            elif 0 < x < lattice_width or 0 < y < lattice_height:
-                # Not the corners or the interior
-
-                if y == 0:
-                    # Top: X checks
-
-                    if x != 0 and x % 4 == 0:
-                        dual_nodes.append((x, y))
-                        poly = [(x, y), (x - 1, y + 1), (x + 1, y + 1)]
-                        polygons_0.append(poly)
-
-                elif x == 0:
-                    # Left column: X checks
-
-                    if (y - 2) % 4 == 0:
-                        dual_nodes.append((x, y))
-                        poly = [(x, y), (x + 1, y + 1), (x + 1, y - 1)]
-                        polygons_0.append(poly)
-
-                if y == lattice_height:
-                    # Bottom: X checks
-
-                    if height % 2 == 0:
-                        if x != 0 and x % 4 == 0:
-                            dual_nodes.append((x, y))
-                            poly = [(x, y), (x - 1, y - 1), (x + 1, y - 1)]
-                            polygons_0.append(poly)
-
-                    else:
-                        if (x - 2) % 4 == 0:
-                            dual_nodes.append((x, y))
-                            poly = [(x, y), (x - 1, y - 1), (x + 1, y - 1)]
-                            polygons_0.append(poly)
-
-                elif x == lattice_width:
-                    # Right column: X checks
-
-                    if width % 2 == 1:
-                        if y != 0 and y % 4 == 0:
-                            dual_nodes.append((x, y))
-                            poly = [(x, y), (x - 1, y - 1), (x - 1, y + 1)]
-                            polygons_0.append(poly)
-                    else:
-                        if (y - 2) % 4 == 0:
-                            dual_nodes.append((x, y))
-                            poly = [(x, y), (x - 1, y - 1), (x - 1, y + 1)]
-                            polygons_0.append(poly)
-    polygons = []
-    polygons.extend(polygons_0)
-    polygons.extend(polygons_1)
-
-    return nodes, dual_nodes, polygons

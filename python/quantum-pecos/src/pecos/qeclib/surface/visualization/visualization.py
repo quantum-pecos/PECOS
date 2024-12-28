@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 from typing import TYPE_CHECKING
 
 import matplotlib.pyplot as plt
@@ -11,12 +13,25 @@ if TYPE_CHECKING:
 
 class Lattice2DView:
     @staticmethod
-    def render(patch: "SurfacePatch"):
+    def render(
+        patch: SurfacePatch,
+        colors=None,
+        plot_points=True,
+        figsize: tuple[int, int] | None = None,
+    ):
         """Render a figure of a 2D layout of data qubits and an abstracted notion of the lattice it belongs to."""
 
         v = patch.get_visualization_data()
 
-        return plot_colored_polygons(v.polygons, v.nodes, v.polygon_colors)
+        return plot_colored_polygons(
+            polygons=v.polygons,
+            points_to_plot=v.nodes,
+            polygon_colors=v.polygon_colors,
+            colors=colors,
+            plot_cups=v.plot_cups,
+            plot_points=plot_points,
+            figsize=figsize,
+        )
 
 
 def plot_colored_polygons(
@@ -36,8 +51,13 @@ def plot_colored_polygons(
     Parameters:
         polygons (list): List of polygons as lists of (x, y) tuples.
         points_to_plot (list): List of (x, y) tuples to be plotted and labeled.
+        polygon_colors (dict[int, int]): List of indices into `colors` for each polygon.
+        colors (list[str]): Color palette for polygons to choose from.
         curve_height (float): Height of the non-base point relative to the base length.
         curvature (float): Degree to which the curve broadens horizontally. Negative values invert the curvature.
+        plot_cups (bool): Whether to plot cups instead of triangles.
+        plot_points (bool): Whether to data qubits.
+        figsize (tuple[int, int] | None): Figure size.
     """
 
     if figsize is None:

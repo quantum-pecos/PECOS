@@ -12,6 +12,7 @@ class VisData:
     nodes: list[tuple[int, int]]
     polygons: list[list[tuple[int, int]]]
     polygon_colors: dict[int, int]
+    plot_cups: bool
 
 
 class VisualizationStrategy(Protocol):
@@ -19,10 +20,3 @@ class VisualizationStrategy(Protocol):
 
     def get_visualization_data(self, patch: "SurfacePatch") -> VisData: ...
     def supports_view(self, view_type: str) -> bool: ...
-
-
-class Visualizable(Protocol):
-    """Basic trait for anything visualizable."""
-
-    def get_visualization_data(self) -> VisData: ...
-    def support_view(self, view_type: str) -> bool: ...
