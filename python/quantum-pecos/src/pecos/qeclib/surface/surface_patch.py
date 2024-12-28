@@ -3,7 +3,12 @@ from __future__ import annotations
 from enum import Enum
 from typing import TYPE_CHECKING, Protocol, TypeVar
 
-from pecos.qeclib.surface.visualization import Visualizable
+from pecos.qeclib.surface.patch_layouts.layout_4_4_4_4_rotated import (
+    calc_id2pos,
+    get_stab_gens,
+    order_coords_counter_clockwise,
+)
+from pecos.qeclib.surface.visualization import VisData, Visualizable
 from pecos.slr import QReg, Vars
 
 if TYPE_CHECKING:
@@ -12,8 +17,8 @@ if TYPE_CHECKING:
 Self = TypeVar("Self")
 
 # TODO: Create a vector or an array of objects...
-# TODO: Consider if we should use the Result pattern or not.
-# TODO: Set check scheduling
+# TODO: Set check scheduling for syn_extract
+# TODO: deal with rot surface code having 4 orientations (X up, Z up + mirror... left, right)
 
 
 class LatticeType(Enum):
@@ -94,6 +99,8 @@ class BaseSurfacePatch(SurfacePatch, Visualizable, Vars):
         if name is not None:
             self.name = f"{self.name}_{name}"
 
+        self.stab_gens: list[tuple[str, tuple[int, ...]]] = []
+
         # Validate before creating resources
         self.validate()
 
@@ -139,12 +146,45 @@ class RotatedSurfacePatch(BaseSurfacePatch):
             self.data_reg,
         ]
 
-        self.x_checks: list[tuple[int, ...]] = []
-        self.z_checks: list[tuple[int, ...]] = []
+        # TODO: Should each surface patch carry this or should it be stored somewhere for reuse...
+        #       or cached somehow
+        self.stab_gens = get_stab_gens(self.dx, self.dz)
 
-    def get_check_lists(self):
-        """Get a list of checks represented as tuples of data qubit ids (`list[tuple[int, ...]]`)."""
-        # TODO: do...
+    def get_visualization_data(self) -> VisData:
+        polygon_colors = {}
+        for i, (pauli, _) in enumerate(self.stab_gens):
+            polygon_colors[i] = 0 if pauli == "X" else 1
+
+        polygons = []
+        for _, datas in self.stab_gens:
+            temp = []
+            for id_ in datas:
+                temp.append(calc_id2pos(id_, self.dz, self.dx))
+
+            polygons.append(temp)
+
+        polygons = [order_coords_counter_clockwise(coords) for coords in polygons]
+
+        for coords in polygons:
+            # make a triangle to form diagons
+            if len(coords) == 2:
+                # Work out the original (x, y) of the dual node
+                (x1, y1), (x2, y2) = coords
+                if y1 == y2 == 1:
+                    coords.insert(0, (x1 + 1, 0))
+                elif y1 == y2 == 2 * self.dx - 1:
+                    coords.insert(0, (x1 + 1, y1 + 1))
+                elif x1 == x2 == 1:
+                    coords.insert(0, (x1 - 1, y1 - 1))
+                elif x1 == x2 == 2 * self.dz - 1:
+                    coords.insert(0, (x1 + 1, y1 + 1))
+                else:
+                    msg = f"Unexpected digon coordinates: {coords}"
+                    raise Exception(msg)
+
+        nodes = [calc_id2pos(i, self.dz, self.dx) for i in range(self.dx * self.dz)]
+
+        return VisData(nodes=nodes, polygons=polygons, polygon_colors=polygon_colors)
 
 
 class NonRotatedSurfacePatch(BaseSurfacePatch):

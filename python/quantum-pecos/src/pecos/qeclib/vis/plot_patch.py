@@ -199,8 +199,11 @@ def plot_two_colored(
     # Build the adjacency graph
     polygon_graph = build_adjacency_graph(polygons)
 
+    # print(polygons)
+
     # Perform two-coloring
     polygon_colors = bfs_two_color(polygon_graph)
+    # print(polygon_colors)
 
     # Define two colors: vibrant pastel shades of red and blue
     two_color_palette = ["#6666FF", "#FF6666"]
@@ -208,6 +211,8 @@ def plot_two_colored(
     # Plot setup
     fig, ax = plt.subplots(figsize=figsize)
     fig.patch.set_facecolor("#EDEDED")  # Slightly darker neutral background
+
+    print(points_to_plot)
 
     # Label points_to_plot
     points_to_plot_sorted = sorted(points_to_plot, key=lambda p: (-p[1], p[0]))
@@ -303,6 +308,7 @@ def plot_two_colored(
 
     # Ensure equal aspect ratio
     plt.axis("equal")
+    # plt.gca().invert_yaxis()
 
     # plt.title("Two-Colored Cups Based on Non-Base Point Position", pad=20, color="black", fontsize=14)
     plt.tight_layout()
