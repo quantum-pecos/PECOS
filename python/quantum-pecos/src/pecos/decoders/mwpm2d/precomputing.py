@@ -51,9 +51,8 @@ def code_surface4444(instr):
 
     This decoder is for 2D slices. It is assumed that it can decode logical instruction by logical instruction.
 
-    :param logical_gate:
-    :param precomputed_data: A dictionary of precomputed data used to decode syndromes of logical instructions.
-    :return:
+    Parameters:
+        instr: Instruction
     """
     if instr.symbol == "instr_syn_extract":
         # In the future go through different instructions
@@ -71,9 +70,8 @@ def code_surface4444medial(instr):
 
     This decoder is for 2D slices. It is assumed that it can decode logical instruction by logical instruction.
 
-    :param logical_gate:
-    :param precomputed_data: A dictionary of precomputed data used to decode syndromes of logical instructions.
-    :return:
+    Parameters:
+        instr: Instruction
     """
     if instr.symbol == "instr_syn_extract":
         # In the future go through different instructions
@@ -96,8 +94,8 @@ def surface4444_identity(instr):
     - Generate distance graph
     - Determine syn -> closest v and weight
 
-    :param instr:
-    :return:
+    Parameters:
+        instr: Instruction
     """
     # In the end... need:
     # For x and z separately:
@@ -128,14 +126,6 @@ def surface4444_identity(instr):
     # Record what data qudits the syndrome to syndrome edges correspond to.
     edges_x = {}
     edges_z = {}
-
-    # syndrome-to-syndrome, fully-connected graph
-    graph_x = info["X"]["dist_graph"]
-    graph_z = info["Z"]["dist_graph"]
-
-    # The closest virtual node to each syndrome
-    closest_x = info["X"]["closest_virt"]
-    closest_z = info["Z"]["closest_virt"]
 
     # The sides of the QECC patch
     sides = qecc.sides  # t, r, b, l
@@ -205,105 +195,17 @@ def surface4444_identity(instr):
             else:
                 raise Exception('side_label "%s" not understood!' % side_label)
 
-    # invert data -> edge and make sure len(edge) = 2
-    for check_type in ["X", "Z"]:
-        if check_type == "X":
-            edge_dict = d2edge_x
-            edges = edges_x
-            temp_graph = temp_graph_x
-        else:
-            edge_dict = d2edge_z
-            edges = edges_z
-            temp_graph = temp_graph_z
-
-        for data, edge in edge_dict.items():
-            if len(edge) != 2:
-                msg = (
-                    f"There should be exactly two syndromes (virtual or not) connected to each data qudit. Instead,"
-                    f" q: {data} edge: {edge}"
-                )
-                raise Exception(msg)
-
-            edges[tuple(edge)] = data
-            edges[(edge[1], edge[0])] = data
-            temp_graph.add_edge(edge[0], edge[1])
-
-    # Create distance graph
-    for check_type in ["X", "Z"]:
-        if check_type == "X":
-            temp_graph = temp_graph_x
-            g = graph_x
-            closest = closest_x
-            virt = virt_x
-            edge2d = edges_x
-            virtual_edge_data = virtual_edge_data_x
-
-        else:
-            temp_graph = temp_graph_z
-            g = graph_z
-            closest = closest_z
-            virt = virt_z
-            edge2d = edges_z
-            virtual_edge_data = virtual_edge_data_z
-
-        paths = dict(nx.shortest_path(temp_graph))
-
-        for n1, wdict in paths.items():
-            for n2, syn_path in wdict.items():
-                weight = len(syn_path) - 1
-
-                if weight != 0:
-                    # Get list of datas corresponding to the connected path between syndromes
-                    data_path = []
-                    s1 = syn_path[0]
-                    for s2 in syn_path[1:]:
-                        data = edge2d[(s1, s2)]
-                        data_path.append(data)
-                        s1 = s2
-
-                    if (n1 not in virt) and (n2 not in virt):
-                        g.add_edge(
-                            n1,
-                            n2,
-                            weight=-weight,
-                            syn_path=syn_path,
-                            data_path=data_path,
-                        )
-
-        syn = set(g.nodes())
-        syn -= virt
-
-        # Find closest virtual node
-
-        for s in syn:
-            shortest_len = float("inf")
-            closest_v = None
-            for v in virt:
-                sv_len = len(paths[s][v])
-                if sv_len < shortest_len:
-                    shortest_len = sv_len
-                    closest_v = v
-            closest[s] = closest_v
-
-        for s, v in closest.items():
-            syn_path = paths[s][v]
-            weight = len(syn_path) - 1
-
-            data_path = []
-            s1 = syn_path[0]
-            for s2 in syn_path[1:]:
-                data = edge2d[(s1, s2)]
-                data_path.append(data)
-                s1 = s2
-
-            virtual_edge_data[s] = {
-                "virtual_node": v,
-                "weight": -weight,
-                "syn_path": syn_path,
-                "data_path": data_path,
-            }
-
-    return info
+    return invert_data(
+        info,
+        d2edge_x,
+        d2edge_z,
+        edges_x,
+        edges_z,
+        temp_graph_x,
+        temp_graph_z,
+        virt_x,
+        virt_z,
+    )
 
 
 def surface4444medial_identity(instr):
@@ -334,8 +236,8 @@ def surface4444medial_identity(instr):
     # Create a dictionary to store precomputed information that will be used for decoding
     info = {
         "X": {
-            "dist_graph": nx.Graph(),
-            "closest_virt": {},
+            "dist_graph": nx.Graph(),  # syndrome-to-syndrome, fully-connected graph
+            "closest_virt": {},  # The closest virtual node to each syndrome
             "virtual_edge_data": virtual_edge_data_x,
         },
         "Z": {
@@ -348,14 +250,6 @@ def surface4444medial_identity(instr):
     # Record what data qudits the syndrome to syndrome edges correspond to.
     edges_x = {}
     edges_z = {}
-
-    # syndrome-to-syndrome, fully-connected graph
-    graph_x = info["X"]["dist_graph"]
-    graph_z = info["Z"]["dist_graph"]
-
-    # The closest virtual node to each syndrome
-    closest_x = info["X"]["closest_virt"]
-    closest_z = info["Z"]["closest_virt"]
 
     # The sides of the QECC patch
     sides = qecc.sides  # t, r, b, l
@@ -407,6 +301,7 @@ def surface4444medial_identity(instr):
     distance_height = qecc.height
 
     vi = 0
+    virt_node = None
     for side_label, side_qubits in sides.items():
         for i, data in enumerate(side_qubits):
             if side_label == "top":
@@ -457,7 +352,30 @@ def surface4444medial_identity(instr):
                 virt_x.add(virt_node)
             else:
                 raise Exception('side_label "%s" not understood!' % side_label)
+    return invert_data(
+        info,
+        d2edge_x,
+        d2edge_z,
+        edges_x,
+        edges_z,
+        temp_graph_x,
+        temp_graph_z,
+        virt_x,
+        virt_z,
+    )
 
+
+def invert_data(
+    info,
+    d2edge_x,
+    d2edge_z,
+    edges_x,
+    edges_z,
+    temp_graph_x,
+    temp_graph_z,
+    virt_x,
+    virt_z,
+):
     # invert data -> edge and make sure len(edge) = 2
     for check_type in ["X", "Z"]:
         if check_type == "X":
@@ -485,19 +403,19 @@ def surface4444medial_identity(instr):
     for check_type in ["X", "Z"]:
         if check_type == "X":
             temp_graph = temp_graph_x
-            g = graph_x
-            closest = closest_x
+            g = info["X"]["dist_graph"]
+            closest = info["X"]["closest_virt"]
             virt = virt_x
             edge2d = edges_x
-            virtual_edge_data = virtual_edge_data_x
+            virtual_edge_data = info["X"]["virtual_edge_data"]
 
         else:
             temp_graph = temp_graph_z
-            g = graph_z
-            closest = closest_z
+            g = info["Z"]["dist_graph"]
+            closest = info["Z"]["closest_virt"]
             virt = virt_z
             edge2d = edges_z
-            virtual_edge_data = virtual_edge_data_z
+            virtual_edge_data = info["Z"]["virtual_edge_data"]
 
         paths = dict(nx.shortest_path(temp_graph))
 

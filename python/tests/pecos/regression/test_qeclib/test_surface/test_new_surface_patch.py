@@ -60,9 +60,9 @@ def test_build_rot_surface_patch():
 
 def test_surface_patch_builder_render():
     s = SurfacePatchBuilder().with_distances(3, 3).build()
-    Lattice2DView.render(s).show()
+    Lattice2DView.render(s)
 
 
 def test_rot_surface_patch_render():
     s = RotatedSurfacePatch.default(3)
-    Lattice2DView.render(s).show()
+    Lattice2DView.render(s)
