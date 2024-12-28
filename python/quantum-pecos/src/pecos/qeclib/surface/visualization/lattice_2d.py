@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
 import matplotlib.pyplot as plt
@@ -10,27 +11,52 @@ from matplotlib.path import Path
 if TYPE_CHECKING:
     from pecos.qeclib.surface.patches.patch_base import SurfacePatch
 
+from pecos.qeclib.surface.visualization.visualization_base import BaseVisConfig
+
+
+@dataclass
+class Lattice2DConfig(BaseVisConfig):
+    """Config for 2D lattice visualization
+
+    Parameters:
+        figsize (tuple[int, int] | None): Figure size.
+        colors (list[str]): Color palette for polygons to choose from.
+        curve_height (float): Height of the non-base point relative to the base length.
+        curvature (float): Degree to which the curve broadens horizontally. Negative values invert the curvature.
+        plot_cups (bool): Whether to plot cups instead of triangles.
+        plot_points (bool): Whether to data qubits.
+    """
+
+    figsize: tuple[int, int] | None = (8, 8)
+    colors: list[str] | None = ("#FF6666", "#6666FF")
+    plot_cups: bool = True
+    plot_points: bool = True
+    curve_height: float = 0.5
+    curvature: float = 0.5
+    label_points: bool = True
+    point_size: float = 0.13
+    line_width: float = 1.5
+    alpha: float = 0.85
+
 
 class Lattice2DView:
     @staticmethod
     def render(
         patch: SurfacePatch,
-        colors=None,
-        plot_points=True,
-        figsize: tuple[int, int] | None = None,
-    ):
+        config: Lattice2DConfig | None = None,
+    ) -> tuple[plt.Figure, plt.Axes]:
         """Render a figure of a 2D layout of data qubits and an abstracted notion of the lattice it belongs to."""
 
         v = patch.get_visualization_data()
+
+        if config is None:
+            config = Lattice2DConfig()
 
         return plot_colored_polygons(
             polygons=v.polygons,
             points_to_plot=v.nodes,
             polygon_colors=v.polygon_colors,
-            colors=colors,
-            plot_cups=v.plot_cups,
-            plot_points=plot_points,
-            figsize=figsize,
+            config=config,
         )
 
 
@@ -38,13 +64,8 @@ def plot_colored_polygons(
     polygons,
     points_to_plot,
     polygon_colors,
-    colors=None,
-    curve_height=0.5,
-    curvature=0.5,
-    plot_cups=True,
-    plot_points=True,
-    figsize=None,
-):
+    config: Lattice2DConfig | None = None,
+) -> tuple[plt.Figure, plt.Axes]:
     """
     Plot polygons with cups replaced for triangles and two-colored based on adjacency.
 
@@ -52,23 +73,13 @@ def plot_colored_polygons(
         polygons (list): List of polygons as lists of (x, y) tuples.
         points_to_plot (list): List of (x, y) tuples to be plotted and labeled.
         polygon_colors (dict[int, int]): List of indices into `colors` for each polygon.
-        colors (list[str]): Color palette for polygons to choose from.
-        curve_height (float): Height of the non-base point relative to the base length.
-        curvature (float): Degree to which the curve broadens horizontally. Negative values invert the curvature.
-        plot_cups (bool): Whether to plot cups instead of triangles.
-        plot_points (bool): Whether to data qubits.
-        figsize (tuple[int, int] | None): Figure size.
+        config (Lattice2DConfig | None): Optional Lattice2DConfig object.
     """
 
-    if figsize is None:
-        figsize = (8, 8)
-
-    if colors is None:
-        # Define two colors: vibrant pastel shades of red and blue
-        colors = ["#FF6666", "#6666FF"]
+    c = config
 
     # Plot setup
-    fig, ax = plt.subplots(figsize=figsize)
+    fig, ax = plt.subplots(figsize=c.figsize)
     fig.patch.set_facecolor("#EDEDED")  # Slightly darker neutral background
 
     # Label points_to_plot
@@ -83,14 +94,14 @@ def plot_colored_polygons(
     scale_factor = min(4 / x_range, 4 / y_range)  # Adjust based on plot size
 
     # Calculate font size based on scale factor
-    radius = 0.13 + 0.05 / scale_factor
+    radius = c.point_size + 0.05 / scale_factor
     font_size = (
         np.power(scale_factor, 0.5) * 18
     )  # Scale font size proportionally to the circle radius
 
     # Process the polygons
     for i, polygon in enumerate(polygons):
-        if len(polygon) == 3 and plot_cups:  # For triangles, replace them with cups
+        if len(polygon) == 3 and c.plot_cups:  # For triangles, replace them with cups
             # Identify the base points and the non-base point
             if polygon[0][0] == polygon[1][0] or polygon[0][1] == polygon[1][1]:
                 base1, base2, non_base = polygon[0], polygon[1], polygon[2]
@@ -114,15 +125,15 @@ def plot_colored_polygons(
                 base1,
                 base2,
                 direction=outward_direction,
-                curve_height=curve_height,
-                curvature=curvature,
+                curve_height=c.curve_height,
+                curvature=c.curvature,
             )
             cup_patch = PathPatch(
                 cup_path,
-                facecolor=colors[polygon_colors[i]],
+                facecolor=c.colors[polygon_colors[i]],
                 edgecolor="black",
-                lw=1.5,
-                alpha=0.85,
+                lw=c.line_width,
+                alpha=c.alpha,
             )
             ax.add_patch(cup_patch)
 
@@ -134,14 +145,14 @@ def plot_colored_polygons(
             poly_patch = plt.Polygon(
                 polygon,
                 closed=True,
-                facecolor=colors[polygon_colors[i]],
+                facecolor=c.colors[polygon_colors[i]],
                 edgecolor="black",
-                lw=1.5,
-                alpha=0.85,
+                lw=c.line_width,
+                alpha=c.alpha,
             )
             ax.add_patch(poly_patch)
 
-    if plot_points:
+    if c.plot_points:
         # Plot numbered points as circles with labels
         for point, label in point_labels.items():
             circle = Circle(
@@ -153,16 +164,17 @@ def plot_colored_polygons(
                 zorder=3,
             )
             ax.add_patch(circle)
-            ax.text(
-                point[0],
-                point[1],
-                str(label),
-                color="black",
-                fontsize=font_size,
-                ha="center",
-                va="center",
-                zorder=4,
-            )
+            if c.label_points:
+                ax.text(
+                    point[0],
+                    point[1],
+                    str(label),
+                    color="black",
+                    fontsize=font_size,
+                    ha="center",
+                    va="center",
+                    zorder=4,
+                )
 
     # Remove the axes
     ax.axis("off")
@@ -175,7 +187,7 @@ def plot_colored_polygons(
     plt.tight_layout()
     # plt.show()
 
-    return plt
+    return fig, ax
 
 
 def create_cup_path(base1, base2, direction="outward", curve_height=0.5, curvature=0.5):

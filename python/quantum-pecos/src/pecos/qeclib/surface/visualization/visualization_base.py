@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 from dataclasses import dataclass
 from typing import TYPE_CHECKING, Protocol
 
@@ -18,5 +20,13 @@ class VisData:
 class VisualizationStrategy(Protocol):
     """Protocol for different visualization approaches"""
 
-    def get_visualization_data(self, patch: "SurfacePatch") -> VisData: ...
+    def get_visualization_data(self, patch: SurfacePatch) -> VisData: ...
     def supports_view(self, view_type: str) -> bool: ...
+
+
+@dataclass
+class BaseVisConfig:
+    """Base configuration for visualization"""
+
+    figsize: tuple[int, int] | None = None
+    colors: list[str] | None = None

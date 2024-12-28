@@ -17,9 +17,10 @@ from pecos.qeclib.surface.patches.surface_patches import (
     NonRotatedSurfacePatch,
     RotatedSurfacePatch,
 )
-from pecos.qeclib.surface.visualization.lattice_2d import Lattice2DView
+from pecos.qeclib.surface.visualization.lattice_2d import Lattice2DConfig, Lattice2DView
 
 __all__ = [
+    "Lattice2DConfig",
     "Lattice2DView",
     "LatticeType",
     "NonRotatedSurfacePatch",
