@@ -1,10 +1,10 @@
-from pecos.qeclib.surface.gate_collections.surface_bare_syn_gates import (
+from pecos.qeclib.surface.gate_sets.surface_bare_syn_gates import (
     SurfaceBareSynGates,
 )
-from pecos.qeclib.surface.gate_collections.surface_meas_prep_gates import (
+from pecos.qeclib.surface.gate_sets.surface_meas_prep_gates import (
     SurfaceMeasPrepGates,
 )
-from pecos.qeclib.surface.gate_collections.surface_transversal_gates import (
+from pecos.qeclib.surface.gate_sets.surface_transversal_gates import (
     SurfaceTransversalGates,
 )
 

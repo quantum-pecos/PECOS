@@ -1,4 +1,4 @@
-from pecos.qeclib.surface.surface_patch import SurfacePatch
+from pecos.qeclib.surface.protocols import SurfacePatch
 
 
 class SurfaceBareSynGates:

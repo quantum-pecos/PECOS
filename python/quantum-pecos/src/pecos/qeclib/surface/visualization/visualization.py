@@ -1,31 +1,17 @@
-from dataclasses import dataclass
-from typing import Protocol
+from typing import TYPE_CHECKING
 
 import matplotlib.pyplot as plt
 import numpy as np
 from matplotlib.patches import Circle, PathPatch
 from matplotlib.path import Path
 
-
-@dataclass
-class VisData:
-    """Container for visualization data"""
-
-    nodes: list[tuple[int, int]]
-    polygons: list[list[tuple[int, int]]]
-    polygon_colors: dict[int, int]
-
-
-class Visualizable(Protocol):
-    """Basic trait for anything visualizable."""
-
-    def get_visualization_data(self) -> VisData: ...
-    def support_view(self, view_type: str) -> bool: ...
+if TYPE_CHECKING:
+    from pecos.qeclib.surface.protocols import SurfacePatch
 
 
 class Lattice2DView:
     @staticmethod
-    def render(patch: Visualizable):
+    def render(patch: "SurfacePatch"):
         """Render a figure of a 2D layout of data qubits and an abstracted notion of the lattice it belongs to."""
 
         v = patch.get_visualization_data()

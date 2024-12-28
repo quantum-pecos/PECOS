@@ -11,6 +11,68 @@
 # "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the License for the
 # specific language governing permissions and limitations under the License.
 
+from pecos.qeclib.surface.visualization.visualization_base import VisData
+
+
+class SquareRotatedLayout:
+    """4.4.4.4 rotated lattice implementation"""
+
+    @staticmethod
+    def get_stabilizers_gens(dx: int, dz: int) -> list[tuple[str, tuple[int, ...]]]:
+        return get_stab_gens(dx, dz)  # Current implementation
+
+    @staticmethod
+    def get_data_positions(dx: int, dz: int) -> list[tuple[int, int]]:
+        return [calc_id2pos(i, dz, dx) for i in range(dx * dz)]
+
+    @staticmethod
+    def validate_dimensions(dx: int, dz: int) -> None:
+        if dx < 1 or dz < 1:
+            msg = "Dimensions must be at least 1"
+            raise ValueError(msg)
+
+    @staticmethod
+    def get_visualization_elements(
+        dx: int,
+        dz: int,
+        stab_gens: list[tuple[str, tuple[int, ...]]],
+    ) -> VisData:
+        # TODO: consider attaching this to the layout
+        polygon_colors = {}
+        for i, (pauli, _) in enumerate(stab_gens):
+            polygon_colors[i] = 0 if pauli == "X" else 1
+
+        polygons = []
+        for _, datas in stab_gens:
+            temp = []
+            for id_ in datas:
+                temp.append(calc_id2pos(id_, dz, dx))
+
+            polygons.append(temp)
+
+        polygons = [order_coords_counter_clockwise(coords) for coords in polygons]
+
+        for coords in polygons:
+            # make a triangle to form diagons
+            if len(coords) == 2:
+                # Work out the original (x, y) of the dual node
+                (x1, y1), (x2, y2) = coords
+                if y1 == y2 == 1:
+                    coords.insert(0, (x1 + 1, 0))
+                elif y1 == y2 == 2 * dx - 1:
+                    coords.insert(0, (x1 + 1, y1 + 1))
+                elif x1 == x2 == 1:
+                    coords.insert(0, (x1 - 1, y1 - 1))
+                elif x1 == x2 == 2 * dz - 1:
+                    coords.insert(0, (x1 + 1, y1 + 1))
+                else:
+                    msg = f"Unexpected digon coordinates: {coords}"
+                    raise Exception(msg)
+
+        nodes = [calc_id2pos(i, dz, dx) for i in range(dx * dz)]
+
+        return VisData(nodes=nodes, polygons=polygons, polygon_colors=polygon_colors)
+
 
 def calc_id2pos(i, width, height):
     # return (1+i*2)%(dz*2), (dx-(i//dz))*2-1

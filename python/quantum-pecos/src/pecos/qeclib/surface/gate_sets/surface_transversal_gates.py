@@ -3,7 +3,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
-    from pecos.qeclib.surface.surface_patch import SurfacePatch
+    from pecos.qeclib.surface.protocols import SurfacePatch
 
 
 class SurfaceTransversalGates:
