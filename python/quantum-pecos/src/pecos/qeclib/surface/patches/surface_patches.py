@@ -2,12 +2,12 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from pecos.qeclib.surface.layouts.square_lattice import SquareRotatedLayout
-from pecos.qeclib.surface.patches.base_patch import BaseSurfacePatch
+from pecos.qeclib.surface.layouts.rot_square_lattice import SquareRotatedLayout
+from pecos.qeclib.surface.patches.patch_base import BaseSurfacePatch
 
 if TYPE_CHECKING:
     from pecos.qeclib.surface.layouts.layout_base import Layout
-    from pecos.qeclib.surface.protocols import SurfacePatchOrientation
+    from pecos.qeclib.surface.patches.patch_base import SurfacePatchOrientation
 
 
 class RotatedSurfacePatch(BaseSurfacePatch):

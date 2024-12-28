@@ -11,212 +11,59 @@
 # "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the License for the
 # specific language governing permissions and limitations under the License.
 
-from pecos.qeclib.surface.visualization.visualization_base import VisData
 
+def gen_layout(width: int, height: int):
+    """Generate rectangular surface code patch layout for a 4.4.4.4 lattice."""
 
-class SquareRotatedLayout:
-    """4.4.4.4 rotated lattice implementation"""
+    lattice_height = 2 * (height - 1)
+    lattice_width = 2 * (width - 1)
 
-    @staticmethod
-    def get_stabilizers_gens(dx: int, dz: int) -> list[tuple[str, tuple[int, ...]]]:
-        return get_stab_gens(dx, dz)
-
-    @staticmethod
-    def get_data_positions(dx: int, dz: int) -> list[tuple[int, int]]:
-        return [calc_id2pos(i, dz, dx) for i in range(dx * dz)]
-
-    @staticmethod
-    def validate_dimensions(dx: int, dz: int) -> None:
-        if dx < 1 or dz < 1:
-            msg = "Dimensions must be at least 1"
-            raise ValueError(msg)
-
-    @staticmethod
-    def get_visualization_elements(
-        dx: int,
-        dz: int,
-        stab_gens: list[tuple[str, tuple[int, ...]]],
-    ) -> VisData:
-        # TODO: consider attaching this to the layout
-        polygon_colors = {}
-        for i, (pauli, _) in enumerate(stab_gens):
-            polygon_colors[i] = 0 if pauli == "X" else 1
-
-        polygons = []
-        for _, datas in stab_gens:
-            temp = []
-            for id_ in datas:
-                temp.append(calc_id2pos(id_, dz, dx))
-
-            polygons.append(temp)
-
-        polygons = [order_coords_counter_clockwise(coords) for coords in polygons]
-
-        for coords in polygons:
-            # make a triangle to form diagons
-            if len(coords) == 2:
-                # Work out the original (x, y) of the dual node
-                (x1, y1), (x2, y2) = coords
-                if y1 == y2 == 1:
-                    coords.insert(0, (x1 + 1, 0))
-                elif y1 == y2 == 2 * dx - 1:
-                    coords.insert(0, (x1 + 1, y1 + 1))
-                elif x1 == x2 == 1:
-                    coords.insert(0, (x1 - 1, y1 - 1))
-                elif x1 == x2 == 2 * dz - 1:
-                    coords.insert(0, (x1 + 1, y1 + 1))
-                else:
-                    msg = f"Unexpected digon coordinates: {coords}"
-                    raise Exception(msg)
-
-        nodes = [calc_id2pos(i, dz, dx) for i in range(dx * dz)]
-
-        return VisData(
-            nodes=nodes,
-            polygons=polygons,
-            polygon_colors=polygon_colors,
-            plot_cups=True,
-        )
-
-
-def calc_id2pos(i, width, height):
-    # return (1+i*2)%(dz*2), (dx-(i//dz))*2-1
-    return (1 + i * 2) % (width * 2), (height - (i // width)) * 2 - 1
-
-
-def calc_pos2id(x, y, width, height):
-    # return (x-1)//2+((2*dx-y-1)//2)*dz
-    return (x - 1) // 2 + ((2 * height - y - 1) // 2) * width
-
-
-def get_stab_gens(height: int, width: int):
-    """Generate rectangular rotated surface code patch layout for a 4.4.4.4 lattice."""
-
-    lattice_height = height * 2
-    lattice_width = width * 2
-
+    nodes = []
+    dual_nodes = []
     polygons_0 = []
     polygons_1 = []
 
-    for x in range(lattice_width + 1):
-        for y in range(lattice_height + 1):
-            if 0 < x < lattice_width and 0 < y < lattice_height:
-                # Interior
+    # Determine the position of things
+    for y in range(lattice_height + 1):
+        for x in range(lattice_width + 1):
+            if (x % 2 == 0 and y % 2 == 0) or (x % 2 == 1 and y % 2 == 1):
+                # Data
+                nodes.append((x, y))
 
-                if x % 2 == 1 and y % 2 == 1:  # That is, both coordinates are odd...
-                    pass
+            elif x % 2 == 1 and y % 2 == 0:
+                # X ancilla
+                dual_nodes.append((x, y))
 
-                elif x % 2 == 0 and y % 2 == 0:
-                    # Bulk checks
-                    poly = [
-                        calc_pos2id(x - 1, y + 1, width, height),
-                        calc_pos2id(x + 1, y + 1, width, height),
-                        calc_pos2id(x - 1, y - 1, width, height),
-                        calc_pos2id(x + 1, y - 1, width, height),
-                    ]
+                poly = []
+                if y != lattice_height:
+                    poly.append((x, y + 1))
+                if x != 0:
+                    poly.append((x - 1, y))
+                if y != 0:
+                    poly.append((x, y - 1))
+                if x != lattice_width:
+                    poly.append((x + 1, y))
 
-                    if ((x + y) / 2) % 2 == 0:
-                        polygons_0.append(poly)
-                    else:
-                        polygons_1.append(poly)
+                polygons_0.append(poly)
 
-            elif 0 < x < lattice_width or 0 < y < lattice_height:
-                # Not the corners or the interior
+            elif x % 2 == 0 and y % 2 == 1:
+                # Z ancilla
+                dual_nodes.append((x, y))
 
-                if y == 0:
-                    # Bottom: X checks
+                poly = []
+                if y != lattice_height:
+                    poly.append((x, y + 1))
+                if x != 0:
+                    poly.append((x - 1, y))
+                if y != 0:
+                    poly.append((x, y - 1))
+                if x != lattice_width:
+                    poly.append((x + 1, y))
 
-                    if x != 0 and x % 4 == 0:
-                        poly = [
-                            calc_pos2id(x - 1, y + 1, width, height),
-                            calc_pos2id(x + 1, y + 1, width, height),
-                        ]
-                        polygons_0.append(poly)
+                polygons_0.append(poly)
 
-                elif x == 0:
-                    # Left: Z checks
+    polygons = []
+    polygons.extend(polygons_0)
+    polygons.extend(polygons_1)
 
-                    if (y - 2) % 4 == 0:
-                        poly = [
-                            calc_pos2id(x + 1, y + 1, width, height),
-                            calc_pos2id(x + 1, y - 1, width, height),
-                        ]
-                        polygons_1.append(poly)
-
-                if y == lattice_height:
-                    # Top: X checks
-
-                    if height % 2 == 0:
-                        if x != 0 and x % 4 == 0:
-                            poly = [
-                                calc_pos2id(x - 1, y - 1, width, height),
-                                calc_pos2id(x + 1, y - 1, width, height),
-                            ]
-                            polygons_0.append(poly)
-
-                    else:
-                        if (x - 2) % 4 == 0:
-                            poly = [
-                                calc_pos2id(x - 1, y - 1, width, height),
-                                calc_pos2id(x + 1, y - 1, width, height),
-                            ]
-                            polygons_0.append(poly)
-
-                elif x == lattice_width:
-                    # Right: Z checks
-
-                    if width % 2 == 1:
-                        if y != 0 and y % 4 == 0:
-                            poly = [
-                                calc_pos2id(x - 1, y + 1, width, height),
-                                calc_pos2id(x - 1, y - 1, width, height),
-                            ]
-                            polygons_1.append(poly)
-                    else:
-                        if (y - 2) % 4 == 0:
-                            poly = [
-                                calc_pos2id(x - 1, y + 1, width, height),
-                                calc_pos2id(x - 1, y - 1, width, height),
-                            ]
-                            polygons_1.append(poly)
-
-    stab_gens = []
-
-    for poly in polygons_0:
-        stab_gens.append(("X", tuple(poly)))
-    for poly in polygons_1:
-        stab_gens.append(("Z", tuple(poly)))
-
-    return stab_gens
-
-
-def order_coords_counter_clockwise(coords):
-    """
-    Reorders a list of coordinates in approximate counter-clockwise order using x, y sorting.
-
-    Parameters:
-        coords (list): List of (x, y) tuples.
-
-    Returns:
-        list: List of (x, y) tuples ordered counter-clockwise.
-    """
-    if len(coords) < 3:
-        return coords  # No reordering needed for lines or single points
-
-    # Calculate centroid
-    cx = sum(x for x, y in coords) / len(coords)
-    cy = sum(y for x, y in coords) / len(coords)
-
-    # Sort based on quadrant and relative position
-    def sort_key(point):
-        x, y = point
-        if x >= cx and y >= cy:  # Top-right
-            return 0, x
-        elif x < cx and y >= cy:  # Top-left
-            return 1, -y
-        elif x < cx and y < cy:  # Bottom-left
-            return 2, -x
-        else:  # Bottom-right
-            return 3, y
-
-    return sorted(coords, key=sort_key)
+    return nodes, dual_nodes, polygons

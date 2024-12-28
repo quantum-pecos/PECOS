@@ -8,7 +8,7 @@ from matplotlib.patches import Circle, PathPatch
 from matplotlib.path import Path
 
 if TYPE_CHECKING:
-    from pecos.qeclib.surface.protocols import SurfacePatch
+    from pecos.qeclib.surface.patches.patch_base import SurfacePatch
 
 
 class Lattice2DView:

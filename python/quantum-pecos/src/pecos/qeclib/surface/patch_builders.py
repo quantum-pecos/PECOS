@@ -1,13 +1,14 @@
 from typing import TYPE_CHECKING, TypeVar
 
-from pecos.qeclib.surface.enums import LatticeType, SurfacePatchOrientation
+from pecos.qeclib.surface.layouts.layout_base import LatticeType
+from pecos.qeclib.surface.patches.patch_base import SurfacePatchOrientation
 from pecos.qeclib.surface.patches.surface_patches import (
     NonRotatedSurfacePatch,
     RotatedSurfacePatch,
 )
 
 if TYPE_CHECKING:
-    from pecos.qeclib.surface.protocols import SurfacePatch
+    from pecos.qeclib.surface.patches.patch_base import SurfacePatch
 
 Self = TypeVar("Self")
 

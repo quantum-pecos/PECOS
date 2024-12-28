@@ -1,5 +1,5 @@
 from pecos.qeclib.surface.macrolibs.preps.project_pauli import PrepProjectZ
-from pecos.qeclib.surface.protocols import SurfacePatch
+from pecos.qeclib.surface.patches.patch_base import SurfacePatch
 
 
 class SurfaceMeasPrepGates:

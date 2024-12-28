@@ -2,7 +2,7 @@ from dataclasses import dataclass
 from typing import TYPE_CHECKING, Protocol
 
 if TYPE_CHECKING:
-    from pecos.qeclib.surface.protocols import SurfacePatch
+    from pecos.qeclib.surface.patches.patch_base import SurfacePatch
 
 
 @dataclass

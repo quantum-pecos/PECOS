@@ -10,17 +10,21 @@
 # specific language governing permissions and limitations under the License.
 
 from pecos.qeclib.surface.gate_sets.surface_std_gates import SurfaceStdGates
+from pecos.qeclib.surface.layouts.layout_base import LatticeType
 from pecos.qeclib.surface.patch_builders import SurfacePatchBuilder
+from pecos.qeclib.surface.patches.patch_base import SurfacePatchOrientation
 from pecos.qeclib.surface.patches.surface_patches import (
     NonRotatedSurfacePatch,
     RotatedSurfacePatch,
 )
-from pecos.qeclib.surface.visualization.visualization import Lattice2DView
+from pecos.qeclib.surface.visualization.lattice_2d import Lattice2DView
 
 __all__ = [
     "Lattice2DView",
+    "LatticeType",
     "NonRotatedSurfacePatch",
     "RotatedSurfacePatch",
     "SurfacePatchBuilder",
+    "SurfacePatchOrientation",
     "SurfaceStdGates",
 ]
