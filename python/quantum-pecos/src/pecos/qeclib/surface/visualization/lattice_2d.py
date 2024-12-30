@@ -11,11 +11,9 @@ from matplotlib.path import Path
 if TYPE_CHECKING:
     from pecos.qeclib.surface.patches.patch_base import SurfacePatch
 
-from pecos.qeclib.surface.visualization.visualization_base import BaseVisConfig
-
 
 @dataclass
-class Lattice2DConfig(BaseVisConfig):
+class Lattice2DConfig:
     """Config for 2D lattice visualization
 
     Parameters:
@@ -27,8 +25,8 @@ class Lattice2DConfig(BaseVisConfig):
         plot_points (bool): Whether to data qubits.
     """
 
-    figsize: tuple[int, int] | None = (8, 8)
-    colors: list[str] | None = ("#FF6666", "#6666FF")
+    figsize: tuple[int, int] = (8, 8)
+    colors: list[str] = ("#FF6666", "#6666FF")
     plot_cups: bool = True
     plot_points: bool = True
     curve_height: float = 0.5

@@ -11,7 +11,7 @@ from pecos.slr import QReg, Vars
 if TYPE_CHECKING:
     from pecos.qeclib.surface.layouts.layout_base import Layout
     from pecos.qeclib.surface.visualization.visualization_base import (
-        VisData,
+        VisualizationData,
         VisualizationStrategy,
     )
     from pecos.slr import Qubit
@@ -32,6 +32,19 @@ class SurfacePatch(Protocol):
     The patch has two code distances: dx and dz, corresponding to the X and Z logical
     operators respectively. The overall code distance (the minimum weight of any logical
     operator) is the minimum of dx and dz.
+
+    Examples:
+        # Basic usage - create a distance 3 patch
+        >>> patch = SurfacePatch.default(3)
+
+        # Create an asymmetric patch
+        >>> builder = SurfacePatchBuilder()
+        >>> asymmetric = builder.with_distances(3, 5)
+                               .with_orientation(SurfacePatchOrientation.Z_TOP_BOTTOM)
+                               .build()
+
+        # Perform syndrome extraction
+        >>> syndrome = patch.extract_syndrome()
     """
 
     name: str
@@ -50,7 +63,7 @@ class SurfacePatch(Protocol):
     def validate(self) -> None:
         """Raises an exception if invalid configuration"""
 
-    def get_visualization_data(self) -> VisData: ...
+    def get_visualization_data(self) -> VisualizationData: ...
 
     @classmethod
     def default(cls, distance: int, name: str | None = None) -> SurfacePatch:
@@ -121,7 +134,7 @@ class BaseSurfacePatch(SurfacePatch, Vars):
         """Hook for implementations to define qubit count"""
         raise NotImplementedError
 
-    def get_visualization_data(self) -> VisData:
+    def get_visualization_data(self) -> VisualizationData:
         return self.visualizer.get_visualization_data(self)
 
     def supports_view(self, view_type: str) -> bool:

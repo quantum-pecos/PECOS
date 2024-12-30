@@ -11,7 +11,7 @@
 # "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the License for the
 # specific language governing permissions and limitations under the License.
 
-from pecos.qeclib.surface.visualization.visualization_base import VisData
+from pecos.qeclib.surface.visualization.visualization_base import VisualizationData
 
 
 class SquareRotatedLayout:
@@ -36,7 +36,7 @@ class SquareRotatedLayout:
         dx: int,
         dz: int,
         stab_gens: list[tuple[str, tuple[int, ...]]],
-    ) -> VisData:
+    ) -> VisualizationData:
         polygon_colors = {}
         for i, (pauli, _) in enumerate(stab_gens):
             polygon_colors[i] = 0 if pauli == "X" else 1
@@ -70,11 +70,10 @@ class SquareRotatedLayout:
 
         nodes = [calc_id2pos(i, dz, dx) for i in range(dx * dz)]
 
-        return VisData(
+        return VisualizationData(
             nodes=nodes,
             polygons=polygons,
             polygon_colors=polygon_colors,
-            plot_cups=True,
         )
 
 

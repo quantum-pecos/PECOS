@@ -1,7 +1,7 @@
 from enum import Enum
 from typing import Protocol
 
-from pecos.qeclib.surface.visualization.visualization_base import VisData
+from pecos.qeclib.surface.visualization.visualization_base import VisualizationData
 
 
 class LatticeType(Enum):
@@ -32,4 +32,4 @@ class Layout(Protocol):
         dx: int,
         dz: int,
         stab_gens: list[tuple[str, tuple[int, ...]]],
-    ) -> VisData: ...
+    ) -> VisualizationData: ...

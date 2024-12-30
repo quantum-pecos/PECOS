@@ -1,5 +1,6 @@
 from typing import TYPE_CHECKING, TypeVar
 
+from pecos.errors import ConfigurationError
 from pecos.qeclib.surface.layouts.layout_base import LatticeType
 from pecos.qeclib.surface.patches.patch_base import SurfacePatchOrientation
 from pecos.qeclib.surface.patches.surface_patches import (
@@ -25,16 +26,28 @@ class SurfacePatchBuilder:
         self.orientation = SurfacePatchOrientation.X_TOP_BOTTOM
 
     def set_name(self, name: str) -> Self:
+        """Set a custom name for the patch."""
         self.name = name
         return self
 
     def with_distances(self, dx: int, dz: int) -> Self:
-        """Set the X and Z code distances (where the overall distance of the code is the minimum of the two)."""
+        """Set the X and Z code distances.
+
+        Args:
+            dx: X distance for detecting/correcting Z errors
+            dz: Z distance for detecting/correcting X errors
+
+        The overall code distance is min(dx, dz).
+        """
+        if dx < 1 or dz < 1:
+            msg = f"Distances must be positive, got dx={dx}, dz={dz}"
+            raise ConfigurationError(msg)
         self.dx = dx
         self.dz = dz
         return self
 
     def not_rotated(self) -> Self:
+        """Configure as non-rotated surface code."""
         self.is_rotated = False
         return self
 
@@ -42,6 +55,7 @@ class SurfacePatchBuilder:
         self,
         orientation: SurfacePatchOrientation,
     ) -> Self:
+        """Set the patch orientation."""
         self.orientation = orientation
         return self
 
@@ -50,10 +64,11 @@ class SurfacePatchBuilder:
         return self
 
     def build(self) -> "SurfacePatch":
+        """Create the surface code patch with the configured settings."""
         # Validate configuration
         if self.dx is None or self.dz is None:
             msg = "Must specify distance(s)"
-            raise TypeError(msg)
+            raise ConfigurationError(msg)
 
         if self.lattice_type != LatticeType.SQUARE:
             msg = "Currently only Lattice type SQUARE is supported"
@@ -61,7 +76,7 @@ class SurfacePatchBuilder:
 
         if self.dx < 1 or self.dz < 1:
             msg = "The x and z distances must be at least 1."
-            raise TypeError(msg)
+            raise ConfigurationError(msg)
 
         if self.is_rotated:
             return RotatedSurfacePatch(

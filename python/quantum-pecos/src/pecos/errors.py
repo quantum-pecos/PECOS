@@ -13,6 +13,10 @@ class PECOSError(Exception):
     """Base exception raised by PECOS."""
 
 
+class ConfigurationError(PECOSError):
+    """Indicates invalid configuration settings."""
+
+
 class NotSupportedGateError(PECOSError):
     """Indicates a gate not supported by a simulator."""
 
