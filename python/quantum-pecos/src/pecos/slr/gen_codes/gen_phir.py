@@ -25,6 +25,58 @@ class PHIRGenerator:
                 "generated_by": f"PECOS version {__version__}",
             }
 
+    def enter_block(self, block) -> Any | None:
+        """Enter a new block scope."""
+        previous_scope = self.current_scope
+        self.current_scope = block
+
+        block_name = type(block).__name__
+
+        if block_name == "Main":
+            # Handle variable definitions first
+            for var in block.vars:
+                var_def = self.process_var_def(var)
+                self.output["ops"].append(var_def)
+
+            for op in block.ops:
+                op_name = type(op).__name__
+                if op_name == "Vars":
+                    for var in op.vars:
+                        var_def = self.process_var_def(var)
+                        self.output["ops"].append(var_def)
+
+        return previous_scope
+
+    def exit_block(self, block):
+        """Exit the current block scope."""
+
+    def process_var_def(self, var: Var) -> dict[str, Any]:
+        """Process variable definitions."""
+        var_type = type(var).__name__
+
+        # Validate register size
+        if var.size <= 0:
+            msg = f"Register size must be positive, got {var.size}"
+            raise TypeError(msg)
+
+        if var_type == "QReg":
+            return {
+                "data": "qvar_define",
+                "data_type": "qubits",
+                "variable": var.sym,
+                "size": var.size,
+            }
+        elif var_type == "CReg":
+            return {
+                "data": "cvar_define",
+                "data_type": "i64",
+                "variable": var.sym,
+                "size": var.size,
+            }
+        else:
+            msg = f"Unsupported variable type: {var_type}"
+            raise TypeError(msg)
+
     def generate_block(self, block):
         """Generate PHIR for a block."""
         previous_scope = self.enter_block(block)
@@ -72,52 +124,6 @@ class PHIRGenerator:
         self.exit_block(block)
         self.current_scope = previous_scope
 
-    def enter_block(self, block) -> Any | None:
-        """Enter a new block scope."""
-        previous_scope = self.current_scope
-        self.current_scope = block
-
-        block_name = type(block).__name__
-
-        if block_name == "Main":
-            # Handle variable definitions first
-            for var in block.vars:
-                var_def = self.process_var_def(var)
-                self.output["ops"].append(var_def)
-
-            for op in block.ops:
-                op_name = type(op).__name__
-                if op_name == "Vars":
-                    for var in op.vars:
-                        var_def = self.process_var_def(var)
-                        self.output["ops"].append(var_def)
-
-        return previous_scope
-
-    def exit_block(self, block):
-        """Exit the current block scope."""
-
-    def process_var_def(self, var: Var) -> dict[str, Any]:
-        """Process variable definitions."""
-        var_type = type(var).__name__
-        if var_type == "QReg":
-            return {
-                "data": "qvar_define",
-                "data_type": "qubits",
-                "variable": var.sym,
-                "size": var.size,
-            }
-        elif var_type == "CReg":
-            return {
-                "data": "cvar_define",
-                "data_type": "i64",
-                "variable": var.sym,
-                "size": var.size,
-            }
-        else:
-            msg = f"Unsupported variable type: {var_type}"
-            raise TypeError(msg)
-
     def generate_op(self, op) -> dict[str, Any] | None:
         """Generate PHIR for an operation."""
         op_name = type(op).__name__
@@ -162,7 +168,7 @@ class PHIRGenerator:
             return self._process_unary_op(op)
 
         elif hasattr(op, "is_qgate") and op.is_qgate:
-            return self._process_quantum_gate(op)
+            return self._process_qgate(op)
 
         return None
 
@@ -191,27 +197,58 @@ class PHIRGenerator:
             "args": [self._process_classical_expr(op.value)],
         }
 
-    def _process_quantum_gate(self, op) -> dict[str, Any]:
-        """Process quantum gates."""
+    def _process_qgate(self, op) -> dict[str, Any]:
+        """Process quantum gates based on size."""
+        if op.qsize > 2:
+            msg = f"Gates with more than 2 qubits not supported. Got gate with {op.qsize} qubits"
+            raise ValueError(msg)
+        elif op.qsize == 2:
+            return self._process_tq_gate(op)
+        else:
+            return self._process_sq_gate(op)
+
+    def _process_sq_gate(self, op) -> dict[str, Any]:
+        """Process single qubit gates."""
         gate_data = {
             "qop": op.sym,
         }
 
-        # Handle gate parameters if present
+        if hasattr(op, "params") and op.params:  # Check if gate has parameters
+            gate_data["angles"] = [[float(p) for p in op.params], "rad"]
+
+        # Only process actual qubit arguments, not parameters
+        gate_data["args"] = [
+            self._qubit_to_id(q) for q in op.qargs if hasattr(q, "reg")
+        ]
+
+        if op.sym == "Measure" and hasattr(op, "cout"):
+            gate_data["returns"] = [self._bit_to_id(c) for c in op.cout]
+
+        return gate_data
+
+    def _process_tq_gate(self, op) -> dict[str, Any]:
+        """Process two qubit gates."""
+        gate_data = {
+            "qop": op.sym,
+        }
+
         if op.params:
             gate_data["angles"] = [[float(p) for p in op.params], "rad"]
 
-        # Process qubit arguments
-        if op.qsize == 1:
-            gate_data["args"] = [self._qubit_to_id(q) for q in op.qargs]
+        # Convert args to standard format like QASMGenerator
+        if not isinstance(op.qargs[0], tuple) and len(op.qargs) == 2:
+            qargs = [(op.qargs[0], op.qargs[1])]
         else:
-            gate_data["args"] = [
-                [self._qubit_to_id(q1), self._qubit_to_id(q2)] for q1, q2 in op.qargs
-            ]
+            qargs = op.qargs
 
-        # Handle measurement returns
-        if op.sym == "Measure" and hasattr(op, "cout"):
-            gate_data["returns"] = [self._bit_to_id(c) for c in op.cout]
+        gate_data["args"] = []
+        for q in qargs:
+            if isinstance(q, tuple):
+                q1, q2 = q
+                gate_data["args"].append([self._qubit_to_id(q1), self._qubit_to_id(q2)])
+            else:
+                msg = f"For two-qubit gate, expected args to be a collection of size two tuples! Got: {op.qargs}"
+                raise TypeError(msg)
 
         return gate_data
 
@@ -228,7 +265,8 @@ class PHIRGenerator:
         return [bit.sym, 0]  # For single bit registers
 
     def _process_classical_expr(
-        self, expr,
+        self,
+        expr,
     ) -> int | str | list[str] | dict[str, Any]:
         """Process classical expressions."""
         if isinstance(expr, (int, str)):
