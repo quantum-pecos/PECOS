@@ -2,7 +2,9 @@ import pytest
 from pecos.engines.hybrid_engine import HybridEngine
 from pecos.qeclib import qubit as Q  # noqa: N812
 from pecos.slr import Barrier, Comment, CReg, If, Main, QReg
-from pecos.slr.gen_codes.gen_phir import PHIRGenerator
+
+# from pecos.slr.gen_codes.gen_phir import PHIRGenerator
+from pecos.slr.generators.phir import PHIRGenerator
 from phir.model import PHIRModel
 
 

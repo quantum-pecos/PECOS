@@ -1,157 +1,123 @@
+# Copyright 2024 The PECOS Developers
+#
+# Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except in compliance with
+# the License.You may obtain a copy of the License at
+#
+#     https://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software distributed under the License is distributed on an
+# "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the License for the
+# specific language governing permissions and limitations under the License.
+
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any
+from dataclasses import dataclass, field
+from typing import TYPE_CHECKING, Any, Protocol
 
 from pecos import __version__
 from pecos.slr.vars import QReg
 
 if TYPE_CHECKING:
-    from pecos.slr.vars import Var
+    from pecos.slr.vars import Qubit, Var
 
 
+class OperationHandler(Protocol):
+    """Protocol for operation handlers."""
+
+    def __call__(self, op: Any) -> dict[str, Any]: ...
+
+
+@dataclass
 class PHIRGenerator:
-    """Generator for converting SLR to PHIR format."""
+    """Generates PHIR (PECOS High-level Intermediate Representation) from SLR."""
 
-    def __init__(self, add_versions=True):
-        self.output: dict[str, Any] = {
+    add_versions: bool = True
+    current_scope: Any | None = None
+    output: dict[str, Any] = field(
+        default_factory=lambda: {
             "format": "PHIR/JSON",
             "version": "0.1.0",
             "ops": [],
-        }
-        self.current_scope = None
-        self.add_versions = add_versions
+        },
+    )
+
+    def __post_init__(self):
+        """Initialize version metadata if needed."""
         if self.add_versions:
-            self.output["metadata"] = {
-                "generated_by": f"PECOS version {__version__}",
-            }
+            self.output["metadata"] = {"generated_by": f"PECOS version {__version__}"}
 
-    def enter_block(self, block) -> Any | None:
-        """Enter a new block scope."""
-        previous_scope = self.current_scope
-        self.current_scope = block
-
-        block_name = type(block).__name__
-
-        if block_name == "Main":
-            # Handle variable definitions first
-            for var in block.vars:
-                var_def = self.process_var_def(var)
-                self.output["ops"].append(var_def)
-
-            for op in block.ops:
-                op_name = type(op).__name__
-                if op_name == "Vars":
-                    for var in op.vars:
-                        var_def = self.process_var_def(var)
-                        self.output["ops"].append(var_def)
-
-        return previous_scope
-
-    def exit_block(self, block):
-        """Exit the current block scope."""
-
-    def process_var_def(self, var: Var) -> dict[str, Any]:
-        """Process variable definitions."""
-        var_type = type(var).__name__
-
-        # Validate register size
+    # Register Definition Methods
+    @staticmethod
+    def process_var_def(var: Var) -> dict[str, Any]:
+        """Process variable definitions with validation."""
         if var.size <= 0:
             msg = f"Register size must be positive, got {var.size}"
             raise TypeError(msg)
 
-        if var_type == "QReg":
-            return {
+        register_types = {
+            "QReg": lambda v: {
                 "data": "qvar_define",
                 "data_type": "qubits",
-                "variable": var.sym,
-                "size": var.size,
-            }
-        elif var_type == "CReg":
-            return {
+                "variable": v.sym,
+                "size": v.size,
+            },
+            "CReg": lambda v: {
                 "data": "cvar_define",
                 "data_type": "i64",
-                "variable": var.sym,
-                "size": var.size,
-            }
-        else:
+                "variable": v.sym,
+                "size": v.size,
+            },
+        }
+
+        var_type = type(var).__name__
+        if var_type not in register_types:
             msg = f"Unsupported variable type: {var_type}"
             raise TypeError(msg)
 
-    def generate_block(self, block):
-        """Generate PHIR for a block."""
-        previous_scope = self.enter_block(block)
+        return register_types[var_type](var)
 
-        block_name = type(block).__name__
-
-        if block_name == "If":
-            if_block = {
-                "block": "if",
-                "condition": self.generate_op(block.cond),
-                "true_branch": [],
-            }
-
-            # Generate operations for the true branch
-            for op in block.ops:
-                if hasattr(op, "ops"):
-                    # For nested blocks, generate and append to true_branch
+    # Block Processing Methods
+    def _process_block_ops(self, block, is_true_branch=False) -> list[dict[str, Any]]:
+        """Process operations within a block."""
+        ops = []
+        for op in block.ops:
+            if hasattr(op, "ops"):
+                if type(op).__name__ == "If":
+                    ops.append(self._process_if_block(op))
+                else:
                     inner_phir = PHIRGenerator(add_versions=False)
                     inner_phir.generate_block(op)
-                    if_block["true_branch"].extend(inner_phir.output["ops"])
-                else:
-                    phir_op = self.generate_op(op)
-                    if phir_op:
-                        if_block["true_branch"].append(phir_op)
+                    if inner_phir.output["ops"]:
+                        ops.append(
+                            {"block": "sequence", "ops": inner_phir.output["ops"]},
+                        )
+            else:
+                phir_op = self.generate_op(op)
+                if phir_op:
+                    ops.append(phir_op)
+        return ops
 
-            self.output["ops"].append(if_block)
+    def _process_if_block(self, block) -> dict[str, Any]:
+        """Process if blocks with conditions."""
+        return {
+            "block": "if",
+            "condition": self._process_classical_expr(block.cond),
+            "true_branch": self._process_block_ops(block, is_true_branch=True),
+        }
 
-        elif block_name == "Repeat":
-            # Handle repeat blocks by unrolling them
-            for _ in range(block.cond):
-                for op in block.ops:
-                    if hasattr(op, "ops"):
-                        self.generate_block(op)
-                    else:
-                        phir_op = self.generate_op(op)
-                        if phir_op:
-                            self.output["ops"].append(phir_op)
-        else:
-            # Handle regular blocks
-            for op in block.ops:
-                if hasattr(op, "ops"):
-                    self.generate_block(op)
-                else:
-                    phir_op = self.generate_op(op)
-                    if phir_op:
-                        self.output["ops"].append(phir_op)
-
-        self.exit_block(block)
-        self.current_scope = previous_scope
-
+    # Operation Processing Methods
     def generate_op(self, op) -> dict[str, Any] | None:
-        """Generate PHIR for an operation."""
+        """Generate PHIR for different operation types."""
+        handlers: dict[str, OperationHandler] = {
+            "Barrier": self._generate_barrier,
+            "Comment": lambda x: {"//": x.txt},
+            "Permute": lambda x: {"//": f"Permutation: {x}"},
+            "If": self._process_if_block,
+        }
+
         op_name = type(op).__name__
-
-        if op_name == "Barrier":
-            # Handle each qubit argument individually
-            qubit_ids = []
-            for q in op.qregs:
-                if isinstance(q, QReg):
-                    # If full register, expand to individual qubits
-                    qubit_ids.extend(self._qubit_to_id(q[i]) for i in range(q.size))
-                else:
-                    # Single qubit
-                    qubit_ids.append(self._qubit_to_id(q))
-            return {
-                "meta": "barrier",
-                "args": qubit_ids,
-            }
-        elif op_name == "Comment":
-            return {"//": op.txt}
-
-        elif op_name == "Permute":
-            # Handle permutations as comments for now
-            return {"//": f"Permutation: {op}"}
-
+        if op_name in handlers:
+            return handlers[op_name](op)
         elif op_name in [
             "SET",
             "EQUIV",
@@ -169,48 +135,81 @@ class PHIRGenerator:
             "MINUS",
             "RSHIFT",
             "LSHIFT",
+            "NEG",
+            "NOT",
         ]:
-            return self._process_classical_op(op)
-
-        elif op_name in ["NEG", "NOT"]:
-            return self._process_unary_op(op)
-
+            return self._process_classical_expr(op)
         elif hasattr(op, "is_qgate") and op.is_qgate:
             return self._process_qgate(op)
 
         return None
 
-    def _process_classical_op(self, op) -> dict[str, Any]:
-        """Process classical operations."""
-        return self._process_classical_expr(op)
+    # Classical Expression Processing
+    def _process_classical_expr(self, expr) -> int | str | list[str] | dict[str, Any]:
+        """Process classical expressions into PHIR tree structure."""
+        if isinstance(expr, (int, str)):
+            return expr
+        elif hasattr(expr, "reg") and hasattr(expr, "index"):
+            return [expr.reg.sym, expr.index]
+        elif hasattr(expr, "sym"):
+            return expr.sym
+        elif hasattr(expr, "symbol"):
+            return self._process_operation_expr(expr)
 
-    def _process_unary_op(self, op) -> dict[str, Any]:
-        """Process unary operations."""
-        return {
-            "cop": op.symbol,
-            "args": [self._process_classical_expr(op.value)],
-        }
+        msg = f"Unsupported classical expression type: {type(expr)}"
+        raise TypeError(msg)
 
+    def _process_operation_expr(self, expr) -> dict[str, Any]:
+        """Process operation expressions (SET, unary, binary)."""
+        if type(expr).__name__ == "SET":
+            return {
+                "cop": "=",
+                "args": [self._process_classical_expr(expr.right)],
+                "returns": [self._process_classical_expr(expr.left)],
+            }
+        elif hasattr(expr, "value"):  # Unary operation
+            return {
+                "cop": expr.symbol,
+                "args": [self._process_classical_expr(expr.value)],
+            }
+        else:  # Binary operation
+            return {
+                "cop": expr.symbol,
+                "args": [
+                    self._process_classical_expr(expr.left),
+                    self._process_classical_expr(expr.right),
+                ],
+            }
+
+    # ID Conversion Methods
+    @staticmethod
+    def _qubit_to_id(qubit: Qubit | QReg) -> list[str]:
+        """Convert qubit reference to PHIR ID format."""
+        return [qubit.reg.sym, qubit.index] if hasattr(qubit, "reg") else [qubit.sym, 0]
+
+    @staticmethod
+    def _bit_to_id(bit) -> list[str]:
+        """Convert classical bit reference to PHIR ID format."""
+        return [bit.reg.sym, bit.index] if hasattr(bit, "reg") else [bit.sym, 0]
+
+    # Quantum Gate Processing Methods
     def _process_qgate(self, op) -> dict[str, Any]:
         """Process quantum gates based on size."""
         if op.qsize > 2:
             msg = f"Gates with more than 2 qubits not supported. Got gate with {op.qsize} qubits"
-            raise ValueError(msg)
-        elif op.qsize == 2:
-            return self._process_tq_gate(op)
-        else:
-            return self._process_sq_gate(op)
+            raise ValueError(
+                msg,
+            )
+
+        return self._process_tq_gate(op) if op.qsize == 2 else self._process_sq_gate(op)
 
     def _process_sq_gate(self, op) -> dict[str, Any]:
         """Process single qubit gates."""
-        gate_data = {
-            "qop": op.sym,
-        }
+        gate_data = {"qop": op.sym}
 
-        if hasattr(op, "params") and op.params:  # Check if gate has parameters
+        if hasattr(op, "params") and op.params:
             gate_data["angles"] = [[float(p) for p in op.params], "rad"]
 
-        # Only process actual qubit arguments, not parameters
         gate_data["args"] = [
             self._qubit_to_id(q) for q in op.qargs if hasattr(q, "reg")
         ]
@@ -222,18 +221,16 @@ class PHIRGenerator:
 
     def _process_tq_gate(self, op) -> dict[str, Any]:
         """Process two qubit gates."""
-        gate_data = {
-            "qop": op.sym,
-        }
+        gate_data = {"qop": op.sym}
 
         if op.params:
             gate_data["angles"] = [[float(p) for p in op.params], "rad"]
 
-        # Convert args to standard format like QASMGenerator
-        if not isinstance(op.qargs[0], tuple) and len(op.qargs) == 2:
-            qargs = [(op.qargs[0], op.qargs[1])]
-        else:
-            qargs = op.qargs
+        qargs = (
+            [(op.qargs[0], op.qargs[1])]
+            if not isinstance(op.qargs[0], tuple)
+            else op.qargs
+        )
 
         gate_data["args"] = []
         for q in qargs:
@@ -242,59 +239,55 @@ class PHIRGenerator:
                 gate_data["args"].append([self._qubit_to_id(q1), self._qubit_to_id(q2)])
             else:
                 msg = f"For two-qubit gate, expected args to be a collection of size two tuples! Got: {op.qargs}"
-                raise TypeError(msg)
+                raise TypeError(
+                    msg,
+                )
 
         return gate_data
 
-    def _qubit_to_id(self, qubit) -> list[str]:
-        """Convert a qubit reference to PHIR qubit ID format."""
-        if hasattr(qubit, "reg"):
-            return [qubit.reg.sym, qubit.index]
-        return [qubit.sym, 0]  # For single qubit registers
+    def _generate_barrier(self, op) -> dict[str, Any]:
+        """Generate PHIR for barrier operations."""
+        qubit_ids = []
+        for q in op.qregs:
+            if isinstance(q, QReg):
+                qubit_ids.extend(self._qubit_to_id(q[i]) for i in range(q.size))
+            else:
+                qubit_ids.append(self._qubit_to_id(q))
+        return {
+            "meta": "barrier",
+            "args": qubit_ids,
+        }
 
-    def _bit_to_id(self, bit) -> list[str]:
-        """Convert a classical bit reference to PHIR bit ID format."""
-        if hasattr(bit, "reg"):
-            return [bit.reg.sym, bit.index]
-        return [bit.sym, 0]  # For single bit registers
+    # Main Block Methods
+    def enter_block(self, block) -> Any:
+        """Enter a new block scope and process variables."""
+        previous_scope = self.current_scope
+        self.current_scope = block
 
-    def _process_classical_expr(
-        self,
-        expr,
-    ) -> int | str | list[str] | dict[str, Any]:
-        """Process classical expressions into a PHIR tree structure."""
-        if isinstance(expr, (int, str)):
-            return expr
-        elif hasattr(expr, "reg") and hasattr(expr, "index"):  # Bit reference
-            return [expr.reg.sym, expr.index]
-        elif hasattr(expr, "sym"):  # Register reference
-            return expr.sym
-        elif hasattr(expr, "symbol"):
-            op_name = type(expr).__name__
-            if op_name == "SET":
-                # Process right side into tree structure
-                right_expr = self._process_classical_expr(expr.right)
-                left_expr = self._process_classical_expr(expr.left)
-                return {
-                    "cop": "=",
-                    "args": [right_expr],
-                    "returns": [left_expr],
-                }
-            elif hasattr(expr, "value"):  # Unary operation
-                return {
-                    "cop": expr.symbol,
-                    "args": [self._process_classical_expr(expr.value)],
-                }
-            else:  # Binary operation
-                left = self._process_classical_expr(expr.left)
-                right = self._process_classical_expr(expr.right)
-                return {
-                    "cop": expr.symbol,
-                    "args": [left, right],
-                }
+        if type(block).__name__ == "Main":
+            for var in block.vars:
+                self.output["ops"].append(self.process_var_def(var))
+            for op in block.ops:
+                if type(op).__name__ == "Vars":
+                    for var in op.vars:
+                        self.output["ops"].append(self.process_var_def(var))
 
-        msg = f"Unsupported classical expression type: {type(expr)}"
-        raise TypeError(msg)
+        return previous_scope
+
+    def generate_block(self, block):
+        """Generate PHIR for a block."""
+        previous_scope = self.enter_block(block)
+        block_name = type(block).__name__
+
+        if block_name == "If":
+            self.output["ops"].append(self._process_if_block(block))
+        elif block_name == "Repeat":
+            for _ in range(block.cond):
+                self.output["ops"].extend(self._process_block_ops(block))
+        else:
+            self.output["ops"].extend(self._process_block_ops(block))
+
+        self.current_scope = previous_scope
 
     def get_output(self) -> dict[str, Any]:
         """Get the complete PHIR output."""
