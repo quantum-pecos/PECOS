@@ -3,7 +3,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING, Any
 
 from pecos import __version__
-from pecos.slr.vars import CReg, QReg
+from pecos.slr.vars import QReg
 
 if TYPE_CHECKING:
     from pecos.slr.vars import Var
@@ -93,7 +93,10 @@ class PHIRGenerator:
             # Generate operations for the true branch
             for op in block.ops:
                 if hasattr(op, "ops"):
-                    self.generate_block(op)
+                    # For nested blocks, generate and append to true_branch
+                    inner_phir = PHIRGenerator(add_versions=False)
+                    inner_phir.generate_block(op)
+                    if_block["true_branch"].extend(inner_phir.output["ops"])
                 else:
                     phir_op = self.generate_op(op)
                     if phir_op:
@@ -129,14 +132,19 @@ class PHIRGenerator:
         op_name = type(op).__name__
 
         if op_name == "Barrier":
+            # Handle each qubit argument individually
+            qubit_ids = []
+            for q in op.qregs:
+                if isinstance(q, QReg):
+                    # If full register, expand to individual qubits
+                    qubit_ids.extend(self._qubit_to_id(q[i]) for i in range(q.size))
+                else:
+                    # Single qubit
+                    qubit_ids.append(self._qubit_to_id(q))
             return {
                 "meta": "barrier",
-                "args": [
-                    str(q) if isinstance(q, (QReg, CReg)) else self._qubit_to_id(q)
-                    for q in op.qregs
-                ],
+                "args": qubit_ids,
             }
-
         elif op_name == "Comment":
             return {"//": op.txt}
 
@@ -174,21 +182,7 @@ class PHIRGenerator:
 
     def _process_classical_op(self, op) -> dict[str, Any]:
         """Process classical operations."""
-        op_name = type(op).__name__
-        if op_name == "SET":
-            return {
-                "cop": "=",
-                "args": [self._process_classical_expr(op.right)],
-                "returns": [self._process_classical_expr(op.left)],
-            }
-        else:
-            return {
-                "cop": op.symbol,
-                "args": [
-                    self._process_classical_expr(op.left),
-                    self._process_classical_expr(op.right),
-                ],
-            }
+        return self._process_classical_expr(op)
 
     def _process_unary_op(self, op) -> dict[str, Any]:
         """Process unary operations."""
@@ -268,21 +262,37 @@ class PHIRGenerator:
         self,
         expr,
     ) -> int | str | list[str] | dict[str, Any]:
-        """Process classical expressions."""
+        """Process classical expressions into a PHIR tree structure."""
         if isinstance(expr, (int, str)):
             return expr
-        elif hasattr(expr, "reg"):
+        elif hasattr(expr, "reg") and hasattr(expr, "index"):  # Bit reference
             return [expr.reg.sym, expr.index]
-        elif hasattr(expr, "sym"):
+        elif hasattr(expr, "sym"):  # Register reference
             return expr.sym
         elif hasattr(expr, "symbol"):
-            return {
-                "cop": expr.symbol,
-                "args": [
-                    self._process_classical_expr(expr.left),
-                    self._process_classical_expr(expr.right),
-                ],
-            }
+            op_name = type(expr).__name__
+            if op_name == "SET":
+                # Process right side into tree structure
+                right_expr = self._process_classical_expr(expr.right)
+                left_expr = self._process_classical_expr(expr.left)
+                return {
+                    "cop": "=",
+                    "args": [right_expr],
+                    "returns": [left_expr],
+                }
+            elif hasattr(expr, "value"):  # Unary operation
+                return {
+                    "cop": expr.symbol,
+                    "args": [self._process_classical_expr(expr.value)],
+                }
+            else:  # Binary operation
+                left = self._process_classical_expr(expr.left)
+                right = self._process_classical_expr(expr.right)
+                return {
+                    "cop": expr.symbol,
+                    "args": [left, right],
+                }
+
         msg = f"Unsupported classical expression type: {type(expr)}"
         raise TypeError(msg)
 
