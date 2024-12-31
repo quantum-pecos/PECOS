@@ -151,15 +151,13 @@ def test_variable_definitions():
 
 def test_error_cases():
     """Test error handling."""
+    # Test invalid register size
+    with pytest.raises(TypeError):
+        Main(q := QReg("q", -1)).gen(PHIRGenerator())
 
-    def test_error_cases():
-        """Test error handling."""
-        # Combine into single statement
-        with pytest.raises(TypeError):
-            Main(q := QReg("q", -1)).gen(PHIRGenerator())  # Invalid size
-
-        # Combine into single statement
-        with pytest.raises((ValueError, AttributeError)):  # Accept either error type
-            Main(q := QReg("q", 3), Q.CCX(q[0], q[1], q[2])).gen(
-                PHIRGenerator(),
-            )  # 3-qubit gate not implemented
+    # Test unsupported gate
+    with pytest.raises((ValueError, AttributeError)):
+        Main(
+            q := QReg("q", 3),
+            Q.CCX(q[0], q[1], q[2]),
+        ).gen(PHIRGenerator())
