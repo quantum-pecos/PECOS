@@ -10,6 +10,7 @@
 // or implied. See the License for the specific language governing permissions and limitations under
 // the License.
 
+mod pauli;
 mod sets;
 mod sims_rngs;
 
@@ -26,3 +27,4 @@ pub use crate::sims_rngs::xoshiro_rng::{
     Xoshiro128PlusPlus, Xoshiro128StarStar, Xoshiro256PlusPlus, Xoshiro256StarStar,
     Xoshiro512PlusPlus, Xoshiro512StarStar,
 };
+pub use pauli::{Pauli, PauliCollection};
