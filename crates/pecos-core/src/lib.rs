@@ -27,4 +27,4 @@ pub use crate::sims_rngs::xoshiro_rng::{
     Xoshiro128PlusPlus, Xoshiro128StarStar, Xoshiro256PlusPlus, Xoshiro256StarStar,
     Xoshiro512PlusPlus, Xoshiro512StarStar,
 };
-pub use pauli::{Pauli, PauliCollection};
+pub use pauli::{BitSetPauli, PauliCollection, PauliOperator, Phase, SetPauli, StdPauli};
