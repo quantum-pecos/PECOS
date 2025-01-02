@@ -27,6 +27,7 @@ rand_xoshiro = "0.6"
 
 pecos-core = { version = "0.1.1", path = "crates/pecos-core" }
 pecos-qsim = { version = "0.1.1", path = "crates/pecos-qsim" }
+pecos-decoders = { version = "0.1.1", path = "crates/pecos-decoders" }
 pecos-qec = { version = "0.1.1", path = "crates/pecos-qec" }
 pecos = { version = "0.1.1", path = "crates/pecos" }
 pecos-python = { version = "0.1.1", path = "crates/pecos-python" }

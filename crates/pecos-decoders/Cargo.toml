@@ -1,18 +1,17 @@
 [package]
-name = "pecos-qec"
+name = "pecos-decoders"
 version.workspace = true
 edition.workspace = true
+readme.workspace = true
 authors.workspace = true
 homepage.workspace = true
 repository.workspace = true
 license.workspace = true
 keywords.workspace = true
 categories.workspace = true
-description = "QEC for Rust PECOS."
+description = "A collection of decoders and decoder utilies what works with the PECOS ecosystem."
 
 [dependencies]
-pecos-qsim = { workspace = true }
-pecos-decoders = { workspace = true}
 
 [lints]
 workspace = true
