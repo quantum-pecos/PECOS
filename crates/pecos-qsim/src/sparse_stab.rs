@@ -29,7 +29,7 @@ pub type StdSparseStab = SparseStab<VecSet<usize>, usize>;
 /// # State Representation
 /// The quantum state is represented by:
 /// - A set of n stabilizer generators that mutually commute
-/// - A set of n destabilizer generators where destab[i] anti-commutes with stab[i] and
+/// - A set of n destabilizer generators where destab\[i\] anti-commutes with stab\[i\] and
 ///   commutes with all other stabilizers
 ///
 /// The implementation uses a sparse matrix representation for efficiency and speed, storing:

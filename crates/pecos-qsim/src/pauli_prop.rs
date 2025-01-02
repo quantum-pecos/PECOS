@@ -44,7 +44,7 @@ pub type StdPauliProp = PauliProp<VecSet<usize>, usize>;
 /// intended use cases.
 ///
 /// # Type Parameters
-/// - `T`: The set type used to store qubit indices (e.g., `VecSet`<usize>)
+/// - `T`: The set type used to store qubit indices (e.g., `VecSet`\<usize\>)
 /// - `E`: The element type used for qubit indices (e.g., usize)
 ///
 /// # Example
