@@ -270,6 +270,7 @@ class Steane(Vars):
         )
 
     #  Begin Experimental: ------------------------------------
+
     def nonft_t_tel(self, aux: Steane):
         """Warning:
             This is experimental.
@@ -285,7 +286,7 @@ class Steane(Vars):
             aux.cx(self),
             self.mz(self.t_meas),
             If(self.t_meas == 1).Then(aux.x(), aux.sz()),
-            Permute(self.d, aux.d),
+            self.permute(aux),
         )
 
     def t_tel(
@@ -308,7 +309,7 @@ class Steane(Vars):
             aux.cx(self),
             self.mz(self.t_meas),
             If(self.t_meas == 1).Then(aux.x(), aux.sz()),  # SZ/S correction.
-            Permute(self.d, aux.d),
+            self.permute(aux),
         )
 
     def nonft_tdg_tel(self, aux: Steane):
@@ -326,7 +327,7 @@ class Steane(Vars):
             aux.cx(self),
             self.mz(self.tdg_meas),
             If(self.tdg_meas == 1).Then(aux.x(), aux.szdg()),
-            Permute(self.d, aux.d),
+            self.permute(aux),
         )
 
     def tdg_tel(
@@ -349,8 +350,84 @@ class Steane(Vars):
             aux.cx(self),
             self.mz(self.tdg_meas),
             If(self.t_meas == 1).Then(aux.x(), aux.szdg()),  # SZdg/Sdg correction.
-            Permute(self.d, aux.d),
+            self.permute(aux),
         )
+
+    def t_cor(
+        self,
+        aux: Steane,
+        reject: Bit | None = None,
+        flag: Bit | None = None,
+        rus_limit: int | None = None,
+    ):
+        """T gate via teleportation using fault-tolerant initialization of the T|+> state.
+
+        Applies active corrections of errors diagnozed by the measurement for gate teleportation.
+        """
+        warn("Using experimental feature: t_cor", stacklevel=2)
+        block = Block(
+            # gate teleportation without logical correction
+            aux.prep_t_plus_state(reject=reject, rus_limit=rus_limit),
+            self.cx(aux),
+            aux.mz(self.t_meas),
+            # active error correction
+            self.syn_z.set(aux.syn_meas),
+            self.last_raw_syn_z.set(0),
+            self.pf_x.set(0),
+            FlagLookupQASMActiveCorrectionZ(
+                self.d,
+                self.syn_z,
+                self.syn_z,
+                self.last_raw_syn_z,
+                self.pf_x,
+                self.syn_z,
+                self.syn_z,
+                self.scratch,
+            ),
+            # logical correction
+            If(self.t_meas == 1).Then(self.sz()),
+        )
+        if flag is not None:
+            block.extend(If(self.syn_z != 0).Then(flag.set(1)))
+        return block
+
+    def tdg_cor(
+        self,
+        aux: Steane,
+        reject: Bit | None = None,
+        flag: Bit | None = None,
+        rus_limit: int | None = None,
+    ):
+        """Tdg gate via teleportation using fault-tolerant initialization of the Tdg|+> state.
+
+        Applies active corrections of errors diagnozed by the measurement for gate teleportation.
+        """
+        warn("Using experimental feature: t_cor", stacklevel=2)
+        block = Block(
+            # gate teleportation without logical correction
+            aux.prep_tdg_plus_state(reject=reject, rus_limit=rus_limit),
+            self.cx(aux),
+            aux.mz(self.tdg_meas),
+            # active error correction
+            self.syn_z.set(aux.syn_meas),
+            self.last_raw_syn_z.set(0),
+            self.pf_x.set(0),
+            FlagLookupQASMActiveCorrectionZ(
+                self.d,
+                self.syn_z,
+                self.syn_z,
+                self.last_raw_syn_z,
+                self.pf_x,
+                self.syn_z,
+                self.syn_z,
+                self.scratch,
+            ),
+            # logical correction
+            If(self.tdg_meas == 1).Then(self.szdg()),
+        )
+        if flag is not None:
+            block.extend(If(self.syn_z != 0).Then(flag.set(1)))
+        return block
 
     # End Experimental: ------------------------------------
 
@@ -572,4 +649,19 @@ class Steane(Vars):
         )
         if flag is not None:
             block.extend(If(self.syn_meas != 0).Then(flag.set(1)))
+        return block
+
+    def permute(self, other: Steane):
+        """Permute this code block (including both quantum and classical registers) with another."""
+        block = Block(
+            Permute(self.d, other.d),
+            Permute(self.a, other.a),
+        )
+        for var_a, var_b in zip(self.vars, other.vars):
+            if isinstance(var_a, CReg):
+                block.extend(
+                    var_a.set(var_a ^ var_b),
+                    var_b.set(var_b ^ var_a),
+                    var_a.set(var_a ^ var_b),
+                )
         return block
