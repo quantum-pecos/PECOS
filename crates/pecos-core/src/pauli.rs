@@ -20,8 +20,7 @@ mod pauli_stabilizer_string;
 #[allow(clippy::module_name_repetitions)]
 pub mod pauli_string;
 
-// use crate::{IndexableElement, Set};
-// use core::ops::{BitAnd, BitOr, BitXor};
+use crate::QuarterPhase;
 use std::fmt::Debug;
 
 /// Single-qubit Pauli operator
@@ -47,6 +46,10 @@ impl Default for Pauli {
 /// ability to be multiplied, determining their weight, and checking commutation relations.
 #[allow(clippy::module_name_repetitions)]
 pub trait PauliOperator: Clone + Debug {
+    fn phase(&self) -> QuarterPhase;
+    fn x_positions(&self) -> Vec<usize>;
+    fn z_positions(&self) -> Vec<usize>;
+
     /// Multiplies two Pauli operators and returns the resulting operator.
     ///
     /// # Parameters
@@ -74,4 +77,6 @@ pub trait PauliOperator: Clone + Debug {
     /// # Returns
     /// `true` if the operators commute, `false` if they anti-commute.
     fn commutes_with(&self, other: &Self) -> bool;
+
+    fn from_single(qubit: usize, pauli: Pauli) -> Self;
 }

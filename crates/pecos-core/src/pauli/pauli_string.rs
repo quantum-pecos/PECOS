@@ -10,13 +10,15 @@
 // or implied. See the License for the specific language governing permissions and limitations under
 // the License.
 
-use crate::{IndexableElement, Pauli, PauliBitmap, PauliSparse, Phase, QubitId, Set, VecSet};
+use crate::{
+    IndexableElement, Pauli, PauliBitmap, PauliOperator, PauliSparse, QuarterPhase, QubitId, VecSet,
+};
 
 /// A string of Pauli operators acting on multiple qubits
 #[allow(clippy::module_name_repetitions)]
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct PauliString {
-    phase: Phase,
+    phase: QuarterPhase,
     paulis: Vec<(Pauli, QubitId)>,
 }
 
@@ -33,16 +35,14 @@ impl PauliString {
     #[must_use]
     pub fn new() -> Self {
         Self {
-            phase: Phase::PlusOne,
+            phase: QuarterPhase::PlusOne,
             paulis: Vec::new(),
         }
     }
 
-    // TODO: is this get safe?
-
     #[inline]
     #[must_use]
-    pub fn get_phase(&self) -> Phase {
+    pub fn get_phase(&self) -> QuarterPhase {
         self.phase
     }
 
@@ -108,9 +108,9 @@ impl From<PauliSparse<VecSet<usize>>> for PauliString {
 
         // Collect all qubit positions
         let mut all_positions: Vec<_> = pauli_sparse
-            .get_x_positions()
+            .x_positions()
             .iter()
-            .chain(pauli_sparse.get_z_positions().iter())
+            .chain(pauli_sparse.z_positions().iter())
             .copied()
             .collect();
         all_positions.sort_unstable();
@@ -120,8 +120,8 @@ impl From<PauliSparse<VecSet<usize>>> for PauliString {
         for pos in all_positions {
             let qubit = QubitId::from_index(pos);
             let pauli = match (
-                pauli_sparse.get_x_positions().contains(&pos),
-                pauli_sparse.get_z_positions().contains(&pos),
+                pauli_sparse.x_positions().contains(&pos),
+                pauli_sparse.z_positions().contains(&pos),
             ) {
                 (true, false) => Pauli::X,
                 (false, true) => Pauli::Z,
@@ -132,7 +132,7 @@ impl From<PauliSparse<VecSet<usize>>> for PauliString {
         }
 
         Self {
-            phase: pauli_sparse.get_phase(),
+            phase: pauli_sparse.phase(),
             paulis,
         }
     }
@@ -160,7 +160,7 @@ impl TryFrom<PauliBitmap> for PauliString {
         }
 
         Ok(Self {
-            phase: pauli_bit.get_phase(),
+            phase: pauli_bit.phase(),
             paulis,
         })
     }

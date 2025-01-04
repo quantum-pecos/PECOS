@@ -16,15 +16,14 @@ pub mod pauli;
 pub mod phase;
 pub mod qubit_id;
 pub mod sets;
-pub mod sign;
 pub mod sims_rngs;
 
 pub use element::{Element, IndexableElement};
-pub use phase::Phase;
+pub use phase::quarter_phase::QuarterPhase;
+pub use phase::sign::Sign;
 pub use qubit_id::QubitId;
 pub use sets::set::Set;
 pub use sets::vec_set::VecSet;
-pub use sign::Sign;
 
 pub use crate::sims_rngs::chacha_rng::{ChaCha12Rng, ChaCha20Rng, ChaCha8Rng};
 pub use crate::sims_rngs::choices::Choices;
@@ -40,3 +39,4 @@ pub use pauli::pauli_bitmap::PauliBitmap;
 pub use pauli::pauli_sparse::PauliSparse;
 pub use pauli::pauli_string::PauliString;
 pub use pauli::{Pauli, PauliOperator};
+pub use phase::Phase;

@@ -1,4 +1,4 @@
-use crate::{Pauli, PauliString, QubitId, Sign};
+use crate::{Pauli, PauliString, Phase, QubitId, Sign};
 
 #[allow(dead_code)]
 pub struct PauliStabilizerString {
@@ -29,7 +29,7 @@ impl PauliStabilizerString {
 
     /// Multiply two `PauliStabilizerString`s.
     pub fn multiply(&self, other: &Self) -> Self {
-        let new_sign = self.sign.multiply(other.sign);
+        let new_sign = self.sign.multiply(&other.sign);
         let mut new_paulis = self.paulis.clone();
 
         for &(pauli, qubit) in &other.paulis {

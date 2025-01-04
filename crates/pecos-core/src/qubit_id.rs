@@ -26,3 +26,17 @@ impl IndexableElement for QubitId {
         Self(value)
     }
 }
+
+// Automatic conversion from usize to QubitId
+impl From<usize> for QubitId {
+    fn from(value: usize) -> Self {
+        QubitId(value)
+    }
+}
+
+// Automatic conversion from QubitId to usize
+impl From<QubitId> for usize {
+    fn from(qubit: QubitId) -> usize {
+        qubit.0
+    }
+}

@@ -10,7 +10,7 @@
 // or implied. See the License for the specific language governing permissions and limitations under
 // the License.
 
-use crate::{IndexableElement, PauliOperator, Phase, Set};
+use crate::{IndexableElement, Pauli, PauliOperator, Phase, QuarterPhase, Set};
 use std::ops::{BitAnd, BitOr, BitXor};
 
 /// Represents a Pauli operator with positions for X and Z components.
@@ -22,9 +22,9 @@ use std::ops::{BitAnd, BitOr, BitXor};
 /// - Positions in `z_positions` are affected by the Z operator.
 /// - Positions in both are affected by the Y operator.
 #[allow(clippy::module_name_repetitions)]
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, PartialEq)]
 pub struct PauliSparse<T: for<'a> Set<'a>> {
-    phase: Phase,
+    phase: QuarterPhase,
     x_positions: T,
     z_positions: T,
 }
@@ -35,7 +35,7 @@ where
 {
     fn default() -> Self {
         Self {
-            phase: Phase::PlusOne,
+            phase: QuarterPhase::PlusOne,
             x_positions: T::default(),
             z_positions: T::default(),
         }
@@ -52,20 +52,6 @@ where
     #[must_use]
     pub fn new() -> Self {
         Self::default()
-    }
-
-    // TODO: Is it safe to do these?
-
-    pub fn get_phase(&self) -> Phase {
-        self.phase
-    }
-
-    pub fn get_x_positions(&self) -> &T {
-        &self.x_positions
-    }
-
-    pub fn get_z_positions(&self) -> &T {
-        &self.z_positions
     }
 
     /// Creates a `SetPauli` instance with the specified phase and qubit positions for X, Y, and Z operators.
@@ -95,9 +81,9 @@ where
     ///
     /// # Examples
     /// ```
-    /// use pecos_core::{PauliSparse, Phase, VecSet};
+    /// use pecos_core::{PauliSparse, QuarterPhase, VecSet};
     ///
-    /// let phase = Phase::PlusOne;
+    /// let phase = QuarterPhase::PlusOne;
     /// let x = [1, 2];
     /// let y = [3];
     /// let z = [4];
@@ -107,7 +93,7 @@ where
     ///
     /// # Panics
     /// This function does not panic under normal usage.
-    pub fn with_operators(phase: Phase, x: &[E], y: &[E], z: &[E]) -> Result<Self, String> {
+    pub fn with_operators(phase: QuarterPhase, x: &[E], y: &[E], z: &[E]) -> Result<Self, String> {
         let mut x_set: T = x.iter().copied().collect();
         let mut z_set: T = z.iter().copied().collect();
 
@@ -136,6 +122,26 @@ where
     for<'a> &'a T: BitAnd<Output = T> + BitXor<Output = T>,
     E: IndexableElement,
 {
+    fn phase(&self) -> QuarterPhase {
+        self.phase
+    }
+
+    /// Returns the X positions as a sorted `Vec<usize>`.
+    fn x_positions(&self) -> Vec<usize> {
+        self.x_positions
+            .iter()
+            .map(super::super::element::IndexableElement::to_index)
+            .collect()
+    }
+
+    /// Returns the Z positions as a sorted `Vec<usize>`.
+    fn z_positions(&self) -> Vec<usize> {
+        self.z_positions
+            .iter()
+            .map(super::super::element::IndexableElement::to_index)
+            .collect()
+    }
+
     /// Multiplies two `SetPauli` operators and returns the result.
     ///
     /// # Parameters
@@ -146,13 +152,23 @@ where
     #[inline]
     #[must_use]
     fn multiply(&self, other: &Self) -> Self {
-        let mut phase = self.phase.multiply(other.phase);
+        let mut phase = self.phase.multiply(&other.phase);
 
-        let x_and_z = &self.x_positions & &other.z_positions;
-        if !x_and_z.is_empty() {
-            phase = phase.multiply(Phase::MinusOne);
+        // Calculate the overlap between X positions of `self` and Z positions of `other`
+        let x_self_z_other = &self.x_positions & &other.z_positions; // => -i
+
+        // Calculate the overlap between Z positions of `self` and X positions of `other`
+        let z_self_x_other = &self.z_positions & &other.x_positions; // => +i
+
+        // Anti-commutation occurs when the total overlap count is odd
+        if x_self_z_other.len() % 2 == 1 {
+            phase = phase.multiply(&QuarterPhase::MinusI);
+        }
+        if z_self_x_other.len() % 2 == 1 {
+            phase = phase.multiply(&QuarterPhase::PlusI);
         }
 
+        // Combine X and Z positions using XOR (symmetric difference)
         Self {
             phase,
             x_positions: &self.x_positions ^ &other.x_positions,
@@ -168,7 +184,7 @@ where
     /// The weight as a `usize`.
     #[inline]
     fn weight(&self) -> usize {
-        self.x_positions.len() + self.z_positions.len()
+        self.x_positions.union(&self.z_positions).count()
     }
 
     /// Checks if this `SetPauli` operator commutes with another.
@@ -185,6 +201,28 @@ where
         let z_and_x = &self.z_positions & &other.x_positions;
 
         (x_and_z.len() + z_and_x.len()) % 2 == 0
+    }
+
+    /// Creates a `PauliSparse` operator with a single qubit in the specified state.
+    fn from_single(qubit: usize, pauli: Pauli) -> Self {
+        let mut x_positions = T::default();
+        let mut z_positions = T::default();
+
+        match pauli {
+            Pauli::X => x_positions.insert(E::from_index(qubit)),
+            Pauli::Z => z_positions.insert(E::from_index(qubit)),
+            Pauli::Y => {
+                x_positions.insert(E::from_index(qubit));
+                z_positions.insert(E::from_index(qubit));
+            }
+            Pauli::I => {} // Identity does not affect any positions
+        }
+
+        Self {
+            phase: QuarterPhase::PlusOne,
+            x_positions,
+            z_positions,
+        }
     }
 }
 
@@ -207,10 +245,11 @@ mod tests {
 
     #[test]
     fn test_valid_pauli_creation() {
-        let pauli = PauliSparse::with_operators(Phase::PlusOne, &[1usize, 2], &[3usize], &[4usize])
-            .unwrap();
+        let pauli =
+            PauliSparse::with_operators(QuarterPhase::PlusOne, &[1usize, 2], &[3usize], &[4usize])
+                .unwrap();
 
-        assert_eq!(pauli.phase, Phase::PlusOne);
+        assert_eq!(pauli.phase, QuarterPhase::PlusOne);
         assert_sets_equal(&pauli.x_positions, &VecSet::from_iter([1usize, 2, 3]));
         assert_sets_equal(&pauli.z_positions, &VecSet::from_iter([3usize, 4]));
     }
@@ -219,7 +258,7 @@ mod tests {
     fn test_overlap_in_x_and_z() {
         // Simply use Vec to avoid array size issues
         let result = PauliSparse::<VecSet<usize>>::with_operators(
-            Phase::MinusOne,
+            QuarterPhase::MinusOne,
             &[1usize, 2],
             &[3usize],
             &[2usize, 4], // Overlaps with x
@@ -231,7 +270,8 @@ mod tests {
     #[test]
     fn test_y_addition_to_x_and_z() {
         let pauli =
-            PauliSparse::with_operators(Phase::PlusOne, &[1usize], &[2usize], &[3usize]).unwrap();
+            PauliSparse::with_operators(QuarterPhase::PlusOne, &[1usize], &[2usize], &[3usize])
+                .unwrap();
         assert_sets_equal(&pauli.x_positions, &VecSet::from_iter([1usize, 2]));
         assert_sets_equal(&pauli.z_positions, &VecSet::from_iter([2usize, 3]));
     }
@@ -240,27 +280,33 @@ mod tests {
     fn test_empty_inputs() {
         // Test default/empty constructor
         let pauli = PauliSparse::<VecSet<usize>>::new();
-        assert_eq!(pauli.phase, Phase::PlusOne);
+        assert_eq!(pauli.phase, QuarterPhase::PlusOne);
         assert!(pauli.x_positions.is_empty());
         assert!(pauli.z_positions.is_empty());
     }
 
     #[test]
     fn test_partial_inputs() {
-        let pauli =
-            PauliSparse::<VecSet<usize>>::with_operators(Phase::MinusOne, &[1usize, 2], &[], &[])
-                .unwrap();
-        assert_eq!(pauli.phase, Phase::MinusOne);
+        let pauli = PauliSparse::<VecSet<usize>>::with_operators(
+            QuarterPhase::MinusOne,
+            &[1usize, 2],
+            &[],
+            &[],
+        )
+        .unwrap();
+        assert_eq!(pauli.phase, QuarterPhase::MinusOne);
         assert_eq!(pauli.x_positions, VecSet::from_iter([1usize, 2]));
         assert!(pauli.z_positions.is_empty());
     }
 
     #[test]
     fn test_pauli_sparse_anticommutes() {
-        let p1 = PauliSparse::<VecSet<usize>>::with_operators(Phase::PlusOne, &[0, 1], &[], &[2])
-            .unwrap();
+        let p1 =
+            PauliSparse::<VecSet<usize>>::with_operators(QuarterPhase::PlusOne, &[0, 1], &[], &[2])
+                .unwrap();
         let p2 =
-            PauliSparse::<VecSet<usize>>::with_operators(Phase::PlusOne, &[1], &[], &[0]).unwrap();
+            PauliSparse::<VecSet<usize>>::with_operators(QuarterPhase::PlusOne, &[1], &[], &[0])
+                .unwrap();
         assert!(!p1.commutes_with(&p2));
     }
 }
