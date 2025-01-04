@@ -1,4 +1,4 @@
-// Copyright 2024 The PECOS Developers
+// Copyright 2025 The PECOS Developers
 //
 // Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
 // in compliance with the License.You may obtain a copy of the License at
@@ -10,5 +10,19 @@
 // or implied. See the License for the specific language governing permissions and limitations under
 // the License.
 
-pub mod set;
-pub mod vec_set;
+use crate::IndexableElement;
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Ord, PartialOrd)]
+pub struct QubitId(pub usize);
+
+impl IndexableElement for QubitId {
+    #[inline]
+    fn to_index(&self) -> usize {
+        self.0
+    }
+
+    #[inline]
+    fn from_index(value: usize) -> Self {
+        Self(value)
+    }
+}

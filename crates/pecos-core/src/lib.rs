@@ -10,13 +10,21 @@
 // or implied. See the License for the specific language governing permissions and limitations under
 // the License.
 
-mod pauli;
-mod sets;
-mod sims_rngs;
+pub mod element;
+pub mod gate;
+pub mod pauli;
+pub mod phase;
+pub mod qubit_id;
+pub mod sets;
+pub mod sign;
+pub mod sims_rngs;
 
-pub use sets::element::{Element, IndexableElement};
+pub use element::{Element, IndexableElement};
+pub use phase::Phase;
+pub use qubit_id::QubitId;
 pub use sets::set::Set;
 pub use sets::vec_set::VecSet;
+pub use sign::Sign;
 
 pub use crate::sims_rngs::chacha_rng::{ChaCha12Rng, ChaCha20Rng, ChaCha8Rng};
 pub use crate::sims_rngs::choices::Choices;
@@ -27,4 +35,8 @@ pub use crate::sims_rngs::xoshiro_rng::{
     Xoshiro128PlusPlus, Xoshiro128StarStar, Xoshiro256PlusPlus, Xoshiro256StarStar,
     Xoshiro512PlusPlus, Xoshiro512StarStar,
 };
-pub use pauli::{BitSetPauli, PauliCollection, PauliOperator, Phase, SetPauli, StdPauli};
+pub use gate::Gate;
+pub use pauli::pauli_bitmap::PauliBitmap;
+pub use pauli::pauli_sparse::PauliSparse;
+pub use pauli::pauli_string::PauliString;
+pub use pauli::{Pauli, PauliOperator};

@@ -20,8 +20,8 @@ impl<T: Debug + Clone + Ord + Copy + Hash> Element for T {}
 
 #[allow(clippy::module_name_repetitions)]
 pub trait IndexableElement: Element {
-    fn to_usize(&self) -> usize;
-    fn from_usize(value: usize) -> Self;
+    fn to_index(&self) -> usize;
+    fn from_index(value: usize) -> Self;
 }
 
 macro_rules! impl_indexable_element_safe {
@@ -29,13 +29,13 @@ macro_rules! impl_indexable_element_safe {
         impl IndexableElement for $t {
             #[allow(clippy::as_conversions, clippy::cast_possible_truncation)]
             #[inline(always)]
-            fn to_usize(&self) -> usize {
+            fn to_index(&self) -> usize {
                 *self as usize
             }
 
             #[allow(clippy::as_conversions, clippy::cast_possible_truncation)]
             #[inline(always)]
-            fn from_usize(value: usize) -> Self {
+            fn from_index(value: usize) -> Self {
                 value as $t
             }
         }
@@ -55,13 +55,13 @@ impl_indexable_element_safe!(u64);
 #[cfg(target_pointer_width = "32")]
 impl IndexableElement for u64 {
     #[inline(always)]
-    fn to_usize(&self) -> usize {
+    fn to_index(&self) -> usize {
         usize::try_from(*self).expect("u64 value too large for 32-bit usize")
     }
 
     #[allow(clippy::as_conversions)]
     #[inline(always)]
-    fn from_usize(value: usize) -> Self {
+    fn from_index(value: usize) -> Self {
         value as u64
     }
 }
@@ -69,12 +69,12 @@ impl IndexableElement for u64 {
 // u128 is always problematic for current architectures, so we'll implement it to always panic
 impl IndexableElement for u128 {
     #[inline(always)]
-    fn to_usize(&self) -> usize {
+    fn to_index(&self) -> usize {
         panic!("u128 cannot be safely converted to usize without potential data loss")
     }
 
     #[inline(always)]
-    fn from_usize(_value: usize) -> Self {
+    fn from_index(_value: usize) -> Self {
         panic!("usize cannot be safely converted to u128 on all platforms")
     }
 }
