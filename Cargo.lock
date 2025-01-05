@@ -1173,6 +1173,7 @@ name = "pecos-core"
 version = "0.1.1"
 dependencies = [
  "num-complex",
+ "num-traits",
  "rand",
  "rand_chacha",
  "rand_xoshiro",

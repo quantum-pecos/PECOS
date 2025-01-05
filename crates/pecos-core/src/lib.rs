@@ -10,6 +10,7 @@
 // or implied. See the License for the specific language governing permissions and limitations under
 // the License.
 
+pub mod angle;
 pub mod element;
 pub mod gate;
 pub mod pauli;
@@ -18,6 +19,7 @@ pub mod qubit_id;
 pub mod sets;
 pub mod sims_rngs;
 
+pub use angle::{Angle, Angle128, Angle32, Angle64};
 pub use element::{Element, IndexableElement};
 pub use phase::quarter_phase::QuarterPhase;
 pub use phase::sign::Sign;
