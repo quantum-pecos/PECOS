@@ -26,6 +26,7 @@ rand_chacha = "0.3"
 rand_xoshiro = "0.6"
 num-traits = "0.2"
 num-complex = "0.4"
+regex = "1"
 
 pecos-core = { version = "0.1.1", path = "crates/pecos-core" }
 pecos-qsim = { version = "0.1.1", path = "crates/pecos-qsim" }

@@ -76,59 +76,6 @@ where
         self.fraction
     }
 
-    /// Creates an angle representing `0` radians.
-    #[must_use]
-    pub fn zero() -> Self {
-        Self {
-            fraction: T::min_value(),
-        }
-    }
-
-    /// Creates an angle representing a full turn (`2π` radians)
-    #[must_use]
-    pub fn full_turn() -> Self {
-        Self {
-            fraction: T::zero().wrapping_sub(&T::one().wrapping_neg()),
-        }
-    }
-
-    /// Creates an angle representing a half turn (`π` radians).
-    ///
-    /// # Panics
-    /// This function will panic if the conversion of `2` to the target type fails.
-    #[must_use]
-    pub fn half_turn() -> Self {
-        let divisor = T::from_u8(2).expect("Failed to convert 2 to T");
-        Self {
-            fraction: T::zero().wrapping_sub(&T::one().wrapping_neg()) / divisor,
-        }
-    }
-
-    /// Creates an angle representing a quarter turn (`π/2` radians).
-    ///
-    /// # Panics
-    /// This function will panic if the conversion of `4` to the target type fails.
-    #[must_use]
-    pub fn quarter_turn() -> Self {
-        let divisor = T::from_u8(4).expect("Failed to convert 4 to T");
-        Self {
-            fraction: T::zero().wrapping_sub(&T::one().wrapping_neg()) / divisor,
-        }
-    }
-
-    /// Creates an angle representing three-quarters of a turn (`3π/2` radians).
-    ///
-    /// # Panics
-    /// This function will panic if the conversion of `3` or `4` to the target type fails.
-    #[must_use]
-    pub fn three_quarters_turn() -> Self {
-        let divisor = T::from_u8(4).expect("Failed to convert 4 to T");
-        let multiplier = T::from_u8(3).expect("Failed to convert 3 to T");
-        Self {
-            fraction: T::zero().wrapping_sub(&T::one().wrapping_neg()) * multiplier / divisor,
-        }
-    }
-
     /// Converts the angle to radians.
     ///
     /// # Panics
@@ -197,6 +144,39 @@ where
     }
 }
 
+impl<T> Angle<T>
+where
+    T: TryFrom<u128> + Default + Unsigned + Copy,
+{
+    /// Creates an `Angle` from a rational fraction of a turn.
+    ///
+    /// This method calculates the angle as `numerator / denominator` of a turn,
+    /// where a full turn corresponds to the maximum fixed-point value.
+    ///
+    /// # Panics
+    ///
+    /// - If `denominator == 0`.
+    /// - If the calculation overflows.
+    pub fn from_fraction(numerator: i64, denominator: i64) -> Self {
+        if denominator == 0 {
+            panic!("Denominator cannot be zero");
+        }
+        if numerator.abs() > i64::MAX / denominator.abs() {
+            panic!("Numerator multiplication overflow");
+        }
+        let fraction = ((numerator as i128) << 63) / (denominator as i128);
+        Self {
+            fraction: T::try_from(fraction as u128).unwrap_or_else(|_| {
+                panic!("Failed to convert fraction to target type")
+            }),
+        }
+    }
+}
+
+// convert from Angle<u32> to Angle<u64>
+// This requires up-scaling to the larger range
+// [0, 2^32) to [0, 2^64)
+// This should be lossless and preserve the same notion of angles
 impl From<Angle<u32>> for Angle<u64> {
     fn from(angle: Angle<u32>) -> Self {
         let scaled = u64::from(angle.fraction) << 32;
@@ -204,6 +184,10 @@ impl From<Angle<u32>> for Angle<u64> {
     }
 }
 
+// convert from Angle<u64> to Angle<u32>
+// This requires down-scaling to the smaller range
+// [0, 2^64) to [0, 2^32)
+// This is lossy, but maintains the same notion of angles.
 impl From<Angle<u64>> for Angle<u32> {
     fn from(angle: Angle<u64>) -> Self {
         let scaled = (angle.fraction >> 32) as u32;
@@ -225,38 +209,29 @@ impl From<Angle<u128>> for Angle<u64> {
     }
 }
 
-/// Common angle constants for `u32`.
-impl Angle<u32> {
-    pub const ZERO: Self = Self { fraction: 0 };
-    pub const QUARTER_TURN: Self = Self { fraction: 1 << 30 }; // 2^30
-    pub const HALF_TURN: Self = Self { fraction: 1 << 31 }; // 2^31
-    pub const THREE_QUARTERS_TURN: Self = Self { fraction: 3 << 30 }; // 3 * 2^30
-    pub const FULL_TURN: Self = Self { fraction: 0 }; // Wraps to 0
+macro_rules! impl_angle_constants {
+    ($t:ty) => {
+        impl Angle<$t> {
+            pub const ZERO: Self = Self { fraction: 0 };
+            pub const QUARTER_TURN: Self = Self {
+                fraction: 1 << (<$t>::BITS - 2),
+            };
+            pub const HALF_TURN: Self = Self {
+                fraction: 1 << (<$t>::BITS - 1),
+            };
+            pub const THREE_QUARTERS_TURN: Self = Self {
+                fraction: 3 << (<$t>::BITS - 2),
+            };
+            pub const FULL_TURN: Self = Self { fraction: 0 }; // Wraps to 0
+        }
+    };
 }
 
-/// Common angle constants for `u64`.
-impl Angle<u64> {
-    pub const ZERO: Self = Self { fraction: 0 };
-    pub const QUARTER_TURN: Self = Self { fraction: 1 << 62 }; // 2^62
-    pub const HALF_TURN: Self = Self { fraction: 1 << 63 }; // 2^63
-    pub const THREE_QUARTERS_TURN: Self = Self { fraction: 3 << 62 }; // 3 * 2^62
-    pub const FULL_TURN: Self = Self { fraction: 0 }; // Wraps to 0
-}
-
-/// Common angle constants for `u128`.
-impl Angle<u128> {
-    pub const ZERO: Self = Self { fraction: 0 };
-    pub const QUARTER_TURN: Self = Self {
-        fraction: 1 << (u128::BITS - 2),
-    }; // 2^126
-    pub const HALF_TURN: Self = Self {
-        fraction: 1 << (u128::BITS - 1),
-    }; // 2^127
-    pub const THREE_QUARTERS_TURN: Self = Self {
-        fraction: 3 << (u128::BITS - 2),
-    }; // 3 * 2^126
-    pub const FULL_TURN: Self = Self { fraction: 0 }; // Wraps to 0
-}
+impl_angle_constants!(u8);
+impl_angle_constants!(u16);
+impl_angle_constants!(u32);
+impl_angle_constants!(u64);
+impl_angle_constants!(u128);
 
 /// Implements addition for angles, with modular wrapping.
 impl<T> Add for Angle<T>
@@ -322,6 +297,7 @@ impl<T: Unsigned + ToPrimitive + Bounded + Copy> fmt::Display for Angle<T> {
 mod tests {
     use super::*;
     use std::f64::consts::{FRAC_PI_2, FRAC_PI_4, PI, TAU};
+    use rand::Rng;
 
     // Basic Construction and Properties
     #[test]
@@ -683,4 +659,189 @@ mod tests {
         let result = a + b;
         assert!(result.fraction < u16::MAX, "Result must be within bounds");
     }
+
+    #[test]
+    fn test_angle_u32_to_u64_lossless() {
+        let angle_u32 = Angle { fraction: 1_u32 };
+        let angle_u64: Angle<u64> = angle_u32.into();
+        assert_eq!(angle_u64.fraction, 1_u64 << 32);
+
+        let angle_u32 = Angle { fraction: u32::MAX };
+        let angle_u64: Angle<u64> = angle_u32.into();
+        assert_eq!(angle_u64.fraction, u64::from(u32::MAX) << 32);
+    }
+
+    #[test]
+    fn test_angle_u64_to_u32_lossy() {
+        let angle_u64 = Angle { fraction: 1_u64 << 32 };
+        let angle_u32: Angle<u32> = angle_u64.into();
+        assert_eq!(angle_u32.fraction, 1_u32);
+
+        let angle_u64 = Angle { fraction: u64::MAX };
+        let angle_u32: Angle<u32> = angle_u64.into();
+        assert_eq!(angle_u32.fraction, u32::MAX);
+    }
+
+    #[test]
+    fn test_angle_constants_conversion() {
+        let zero_u32 = Angle { fraction: 0_u32 };
+        let zero_u64: Angle<u64> = zero_u32.into();
+        assert_eq!(zero_u64.fraction, 0_u64);
+        assert_eq!(Angle::<u32>::from(zero_u64).fraction, 0_u32);
+
+        let quarter_u32 = Angle { fraction: 1_u32 << 30 }; // 2^30
+        let quarter_u64: Angle<u64> = quarter_u32.into();
+        assert_eq!(quarter_u64.fraction, 1_u64 << 62);
+        assert_eq!(Angle::<u32>::from(quarter_u64).fraction, 1_u32 << 30);
+
+        let half_u32 = Angle { fraction: 1_u32 << 31 }; // 2^31
+        let half_u64: Angle<u64> = half_u32.into();
+        assert_eq!(half_u64.fraction, 1_u64 << 63);
+        assert_eq!(Angle::<u32>::from(half_u64).fraction, 1_u32 << 31);
+
+        let full_u32 = Angle { fraction: 0_u32 }; // Wraps to 0
+        let full_u64: Angle<u64> = full_u32.into();
+        assert_eq!(full_u64.fraction, 0_u64);
+        assert_eq!(Angle::<u32>::from(full_u64).fraction, 0_u32);
+    }
+
+    #[test]
+    fn test_round_trip_conversion_u32_u64() {
+        // Test that converting from Angle<u32> to Angle<u64> and back is lossless
+        let angle_u32 = Angle::<u32>::new(123456);
+        let converted: Angle<u64> = angle_u32.into();
+        let back: Angle<u32> = converted.into();
+        assert_eq!(angle_u32, back);
+    }
+
+    #[test]
+    fn test_round_trip_conversion_u64_u32() {
+        // Test that converting from Angle<u64> to Angle<u32> and back is approximately correct
+        let angle_u64 = Angle::<u64>::new(1 << 40);
+        let converted: Angle<u32> = angle_u64.into();
+        let back: Angle<u64> = converted.into();
+        // Check for approximate equality due to lossy conversion
+        assert_eq!(back.fraction >> 32, angle_u64.fraction >> 32);
+    }
+
+    #[test]
+    fn test_randomized_values_u32_to_u64() {
+        // Test with randomized values to ensure correctness for u32 -> u64 -> u32 conversions
+        let mut rng = rand::thread_rng();
+        for _ in 0..1000 {
+            let random_u32: u32 = rng.gen();
+            let angle_u32 = Angle::<u32>::new(random_u32);
+            let converted: Angle<u64> = angle_u32.into();
+            let back: Angle<u32> = converted.into();
+            assert_eq!(angle_u32, back);
+        }
+    }
+
+    #[test]
+    fn test_randomized_values_u64_to_u32() {
+        // Test with randomized values to ensure correctness for u64 -> u32 -> u64 conversions
+        let mut rng = rand::thread_rng();
+        for _ in 0..1000 {
+            let random_u64: u64 = rng.gen();
+            let angle_u64 = Angle::<u64>::new(random_u64);
+            let converted: Angle<u32> = angle_u64.into();
+            let back: Angle<u64> = converted.into();
+            // Lossy conversion, check for approximate equality
+            assert_eq!(back.fraction >> 32, angle_u64.fraction >> 32);
+        }
+    }
+
+    #[test]
+    fn test_subdivision_values() {
+        // Test boundary cases for small subdivision values during conversions
+        let angle_u32 = Angle::<u32>::new(1);
+        let converted: Angle<u64> = angle_u32.into();
+        assert_eq!(converted.fraction, 1_u64 << 32);
+
+        let angle_u64 = Angle::<u64>::new(1);
+        let converted: Angle<u32> = angle_u64.into();
+        assert_eq!(converted.fraction, 0); // Too small to be represented in u32
+    }
+
+    #[test]
+    fn test_near_boundary_values() {
+        // Test conversion near boundary values to ensure correctness
+        let angle_u32 = Angle::<u32>::new(u32::MAX - 1);
+        let converted: Angle<u64> = angle_u32.into();
+        assert_eq!(converted.fraction, (u64::from(u32::MAX - 1) << 32));
+
+        let angle_u64 = Angle::<u64>::new((1 << 32) - 1);
+        let converted: Angle<u32> = angle_u64.into();
+        assert_eq!(converted.fraction, 0); // Fractional part lost
+    }
+
+    #[test]
+    fn test_overflow_and_underflow() {
+        // Test cases for overflow and underflow during conversions
+        let angle_u32 = Angle::<u32>::new(u32::MAX);
+        let converted: Angle<u64> = angle_u32.into();
+        assert_eq!(converted.fraction, (u64::from(u32::MAX) << 32));
+
+        let angle_u64 = Angle::<u64>::new(u64::MAX);
+        let converted: Angle<u32> = angle_u64.into();
+        assert_eq!(converted.fraction, u32::MAX);
+    }
+
+    #[test]
+    fn test_non_uniform_scaling() {
+        // Test non-uniform scaling conversions
+        let angle_u32 = Angle::<u32>::new(u32::MAX / 3);
+        let converted: Angle<u64> = angle_u32.into();
+        assert_eq!(converted.fraction, (u64::from(u32::MAX / 3) << 32));
+
+        let angle_u64 = Angle::<u64>::new(u64::MAX / 3);
+        let converted: Angle<u32> = angle_u64.into();
+        assert_eq!(converted.fraction, (u32::MAX / 3));
+    }
+
+    #[test]
+    fn test_constants_conversion() {
+        // Test that predefined constants are correctly converted between types
+        assert_eq!(Angle::<u32>::from(Angle::<u64>::ZERO), Angle::<u32>::ZERO);
+        assert_eq!(Angle::<u64>::from(Angle::<u32>::ZERO), Angle::<u64>::ZERO);
+
+        assert_eq!(Angle::<u32>::from(Angle::<u64>::HALF_TURN), Angle::<u32>::HALF_TURN);
+        assert_eq!(Angle::<u64>::from(Angle::<u32>::HALF_TURN), Angle::<u64>::HALF_TURN);
+
+        assert_eq!(Angle::<u32>::from(Angle::<u64>::QUARTER_TURN), Angle::<u32>::QUARTER_TURN);
+        assert_eq!(Angle::<u64>::from(Angle::<u32>::QUARTER_TURN), Angle::<u64>::QUARTER_TURN);
+
+        assert_eq!(Angle::<u32>::from(Angle::<u64>::FULL_TURN), Angle::<u32>::FULL_TURN);
+        assert_eq!(Angle::<u64>::from(Angle::<u32>::FULL_TURN), Angle::<u64>::FULL_TURN);
+    }
+
+    #[test]
+    #[should_panic(expected = "Denominator cannot be zero")]
+    fn test_from_fraction_panic_on_zero_denominator() {
+        Angle64::from_fraction(1, 0);
+    }
+
+    #[test]
+    #[should_panic(expected = "Numerator multiplication overflow")]
+    fn test_from_fraction_panic_on_numerator_overflow() {
+        Angle64::from_fraction(i64::MAX, 1);
+    }
+
+    #[test]
+    fn test_from_fraction_valid_cases() {
+        assert_eq!(
+            Angle64::from_fraction(1, 2).fraction,
+            Angle64::HALF_TURN.fraction
+        );
+        assert_eq!(
+            Angle64::from_fraction(1, 4).fraction,
+            Angle64::HALF_TURN.fraction / 2
+        );
+        assert_eq!(
+            Angle64::from_fraction(3, 4).fraction,
+            3 * (Angle64::HALF_TURN.fraction / 2)
+        );
+    }
+
+
 }
