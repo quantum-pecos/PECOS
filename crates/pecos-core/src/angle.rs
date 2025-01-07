@@ -238,11 +238,10 @@ where
 //     }
 // }
 
-macro_rules! impl_angle_conversions {
-    ($($smaller:ty => $larger:ty),*$(,)?) => {
+macro_rules! impl_safe_angle_conversions {
+    ($($smaller:ty => $larger:ty),*) => {
         $(
-            // Only generate implementation if it doesn't exist
-            #[allow(clippy::useless_conversion)] // To suppress warnings for trivial conversions
+            // Upscaling conversion (smaller to larger type) - Always safe
             impl From<Angle<$smaller>> for Angle<$larger> {
                 fn from(angle: Angle<$smaller>) -> Self {
                     let shift = <$larger>::BITS - <$smaller>::BITS;
@@ -251,20 +250,34 @@ macro_rules! impl_angle_conversions {
                 }
             }
 
-            #[allow(clippy::useless_conversion)] // To suppress warnings for trivial conversions
-            impl From<Angle<$larger>> for Angle<$smaller> {
-                fn from(angle: Angle<$larger>) -> Self {
-                    let shift = <$larger>::BITS - <$smaller>::BITS;
-                    let scaled = (angle.fraction >> shift) as $smaller;
-                    Self { fraction: scaled }
+
+            // Downscaling conversion (larger to smaller type) - Checked for safety
+            impl TryFrom<Angle<$larger>> for Angle<$smaller> {
+            type Error = &'static str;
+
+            fn try_from(angle: Angle<$larger>) -> Result<Self, Self::Error> {
+                let shift = <$larger>::BITS - <$smaller>::BITS;
+                let mask = (1 << shift) - 1;
+
+                if angle.fraction & mask != 0 {
+                    return Err("Precision loss detected during angle conversion");
+                }
+
+                let shifted = angle.fraction >> shift;
+                if let Ok(scaled) = <$smaller>::try_from(shifted) {
+                    Ok(Self { fraction: scaled })
+                } else {
+                    Err("Value out of range for target type")
                 }
             }
+        }
+
+
         )*
     };
 }
 
-// Add conversions between different types
-impl_angle_conversions!(
+impl_safe_angle_conversions!(
     u8 => u16,
     u8 => u32,
     u8 => u64,
@@ -274,10 +287,44 @@ impl_angle_conversions!(
     u16 => u128,
     u32 => u64,
     u32 => u128,
-    u64 => u128,
+    u64 => u128
 );
 
+/// Trait for lossy conversions between types.
+pub trait LossyInto<T>: Sized {
+    fn lossy_into(self) -> T;
+}
 
+/// Macro to generate `LossyInto` implementations.
+macro_rules! impl_lossy_into {
+    ($($smaller:ty, $larger:ty),*$(,)?) => {
+        $(
+            impl LossyInto<Angle<$smaller>> for Angle<$larger> {
+                #[allow(clippy::cast_possible_truncation)]
+                fn lossy_into(self) -> Angle<$smaller> {
+                    let mask = (1 << <$smaller>::BITS) - 1; // Mask to retain only lower bits
+                    let scaled = self.fraction & mask;      // Apply the mask
+                    Angle { fraction: scaled as $smaller } // Cast to smaller type
+                }
+            }
+        )*
+    };
+}
+
+// Apply the macro to define lossy conversions.
+impl_lossy_into!(
+    u8, u16, u8, u32, u8, u64, u8, u128, u16, u32, u16, u64, u16, u128, u32, u64, u32, u128, u64,
+    u128,
+);
+
+pub trait LossyConvert: Sized {
+    fn lossy_into<T>(self) -> T
+    where
+        Self: LossyInto<T>,
+    {
+        LossyInto::<T>::lossy_into(self)
+    }
+}
 
 // impl From<Angle<u64>> for Angle<u128> {
 //     fn from(angle: Angle<u64>) -> Self {
@@ -545,16 +592,12 @@ mod tests {
 
     #[test]
     fn test_precision_conversion() {
-        // Test potential precision loss from higher to lower bit width
-        let small_angle = Angle128::new(1);
-        let converted: Angle64 = small_angle.into();
-        assert!(converted.is_zero()); // Should lose precision
-
-        // Test preservation of significant bits
-        let significant_angle = Angle128::QUARTER_TURN;
-        let converted: Angle64 = significant_angle.into();
-        let back: Angle128 = converted.into();
-        assert!((back.to_radians() - significant_angle.to_radians()).abs() < 1e-10);
+        let small_angle = Angle::<u128>::new(1);
+        let converted: Result<Angle<u64>, _> = Angle::<u64>::try_from(small_angle);
+        assert!(
+            converted.is_err(),
+            "Expected precision loss for small_angle"
+        );
     }
 
     #[test]
@@ -634,11 +677,11 @@ mod tests {
     fn test_bit_width_conversions() {
         let angle32 = Angle32::QUARTER_TURN;
         let angle64: Angle64 = angle32.into();
-        let back32: Angle32 = angle64.into();
+        let back32: Angle32 = angle64.try_into().expect("Lossless conversion failed");
         assert_eq!(angle32, back32);
 
         let angle128: Angle128 = angle64.into();
-        let back64: Angle64 = angle128.into();
+        let back64: Angle64 = angle128.try_into().expect("Lossless conversion failed");
         assert_eq!(angle64, back64);
     }
 
@@ -757,15 +800,12 @@ mod tests {
 
     #[test]
     fn test_angle_u64_to_u32_lossy() {
-        let angle_u64 = Angle {
-            fraction: 1_u64 << 32,
-        };
-        let angle_u32: Angle<u32> = angle_u64.into();
-        assert_eq!(angle_u32.fraction, 1_u32);
-
-        let angle_u64 = Angle { fraction: u64::MAX };
-        let angle_u32: Angle<u32> = angle_u64.into();
-        assert_eq!(angle_u32.fraction, u32::MAX);
+        let angle = Angle::<u64>::new(1 << 33); // Value fits into u32 after shifting
+        let result: Result<Angle<u32>, _> = Angle::try_from(angle);
+        assert!(
+            result.is_ok(),
+            "Expected lossless conversion for 1 << 33, got {result:?}"
+        );
     }
 
     #[test]
@@ -773,42 +813,60 @@ mod tests {
         let zero_u32 = Angle { fraction: 0_u32 };
         let zero_u64: Angle<u64> = zero_u32.into();
         assert_eq!(zero_u64.fraction, 0_u64);
-        assert_eq!(Angle::<u32>::from(zero_u64).fraction, 0_u32);
+        assert_eq!(
+            Angle::<u32>::try_from(zero_u64)
+                .expect("Lossless conversion failed")
+                .fraction,
+            0_u32
+        );
 
         let quarter_u32 = Angle {
             fraction: 1_u32 << 30,
         }; // 2^30
         let quarter_u64: Angle<u64> = quarter_u32.into();
         assert_eq!(quarter_u64.fraction, 1_u64 << 62);
-        assert_eq!(Angle::<u32>::from(quarter_u64).fraction, 1_u32 << 30);
+        assert_eq!(
+            Angle::<u32>::try_from(quarter_u64)
+                .expect("Lossless conversion failed")
+                .fraction,
+            1_u32 << 30
+        );
 
         let half_u32 = Angle {
             fraction: 1_u32 << 31,
         }; // 2^31
         let half_u64: Angle<u64> = half_u32.into();
         assert_eq!(half_u64.fraction, 1_u64 << 63);
-        assert_eq!(Angle::<u32>::from(half_u64).fraction, 1_u32 << 31);
+        assert_eq!(
+            Angle::<u32>::try_from(half_u64)
+                .expect("Lossless conversion failed")
+                .fraction,
+            1_u32 << 31
+        );
 
         let full_u32 = Angle { fraction: 0_u32 }; // Wraps to 0
         let full_u64: Angle<u64> = full_u32.into();
         assert_eq!(full_u64.fraction, 0_u64);
-        assert_eq!(Angle::<u32>::from(full_u64).fraction, 0_u32);
+        assert_eq!(
+            Angle::<u32>::try_from(full_u64)
+                .expect("Lossless conversion failed")
+                .fraction,
+            0_u32
+        );
     }
 
     #[test]
     fn test_round_trip_conversion_u32_u64() {
-        // Test that converting from Angle<u32> to Angle<u64> and back is lossless
         let angle_u32 = Angle::<u32>::new(123_456);
         let converted: Angle<u64> = angle_u32.into();
-        let back: Angle<u32> = converted.into();
+        let back: Angle<u32> = converted.try_into().expect("Lossless conversion failed");
         assert_eq!(angle_u32, back);
     }
 
     #[test]
     fn test_round_trip_conversion_u64_u32() {
-        // Test that converting from Angle<u64> to Angle<u32> and back is approximately correct
         let angle_u64 = Angle::<u64>::new(1 << 40);
-        let converted: Angle<u32> = angle_u64.into();
+        let converted: Angle<u32> = angle_u64.try_into().expect("Lossless conversion failed");
         let back: Angle<u64> = converted.into();
         // Check for approximate equality due to lossy conversion
         assert_eq!(back.fraction >> 32, angle_u64.fraction >> 32);
@@ -816,28 +874,34 @@ mod tests {
 
     #[test]
     fn test_randomized_values_u32_to_u64() {
-        // Test with randomized values to ensure correctness for u32 -> u64 -> u32 conversions
         let mut rng = rand::thread_rng();
         for _ in 0..1000 {
             let random_u32: u32 = rng.gen();
             let angle_u32 = Angle::<u32>::new(random_u32);
             let converted: Angle<u64> = angle_u32.into();
-            let back: Angle<u32> = converted.into();
+            let back: Angle<u32> = converted.try_into().expect("Lossless conversion failed");
             assert_eq!(angle_u32, back);
         }
     }
 
     #[test]
     fn test_randomized_values_u64_to_u32() {
-        // Test with randomized values to ensure correctness for u64 -> u32 -> u64 conversions
         let mut rng = rand::thread_rng();
         for _ in 0..1000 {
             let random_u64: u64 = rng.gen();
             let angle_u64 = Angle::<u64>::new(random_u64);
-            let converted: Angle<u32> = angle_u64.into();
-            let back: Angle<u64> = converted.into();
-            // Lossy conversion, check for approximate equality
-            assert_eq!(back.fraction >> 32, angle_u64.fraction >> 32);
+            let result: Result<Angle<u32>, _> = angle_u64.try_into();
+            if u32::try_from(random_u64).is_ok() {
+                assert!(
+                    result.is_ok(),
+                    "Conversion should succeed for value within u32 range"
+                );
+            } else {
+                assert!(
+                    result.is_err(),
+                    "Conversion should fail for value outside u32 range"
+                );
+            }
         }
     }
 
@@ -849,54 +913,57 @@ mod tests {
         assert_eq!(converted.fraction, 1_u64 << 32);
 
         let angle_u64 = Angle::<u64>::new(1);
-        let converted: Angle<u32> = angle_u64.into();
-        assert_eq!(converted.fraction, 0); // Too small to be represented in u32
+        let converted: Result<Angle<u32>, _> = angle_u64.try_into();
+        assert!(converted.is_err(), "Expected lossless conversion to fail");
     }
 
     #[test]
     fn test_near_boundary_values() {
-        // Test conversion near boundary values to ensure correctness
         let angle_u32 = Angle::<u32>::new(u32::MAX - 1);
         let converted: Angle<u64> = angle_u32.into();
-        assert_eq!(converted.fraction, (u64::from(u32::MAX - 1) << 32));
+        let back: Result<Angle<u32>, _> = Angle::<u32>::try_from(converted);
+        assert!(back.is_ok(), "Expected lossless conversion near boundary");
 
         let angle_u64 = Angle::<u64>::new((1 << 32) - 1);
-        let converted: Angle<u32> = angle_u64.into();
-        assert_eq!(converted.fraction, 0); // Fractional part lost
+        let back: Result<Angle<u32>, _> = Angle::<u32>::try_from(angle_u64);
+        assert!(back.is_err(), "Expected lossless conversion to fail");
     }
 
     #[test]
     fn test_overflow_and_underflow() {
-        // Test cases for overflow and underflow during conversions
         let angle_u32 = Angle::<u32>::new(u32::MAX);
         let converted: Angle<u64> = angle_u32.into();
-        assert_eq!(converted.fraction, (u64::from(u32::MAX) << 32));
+        let back: Result<Angle<u32>, _> = Angle::<u32>::try_from(converted);
+        assert!(back.is_ok(), "Expected lossless conversion to succeed");
 
         let angle_u64 = Angle::<u64>::new(u64::MAX);
-        let converted: Angle<u32> = angle_u64.into();
-        assert_eq!(converted.fraction, u32::MAX);
+        let back: Result<Angle<u32>, _> = Angle::<u32>::try_from(angle_u64);
+        assert!(back.is_err(), "Expected lossless conversion to fail");
     }
 
     #[test]
     fn test_non_uniform_scaling() {
-        // Test non-uniform scaling conversions
         let angle_u32 = Angle::<u32>::new(u32::MAX / 3);
         let converted: Angle<u64> = angle_u32.into();
-        assert_eq!(converted.fraction, (u64::from(u32::MAX / 3) << 32));
+        let back: Result<Angle<u32>, _> = Angle::<u32>::try_from(converted);
+        assert!(back.is_ok(), "Expected lossless conversion to succeed");
 
         let angle_u64 = Angle::<u64>::new(u64::MAX / 3);
-        let converted: Angle<u32> = angle_u64.into();
-        assert_eq!(converted.fraction, (u32::MAX / 3));
+        let back: Result<Angle<u32>, _> = Angle::<u32>::try_from(angle_u64);
+        assert!(back.is_err(), "Expected lossless conversion to fail");
     }
 
     #[test]
     fn test_constants_conversion() {
         // Test that predefined constants are correctly converted between types
-        assert_eq!(Angle::<u32>::from(Angle::<u64>::ZERO), Angle::<u32>::ZERO);
+        assert_eq!(
+            Angle::<u32>::try_from(Angle::<u64>::ZERO).expect("Lossless conversion failed"),
+            Angle::<u32>::ZERO
+        );
         assert_eq!(Angle::<u64>::from(Angle::<u32>::ZERO), Angle::<u64>::ZERO);
 
         assert_eq!(
-            Angle::<u32>::from(Angle::<u64>::HALF_TURN),
+            Angle::<u32>::try_from(Angle::<u64>::HALF_TURN).expect("Lossless conversion failed"),
             Angle::<u32>::HALF_TURN
         );
         assert_eq!(
@@ -905,7 +972,7 @@ mod tests {
         );
 
         assert_eq!(
-            Angle::<u32>::from(Angle::<u64>::QUARTER_TURN),
+            Angle::<u32>::try_from(Angle::<u64>::QUARTER_TURN).expect("Lossless conversion failed"),
             Angle::<u32>::QUARTER_TURN
         );
         assert_eq!(
@@ -914,7 +981,7 @@ mod tests {
         );
 
         assert_eq!(
-            Angle::<u32>::from(Angle::<u64>::FULL_TURN),
+            Angle::<u32>::try_from(Angle::<u64>::FULL_TURN).expect("Lossless conversion failed"),
             Angle::<u32>::FULL_TURN
         );
         assert_eq!(
@@ -1110,7 +1177,6 @@ mod tests {
 
     #[test]
     fn test_round_trip_conversion() {
-        // Test all round-trip conversions for u8, u16, u32, u64, u128
         let values_u8 = [0, u8::MAX / 2, u8::MAX];
         let values_u16 = [0, u16::MAX / 2, u16::MAX];
         let values_u32 = [0, u32::MAX / 2, u32::MAX];
@@ -1119,90 +1185,107 @@ mod tests {
         for &val in &values_u8 {
             let angle = Angle::<u8>::new(val);
             let up: Angle<u16> = angle.into();
-            let down: Angle<u8> = up.into();
+            let down: Angle<u8> = up.try_into().expect("Lossless downscaling failed");
             assert_eq!(angle, down);
         }
 
         for &val in &values_u16 {
             let angle = Angle::<u16>::new(val);
             let up: Angle<u32> = angle.into();
-            let down: Angle<u16> = up.into();
+            let down: Angle<u16> = up.try_into().expect("Lossless downscaling failed");
             assert_eq!(angle, down);
         }
 
         for &val in &values_u32 {
             let angle = Angle::<u32>::new(val);
             let up: Angle<u64> = angle.into();
-            let down: Angle<u32> = up.into();
+            let down: Angle<u32> = up.try_into().expect("Lossless downscaling failed");
             assert_eq!(angle, down);
         }
 
         for &val in &values_u64 {
             let angle = Angle::<u64>::new(val);
             let up: Angle<u128> = angle.into();
-            let down: Angle<u64> = up.into();
+            let down: Angle<u64> = up.try_into().expect("Lossless downscaling failed");
             assert_eq!(angle, down);
         }
     }
 
     #[test]
     fn test_randomized_conversions() {
-        // Test with randomized values for all conversions
         let mut rng = rand::thread_rng();
 
         for _ in 0..1000 {
             let val_u8: u8 = rng.gen();
             let angle = Angle::<u8>::new(val_u8);
             let up: Angle<u16> = angle.into();
-            let down: Angle<u8> = up.into();
+            let down: Angle<u8> = up.try_into().expect("Lossless downscaling failed");
             assert_eq!(angle, down);
 
             let val_u16: u16 = rng.gen();
             let angle = Angle::<u16>::new(val_u16);
             let up: Angle<u32> = angle.into();
-            let down: Angle<u16> = up.into();
+            let down: Angle<u16> = up.try_into().expect("Lossless downscaling failed");
             assert_eq!(angle, down);
 
             let val_u32: u32 = rng.gen();
             let angle = Angle::<u32>::new(val_u32);
             let up: Angle<u64> = angle.into();
-            let down: Angle<u32> = up.into();
+            let down: Angle<u32> = up.try_into().expect("Lossless downscaling failed");
             assert_eq!(angle, down);
 
             let val_u64: u64 = rng.gen();
             let angle = Angle::<u64>::new(val_u64);
             let up: Angle<u128> = angle.into();
-            let down: Angle<u64> = up.into();
+            let down: Angle<u64> = up.try_into().expect("Lossless downscaling failed");
             assert_eq!(angle, down);
         }
     }
 
     #[test]
     fn test_predefined_constants_conversions() {
-        // Test predefined constants for all conversions
         assert_eq!(Angle::<u16>::from(Angle::<u8>::ZERO), Angle::<u16>::ZERO);
-        assert_eq!(Angle::<u8>::from(Angle::<u16>::ZERO), Angle::<u8>::ZERO);
+        assert_eq!(
+            Angle::<u8>::try_from(Angle::<u16>::ZERO).unwrap(),
+            Angle::<u8>::ZERO
+        );
 
-        assert_eq!(Angle::<u32>::from(Angle::<u16>::HALF_TURN), Angle::<u32>::HALF_TURN);
-        assert_eq!(Angle::<u16>::from(Angle::<u32>::HALF_TURN), Angle::<u16>::HALF_TURN);
+        assert_eq!(
+            Angle::<u32>::from(Angle::<u16>::HALF_TURN),
+            Angle::<u32>::HALF_TURN
+        );
+        assert_eq!(
+            Angle::<u16>::try_from(Angle::<u32>::HALF_TURN).unwrap(),
+            Angle::<u16>::HALF_TURN
+        );
 
-        assert_eq!(Angle::<u64>::from(Angle::<u32>::QUARTER_TURN), Angle::<u64>::QUARTER_TURN);
-        assert_eq!(Angle::<u32>::from(Angle::<u64>::QUARTER_TURN), Angle::<u32>::QUARTER_TURN);
+        assert_eq!(
+            Angle::<u64>::from(Angle::<u32>::QUARTER_TURN),
+            Angle::<u64>::QUARTER_TURN
+        );
+        assert_eq!(
+            Angle::<u32>::try_from(Angle::<u64>::QUARTER_TURN).unwrap(),
+            Angle::<u32>::QUARTER_TURN
+        );
 
-        assert_eq!(Angle::<u128>::from(Angle::<u64>::FULL_TURN), Angle::<u128>::FULL_TURN);
-        assert_eq!(Angle::<u64>::from(Angle::<u128>::FULL_TURN), Angle::<u64>::FULL_TURN);
+        assert_eq!(
+            Angle::<u128>::from(Angle::<u64>::FULL_TURN),
+            Angle::<u128>::FULL_TURN
+        );
+        assert_eq!(
+            Angle::<u64>::try_from(Angle::<u128>::FULL_TURN).unwrap(),
+            Angle::<u64>::FULL_TURN
+        );
     }
 
     #[test]
     fn test_lossy_downscaling_conversions() {
-        // Test that downscaling produces expected lossy results
-        let angle = Angle::<u64>::new(1 << 63); // Halfway in u64 range
-        let down: Angle<u32> = angle.into();
-        assert_eq!(down.fraction, 1 << 31); // Halfway in u32 range
-
-        let angle = Angle::<u128>::new(1 << 127); // Halfway in u128 range
-        let down: Angle<u64> = angle.into();
-        assert_eq!(down.fraction, 1 << 63); // Halfway in u64 range
+        let angle = Angle::<u64>::new(1 << 63); // Value fits into u32 after shifting
+        let result: Result<Angle<u32>, _> = Angle::try_from(angle);
+        assert!(
+            result.is_ok(),
+            "Expected lossless conversion for 1 << 63, got {result:?}"
+        );
     }
 
     #[test]
@@ -1225,4 +1308,72 @@ mod tests {
         assert_eq!(up.fraction, 1 << 64);
     }
 
+    #[test]
+    fn test_lossy_into_u64_to_u16() {
+        let large_angle = Angle::<u64> { fraction: u64::MAX };
+        let smaller_angle: Angle<u16> = large_angle.lossy_into();
+
+        // The upper bits of `u64` are discarded, so we only expect the lower 16 bits
+        assert_eq!(smaller_angle.fraction, u16::MAX);
+    }
+
+    #[test]
+    fn test_lossy_into_u32_to_u8() {
+        let large_angle = Angle::<u32> {
+            fraction: 0x1234_ABCD,
+        };
+        let smaller_angle: Angle<u8> = large_angle.lossy_into();
+        assert_eq!(smaller_angle.fraction, 0xCD);
+    }
+
+    #[test]
+    fn test_lossy_into_and_back() {
+        let original: Angle<u32> = Angle { fraction: 1024 };
+
+        // Lossy conversion: u32 to u8
+        let lossy: Angle<u8> = original.lossy_into();
+
+        // Lossless conversion back: u8 to u32
+        let back: Angle<u32> = lossy.into(); // Use `.into()` for lossless conversion
+
+        // Verify that the lower bits are preserved during lossy conversion and back.
+        let mask = (1 << 8) - 1; // Mask for the 8-bit range
+        assert_eq!(original.fraction & mask, back.fraction);
+    }
+
+    #[test]
+    fn test_lossy_into_zero_fraction() {
+        let large_angle = Angle::<u64> { fraction: 0 };
+        let smaller_angle: Angle<u16> = large_angle.lossy_into();
+
+        // Zero should always remain zero regardless of conversion
+        assert_eq!(smaller_angle.fraction, 0);
+    }
+
+    #[test]
+    fn test_lossy_into_u128_to_u8() {
+        let large_angle = Angle::<u128> {
+            fraction: 0x1F2F_3F4F_5F6F_7F8F_FFFF_FFFF_FFFF_FFFF,
+        };
+        let smaller_angle: Angle<u8> = large_angle.lossy_into();
+        assert_eq!(smaller_angle.fraction, 0xFF);
+    }
+
+    #[test]
+    fn test_lossy_into_with_max_values() {
+        let large_angle = Angle::<u64> { fraction: u64::MAX };
+        let smaller_angle: Angle<u32> = large_angle.lossy_into();
+
+        // Only the lower 32 bits should remain
+        assert_eq!(smaller_angle.fraction, u32::MAX);
+    }
+
+    #[test]
+    fn test_lossy_into_with_non_max_values() {
+        let large_angle = Angle::<u32> {
+            fraction: 0xFEDC_BA98,
+        };
+        let smaller_angle: Angle<u16> = large_angle.lossy_into();
+        assert_eq!(smaller_angle.fraction, 0xBA98);
+    }
 }
