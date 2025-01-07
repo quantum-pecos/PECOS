@@ -21,6 +21,7 @@
 //! let radians = half_turn.to_radians();
 //! assert!((radians - std::f64::consts::PI).abs() < 1e-6);
 //! ```
+mod parse;
 
 use num_traits::{
     Bounded, FromPrimitive, ToPrimitive, Unsigned, WrappingAdd, WrappingMul, WrappingNeg,
@@ -28,6 +29,8 @@ use num_traits::{
 };
 use std::fmt;
 use std::ops::{Add, Div, Mul, Rem, Sub};
+
+pub use parse::ParseAngleError;
 
 /// Alias for `Angle` with a 32-bit unsigned integer.
 #[allow(clippy::module_name_repetitions)]
