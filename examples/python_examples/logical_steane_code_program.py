@@ -73,10 +73,70 @@ def telep(prep_basis: str, meas_basis: str) -> Main:
 
     return prog
 
-
 prog = telep("+X", "X")
 tel_qasm_str = prog.qasm()  # Convert the program to extended OpenQASM 2.0
 tel_guppy_str = prog.gen(GuppyGenerator())  # Convert the program to a guppy file
+
+
+def telep_depth(prep_basis: str, meas_basis: str, r: int = 1) -> Main:
+    """A simple example of creating a logical teleportation circuit.
+
+    Args:
+        prep_basis (str):  A string indicating what Pauli basis to prepare the state in. Acceptable inputs include:
+            "+X"/"X", "-X", "+Y"/"Y", "-Y", "+Z"/"Z", and "-Z".
+        meas_basis (str): A string indicating what Pauli basis the measure out the logical qubit in. Acceptable inputs
+            include: "X", "Y", and "Z".
+
+    Returns:
+        A logical program written in extended OpenQASM 2.0"""
+
+    prog = Main()
+
+    for i in range(3):
+        prog.extend(
+                m_bell := CReg(f"m_bell{i}", size=2),
+                m_out := CReg(f"m_out{i}", size=1),
+
+                # Input state:
+                sin := Steane(f"sin{i}", default_rus_limit=2),
+
+                smid := Steane(f"smid{i}"),
+                sout := Steane(f"sout{i}"),
+        )
+
+    for _ in range(r):
+
+        for i in range(3):
+                prog.extend(
+                    # Create Bell state
+                    smid.pz(),  # prep logical qubit in |0>/|+Z> state with repeat-until-success initialization
+                    sout.pz(),
+                    Barrier(smid.d, sout.d),
+                    smid.h(),
+                    smid.cx(sout),  # CX with control on smid and target on sout
+
+                    smid.qec(),
+                    sout.qec(),
+
+                    # prepare input state in some Pauli basis state
+                    sin.p(prep_basis, rus_limit=3),
+                    sin.qec(),
+
+                    # entangle input with one of the logical qubits of the Bell pair
+                    sin.cx(smid),
+                    sin.h(),
+
+                    # Bell measurement
+                    sin.mz(m_bell[0]),
+                    smid.mz(m_bell[1]),
+
+                    # Corrections
+                    If(m_bell[1] == 0).Then(sout.x()),
+                    If(m_bell[0] == 0).Then(sout.z()),
+                )
+
+
+    return prog
 
 def t_gate(prep_basis: str, meas_basis: str) -> Main:
     """A simple example of teleporting a T gate on a state.
