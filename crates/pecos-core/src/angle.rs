@@ -29,6 +29,14 @@ use num_traits::{
 use std::fmt;
 use std::ops::{Add, Div, Mul, Rem, Sub};
 
+/// Alias for `Angle` with an 8-bit unsigned integer.
+#[allow(clippy::module_name_repetitions)]
+pub type Angle8 = Angle<u8>;
+
+/// Alias for `Angle` with a 16-bit unsigned integer.
+#[allow(clippy::module_name_repetitions)]
+pub type Angle16 = Angle<u16>;
+
 /// Alias for `Angle` with a 32-bit unsigned integer.
 #[allow(clippy::module_name_repetitions)]
 pub type Angle32 = Angle<u32>;
@@ -216,28 +224,6 @@ where
     }
 }
 
-// // convert from Angle<u32> to Angle<u64>
-// // This requires up-scaling to the larger range
-// // [0, 2^32) to [0, 2^64)
-// // This should be lossless and preserve the same notion of angles
-// impl From<Angle<u32>> for Angle<u64> {
-//     fn from(angle: Angle<u32>) -> Self {
-//         let scaled = u64::from(angle.fraction) << 32;
-//         Self { fraction: scaled }
-//     }
-// }
-//
-// // convert from Angle<u64> to Angle<u32>
-// // This requires down-scaling to the smaller range
-// // [0, 2^64) to [0, 2^32)
-// // This is lossy, but maintains the same notion of angles.
-// impl From<Angle<u64>> for Angle<u32> {
-//     fn from(angle: Angle<u64>) -> Self {
-//         let scaled = (angle.fraction >> 32) as u32;
-//         Self { fraction: scaled }
-//     }
-// }
-
 macro_rules! impl_safe_angle_conversions {
     ($($smaller:ty => $larger:ty),*) => {
         $(
@@ -325,20 +311,6 @@ pub trait LossyConvert: Sized {
         LossyInto::<T>::lossy_into(self)
     }
 }
-
-// impl From<Angle<u64>> for Angle<u128> {
-//     fn from(angle: Angle<u64>) -> Self {
-//         let scaled = u128::from(angle.fraction) << 64;
-//         Self { fraction: scaled }
-//     }
-// }
-//
-// impl From<Angle<u128>> for Angle<u64> {
-//     fn from(angle: Angle<u128>) -> Self {
-//         let scaled = (angle.fraction >> 64) as u64;
-//         Self { fraction: scaled }
-//     }
-// }
 
 macro_rules! impl_angle_constants {
     ($t:ty) => {
