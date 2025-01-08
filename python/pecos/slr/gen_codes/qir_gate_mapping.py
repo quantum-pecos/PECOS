@@ -11,6 +11,7 @@
 
 from dataclasses import dataclass
 from enum import Enum
+import numpy
 from typing import Callable
 
 from pecos.qeclib import qubit as q
@@ -51,6 +52,7 @@ class QIRGateMetadata(Enum):
     R1XY = QG("u1q")
     RZZ = QG("rzz")
     SZZ = QG("zz")
+    Prep = QG("reset")
 
     # These dagger/adjoint gates are generated with slightly different names
     Sdg = QG("s__adj")
@@ -82,6 +84,11 @@ class QIRGateMetadata(Enum):
         lambda f4dg: [
             q.SZ(f4dg.qargs[0]),
             q.H(f4dg.qargs[0]),
+        ]
+    )
+    SYdg = QG.decompose(
+        lambda sydg: [
+            q.RY[-numpy.pi/2](sydg.qargs[0])
         ]
     )
 
