@@ -1,7 +1,15 @@
-//! String parsing implementation for angles
+//! String parsing implementation for angles.
 //!
-//! Provides functionality to parse angles from string representations of radians,
-//! including pi-based expressions.
+//! This module provides functionality to parse angles from string representations,
+//! with support for both radian-based and π-based expressions. The parser provides:
+//!
+//! - Exact ratio arithmetic for π-based expressions
+//! - Support for decimal values in radians
+//! - Automatic normalization to [0, 2π) range
+//! - Clear error reporting for various failure modes
+//!
+//! The implementation prioritizes exact representation where possible, using ratio
+//! arithmetic for π-based expressions to avoid floating point imprecision.
 
 use super::Angle;
 use num_traits::{
@@ -12,19 +20,25 @@ use std::fmt::Debug;
 use std::ops::Rem;
 use std::str::FromStr;
 
-/// Error types for angle parsing
+/// Errors that can occur when parsing angle strings.
+///
+/// This error type distinguishes between different failure modes:
+/// - Invalid format (e.g., malformed expressions)
+/// - Numeric parsing failures (invalid numerators/denominators)
+/// - Mathematical errors (division by zero)
+/// - Range errors (values too large to represent)
 #[allow(clippy::module_name_repetitions)]
 #[derive(Debug, PartialEq, Eq)]
 pub enum ParseAngleError {
-    /// Input string format was invalid
+    /// The input string format was invalid
     InvalidFormat,
-    /// Failed to parse numerator
+    /// The numerator portion could not be parsed as a number
     InvalidNumerator,
-    /// Failed to parse denominator
+    /// The denominator portion could not be parsed as a number
     InvalidDenominator,
-    /// Denominator was zero
+    /// The denominator was zero, which would result in division by zero
     DivisionByZero,
-    /// The resulting angle would be too large to represent
+    /// The resulting angle value would be too large to represent in the target type
     Overflow,
 }
 
@@ -87,27 +101,41 @@ where
 {
     /// Creates an angle from a string representation of radians.
     ///
-    /// Supports formats like:
-    /// - "π" or "pi" or "PI"
-    /// - "π/2" or "pi/2"
-    /// - "3π" or "3pi"
-    /// - "3π/2" or "3pi/2"
-    /// - "3 π / 2" or "3*π/2"
-    /// - "1.5" or "-1.5" (raw radian values)
+    /// # Format
+    /// Supports several formats for angle specification:
+    /// - "π" or "pi" or "PI": Represents π radians (half turn)
+    /// - "π/2" or "pi/2": Fractions of π
+    /// - "3π" or "3pi": Multiples of π
+    /// - "3π/2" or "3pi/2": Complex fractions of π
+    /// - "3 π / 2" or "3*π/2": Spaces and * are allowed and ignored
+    /// - "1.5" or "-1.5": Raw radian values
+    ///
+    /// # Normalization
+    /// All angles are normalized to the range [0, 2π):
+    /// - Negative angles wrap around (e.g., "-π/2" becomes "3π/2")
+    /// - Values greater than 2π wrap around modulo 2π
+    ///
+    /// # Precision
+    /// - For pi-based fractions (like "π/2"), uses exact ratio arithmetic
+    /// - For decimal values, uses floating point conversion
     ///
     /// # Examples
     /// ```
     /// use pecos_core::Angle64;
     /// let three_halves_pi = Angle64::from_str_radians("3π/2").unwrap();
     /// assert_eq!(three_halves_pi, Angle64::THREE_QUARTERS_TURN);
+    ///
+    /// // Negative angles wrap around
+    /// let neg_half_pi = Angle64::from_str_radians("-π/2").unwrap();
+    /// assert_eq!(neg_half_pi, Angle64::THREE_QUARTERS_TURN);
     /// ```
     ///
     /// # Errors
     /// Returns `ParseAngleError` if:
-    /// - The string format is invalid
-    /// - The numerator or denominator can't be parsed
+    /// - The string format is invalid (e.g., malformed expressions)
+    /// - The numerator or denominator can't be parsed as numbers
     /// - The denominator is zero
-    /// - The resulting angle would overflow
+    /// - The resulting angle would overflow the target type
     #[allow(clippy::cast_precision_loss)]
     pub fn from_str_radians(s: &str) -> Result<Self, ParseAngleError> {
         println!("Parsing string: {s}");
