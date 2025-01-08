@@ -138,9 +138,7 @@ where
     /// - The resulting angle would overflow the target type
     #[allow(clippy::cast_precision_loss)]
     pub fn from_str_radians(s: &str) -> Result<Self, ParseAngleError> {
-        println!("Parsing string: {s}");
         let s = s.trim().replace([' ', '*'], "").to_lowercase();
-        println!("After trim and lowercase: {s}");
 
         // First check if it's just "pi" or "π" or "-pi" or "-π"
         if s == "pi" || s == "π" {
@@ -162,30 +160,22 @@ where
 
         // Split into numerator and denominator parts
         let (num_part, den_part) = if let Some((n, d)) = s.split_once('/') {
-            println!("Split into num: {n}, den: {d}");
             (n, Some(d))
         } else {
-            println!("No split, full value: {s}");
             (s.as_str(), None)
         };
 
         // Parse numerator, handling pi/π multiplier
         let (num_val, has_pi) = if num_part.contains("pi") || num_part.contains('π') {
             let n = num_part.replace("pi", "").replace('π', "");
-            println!("Pi case, n after replacement: '{n}'");
             let num = if n.is_empty() {
-                println!("Empty n, using 1");
                 1
             } else if n == "-" {
-                println!("Just minus sign, using -1");
                 -1
             } else {
                 // Try parsing - if it fails, determine if it's invalid format or overflow
                 match n.parse::<i64>() {
-                    Ok(val) => {
-                        println!("Parsed i64: {val}");
-                        val
-                    }
+                    Ok(val) => val,
                     Err(e) => {
                         println!("Failed to parse i64: {e}");
                         // Check if it's a valid number format that's just too big
@@ -211,7 +201,6 @@ where
             }
             return Err(ParseAngleError::InvalidNumerator);
         };
-        println!("Parsed num_val: {num_val}, has_pi: {has_pi}");
 
         // Parse denominator
         let den_val = if let Some(d) = den_part {
@@ -227,7 +216,6 @@ where
         } else {
             1
         };
-        println!("Parsed den_val: {den_val}");
 
         // Check for potential overflow in multiplication when has_pi is true
         if has_pi && (num_val.checked_mul(2).is_none() || den_val.checked_mul(2).is_none()) {
@@ -235,16 +223,13 @@ where
         }
 
         // Convert to angle using appropriate method
-        let result = if has_pi {
+
+        if has_pi {
             Ok(Self::from_turn_ratio(num_val, den_val * 2))
         } else {
             let radians = num_val as f64 / den_val as f64;
-            println!("Converting non-pi case to radians: {radians}");
             Ok(Self::from_radians(radians))
-        };
-
-        println!("Final result: {result:?}");
-        result
+        }
     }
 }
 #[cfg(test)]
