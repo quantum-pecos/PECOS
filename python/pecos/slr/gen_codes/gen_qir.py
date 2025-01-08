@@ -39,6 +39,7 @@ from pecos.slr.cops import (AND,
                             OR,
                             PLUS,
                             RSHIFT,
+                            SET,
                             XOR,
                             UnaryOp)
 from pecos.slr.gen_codes.generator import Generator
@@ -157,6 +158,13 @@ class CRegFuncs:
             "get_int_from_creg",
         )
 
+        self.set_creg_func = QIRFunc(
+            module,
+            types.voidType,
+            [types.boolType.as_pointer(), types.intType],
+            "set_creg_to_int",
+        )
+
         self.int_result_func = QIRFunc(
             module,
             types.voidType,
@@ -232,21 +240,21 @@ class QIRGenerator(Generator):
             return lambda l, r: self._builder.icmp_signed(op, l, r)
         
         self._op_map: dict = {
-            EQUIV: icmp_signed_closure("=="),
-            NEQUIV: icmp_signed_closure("!="),
-            LT: icmp_signed_closure("<"),
-            GT: icmp_signed_closure(">"),
-            LE: icmp_signed_closure("<="),
-            GE: icmp_signed_closure(">="),
-            MUL: self._builder.mul,
-            DIV: self._builder.udiv,
-            XOR: self._builder.xor,
-            AND: self._builder.and_,
-            OR: self._builder.or_,
-            PLUS: self._builder.add,
-            MINUS: self._builder.sub,
-            RSHIFT: self._builder.lshr,
-            LSHIFT: self._builder.shl,
+            "==": icmp_signed_closure("=="),
+            "!=": icmp_signed_closure("!="),
+            "<": icmp_signed_closure("<"),
+            ">": icmp_signed_closure(">"),
+            "<=": icmp_signed_closure("<="),
+            ">=": icmp_signed_closure(">="),
+            "*": self._builder.mul,
+            "/": self._builder.udiv,
+            "^": self._builder.xor,
+            "&": self._builder.and_,
+            "|": self._builder.or_,
+            "+": self._builder.add,
+            "-": self._builder.sub,
+            ">>": self._builder.lshr,
+            "<<": self._builder.shl,
         } 
 
     def create_creg(self, creg: CReg):
@@ -375,21 +383,44 @@ class QIRGenerator(Generator):
             rhs = self._creg_funcs.creg_to_int_func.create_call(self._builder, [rhs_reg_fetch], "")
         return self._builder.icmp_signed(cond.symbol, lhs, rhs)
 
+    def _convert_set_op(self, op):
+        """Converts an slr assignment operation to a QIR one"""
+        lhs = self._creg_dict[op.left.sym][0]
+        #lhs = self._creg_funcs.creg_to_int_func.create_call(self._builder, [reg_fetch], "")
+        if isinstance(op.right, int):
+            rhs = ir.Constant(self._types.intType, op.right)
+        elif isinstance(op.right, BinOp):
+            rhs = self._convert_binary_op(op.right)
+        elif isinstance(op.right, UnaryOp):
+            rhs = self._convert_unary_op(op.right)
+        else:
+            rhs_reg_fetch = self._creg_dict[op.right.sym][0]
+            rhs = self._creg_funcs.creg_to_int_func.create_call(self._builder, [rhs_reg_fetch], "")
+        return self._creg_funcs.set_creg_func.create_call(self._builder, [lhs, rhs], "")
+
     def _convert_binary_op(self, op):
         """Converts an SLR binary operation to a QIR arithmetic instruction"""
         
         lhs, rhs = None, None
         if isinstance(op.left, int):
             rhs = ir.Constant(self._types.intType, op.left)
+        elif isinstance(op.left, BinOp):
+            rhs = self._convert_binary_op(op.left)
+        elif isinstance(op.left, UnaryOp):
+            rhs = self._convert_unary_op(op.left)
         else:
             reg_fetch = self._creg_dict[op.left.sym][0]
             lhs = self._creg_funcs.creg_to_int_func.create_call(self._builder, [reg_fetch], "")
         if isinstance(op.right, int):
             rhs = ir.Constant(self._types.intType, op.right)
+        elif isinstance(op.right, BinOp):
+            rhs = self._convert_binary_op(op.right)
+        elif isinstance(op.right, UnaryOp):
+            rhs = self._convert_unary_op(op.right)
         else:
             rhs_reg_fetch = self._creg_dict[op.right.sym][0]
             rhs = self._creg_funcs.creg_to_int_func.create_call(self._builder, [rhs_reg_fetch], "")
-        self._op_map[op](lhs, rhs)
+        return self._op_map[op.symbol](lhs, rhs)
 
     def _convert_unary_op(self, op):
         """Converts a unary negation operation to QIR binary instructions via llvmlite helper"""
@@ -421,10 +452,12 @@ class QIRGenerator(Generator):
             case Permute():
                 # TODO: Ask Ciaran about what this actually does
                 raise NotImplementedError("Permute not implemented in QIR")
+            case SET():
+                self._convert_set_op(op)
             case BinOp():                
-                op_str = self._convert_binary_op(op)
+                self._convert_binary_op(op)
             case UnaryOp():
-               op_str = self._convert_unary_op(op)
+                self._convert_unary_op(op)
             case Vars():
                 raise NotImplementedError("Block Vars not implemented in QIR")
             case CReg():

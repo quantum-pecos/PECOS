@@ -155,3 +155,16 @@ def test_control_flow_qir():
     )
     qir = SlrConverter(prog).qir()
     assert qir == "intentionally wrong"
+
+def test_plus_qir():
+    """Test a program with addition compiling into QIR."""
+
+    prog = Main(
+        q := QReg("q", 2),
+        m := CReg("m", 2),
+        n := CReg("n", 2),
+        o := CReg("o", 2),
+        o.set(m + 1)
+    )
+    qir = SlrConverter(prog).qir()
+    assert qir == "intentionally wrong"
