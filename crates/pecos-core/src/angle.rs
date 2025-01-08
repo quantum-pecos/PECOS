@@ -27,7 +27,7 @@ use num_traits::{
     WrappingSub, Zero,
 };
 use std::fmt;
-use std::ops::{Add, Div, Mul, Rem, Sub};
+use std::ops::{Add, AddAssign, Div, DivAssign, Mul, MulAssign, Rem, Sub, SubAssign};
 
 /// Alias for `Angle` with an 8-bit unsigned integer.
 #[allow(clippy::module_name_repetitions)]
@@ -189,9 +189,6 @@ where
     /// - The numerator is too large to represent in the underlying type.
     #[must_use]
     pub fn from_turn_ratio(mut numerator: i64, mut denominator: i64) -> Self {
-        // Early exit for denominator == 0.
-        assert_ne!(denominator, 0, "Denominator cannot be zero");
-
         // Normalize denominator and handle full-turn case inline.
         if denominator < 0 {
             numerator = -numerator;
@@ -276,40 +273,38 @@ impl_safe_angle_conversions!(
     u64 => u128
 );
 
-/// Trait for lossy conversions between types.
-pub trait LossyInto<T>: Sized {
-    fn lossy_into(self) -> T;
-}
-
 /// Macro to generate `LossyInto` implementations.
 macro_rules! impl_lossy_into {
-    ($($smaller:ty, $larger:ty),*$(,)?) => {
+    ($($larger:ty => $smaller:ty),*$(,)?) => {
         $(
             impl LossyInto<Angle<$smaller>> for Angle<$larger> {
                 #[allow(clippy::cast_possible_truncation)]
                 fn lossy_into(self) -> Angle<$smaller> {
-                    let mask = (1 << <$smaller>::BITS) - 1; // Mask to retain only lower bits
-                    let scaled = self.fraction & mask;      // Apply the mask
-                    Angle { fraction: scaled as $smaller } // Cast to smaller type
+                    let mask = (1 << <$smaller>::BITS) - 1;
+                    let scaled = self.fraction & mask;
+                    Angle { fraction: scaled as $smaller }
                 }
             }
         )*
     };
 }
 
-// Apply the macro to define lossy conversions.
 impl_lossy_into!(
-    u8, u16, u8, u32, u8, u64, u8, u128, u16, u32, u16, u64, u16, u128, u32, u64, u32, u128, u64,
-    u128,
+    u16 => u8,
+    u32 => u8,
+    u64 => u8,
+    u128 => u8,
+    u32 => u16,
+    u64 => u16,
+    u128 => u16,
+    u64 => u32,
+    u128 => u32,
+    u128 => u64
 );
 
-pub trait LossyConvert: Sized {
-    fn lossy_into<T>(self) -> T
-    where
-        Self: LossyInto<T>,
-    {
-        LossyInto::<T>::lossy_into(self)
-    }
+/// Trait for lossy conversions between types.
+pub trait LossyInto<T>: Sized {
+    fn lossy_into(self) -> T;
 }
 
 macro_rules! impl_angle_constants {
@@ -349,6 +344,14 @@ where
     }
 }
 
+/// Implements addition assignment for angles, with modular wrapping.
+impl<T: Unsigned + WrappingAdd + WrappingSub + Copy> AddAssign for Angle<T> {
+    fn add_assign(&mut self, rhs: Self) {
+        let sum = self.fraction.wrapping_add(&rhs.fraction);
+        self.fraction = sum;
+    }
+}
+
 /// Implements subtraction for angles, with modular wrapping.
 impl<T: Unsigned + WrappingAdd + WrappingSub + Copy> Sub for Angle<T> {
     type Output = Self;
@@ -357,6 +360,13 @@ impl<T: Unsigned + WrappingAdd + WrappingSub + Copy> Sub for Angle<T> {
         Self {
             fraction: self.fraction.wrapping_sub(&other.fraction),
         }
+    }
+}
+
+/// Implements subtraction assignment for angles, with modular wrapping
+impl<T: Unsigned + WrappingAdd + WrappingSub + Copy> SubAssign for Angle<T> {
+    fn sub_assign(&mut self, rhs: Self) {
+        self.fraction = self.fraction.wrapping_sub(&rhs.fraction);
     }
 }
 
@@ -371,6 +381,13 @@ impl<T: Unsigned + Copy + WrappingMul> Mul<T> for Angle<T> {
     }
 }
 
+/// Implements scalar multiplication assignment for angles.
+impl<T: Unsigned + Copy + WrappingMul> MulAssign<T> for Angle<T> {
+    fn mul_assign(&mut self, scalar: T) {
+        self.fraction = self.fraction.wrapping_mul(&scalar);
+    }
+}
+
 /// Implements scalar division for angles.
 impl<T: Unsigned + Copy + FromPrimitive> Div<T> for Angle<T> {
     type Output = Self;
@@ -379,6 +396,13 @@ impl<T: Unsigned + Copy + FromPrimitive> Div<T> for Angle<T> {
         Self {
             fraction: self.fraction / scalar,
         }
+    }
+}
+
+// Implement DivAssign for Angle
+impl<T: Unsigned + Copy + FromPrimitive> DivAssign<T> for Angle<T> {
+    fn div_assign(&mut self, scalar: T) {
+        self.fraction = self.fraction / scalar;
     }
 }
 
@@ -398,6 +422,7 @@ impl<T: Unsigned + ToPrimitive + Bounded + Copy> fmt::Display for Angle<T> {
 
 #[cfg(test)]
 mod tests {
+    use super::LossyInto;
     use super::*;
     use rand::Rng;
     use std::f64::consts::{FRAC_PI_2, FRAC_PI_4, PI, TAU};
@@ -494,6 +519,13 @@ mod tests {
         assert!(zero.is_zero());
     }
 
+    #[should_panic(expected = "attempt to divide by zero")]
+    #[test]
+    fn test_division_by_zero() {
+        let angle = Angle64::HALF_TURN;
+        let _ = angle / 0u64;
+    }
+
     #[test]
     fn test_scalar_operations() {
         let quarter = Angle64::QUARTER_TURN;
@@ -546,13 +578,83 @@ mod tests {
     }
 
     #[test]
+    fn test_add_assign() {
+        let mut angle = Angle::<u64>::ZERO;
+        angle += Angle::<u64>::QUARTER_TURN;
+        assert_eq!(angle.fraction, Angle::<u64>::QUARTER_TURN.fraction);
+
+        angle += Angle::<u64>::HALF_TURN;
+        assert_eq!(angle.fraction, Angle::<u64>::THREE_QUARTERS_TURN.fraction);
+    }
+
+    #[test]
+    fn test_sub_assign() {
+        let mut angle = Angle::<u64>::HALF_TURN;
+        angle -= Angle::<u64>::QUARTER_TURN;
+        assert_eq!(angle.fraction, Angle::<u64>::QUARTER_TURN.fraction);
+    }
+
+    #[test]
+    fn test_mul_assign() {
+        let mut angle = Angle::<u64>::QUARTER_TURN;
+        angle *= 2u64;
+        assert_eq!(angle.fraction, Angle::<u64>::HALF_TURN.fraction);
+
+        angle *= 2u64;
+        assert!(angle.is_zero()); // FULL_TURN wraps to ZERO
+    }
+
+    #[test]
+    fn test_div_assign() {
+        let mut angle = Angle::<u64>::HALF_TURN; // A non-zero starting point
+        angle /= 2u64; // Should result in a quarter turn
+        assert_eq!(
+            angle.fraction,
+            Angle::<u64>::QUARTER_TURN.fraction,
+            "not getting 1/2 turn / 2 ==  1/4 turn"
+        );
+
+        angle /= 2u64; // Should result in an eighth turn
+        let expected = Angle::from_turn_ratio(1, 8); // 1/8 of a turn
+        assert_eq!(
+            angle.fraction, expected.fraction,
+            "not getting 1 / 4 turn / 2 ==  1/8 turn"
+        );
+    }
+
+    #[should_panic(expected = "attempt to divide by zero")]
+    #[test]
+    fn test_div_assign_by_zero() {
+        let mut angle = Angle64::HALF_TURN;
+        angle /= 0u64;
+    }
+
+    #[test]
+    fn test_assign_operations_chaining() {
+        let mut angle: Angle<u64> = Angle::<u64>::QUARTER_TURN;
+        angle *= 2u64;
+        assert_eq!(
+            angle.fraction,
+            Angle::<u64>::HALF_TURN.fraction,
+            "not getting 1/4 turn * 2 ==  1/2 turn"
+        );
+
+        angle /= 2u64;
+        assert_eq!(
+            angle.fraction,
+            Angle::<u64>::QUARTER_TURN.fraction,
+            "not getting 1/2 turn / 2 ==   1/4 turn"
+        );
+    }
+
+    #[test]
     fn test_accumulation() {
         let quarter = Angle64::QUARTER_TURN;
 
         // Test accumulation of quarter turns
         let mut angle = Angle64::ZERO;
         for _ in 0..4 {
-            angle = angle + quarter;
+            angle += quarter;
         }
         assert_eq!(angle.fraction, Angle64::ZERO.fraction);
 
@@ -686,7 +788,7 @@ mod tests {
         let mut angle = Angle64::ZERO;
         for _ in 0..8 {
             // Two full rotations
-            angle = angle + quarter;
+            angle += quarter;
         }
         assert_eq!(angle.fraction, Angle64::ZERO.fraction);
     }
@@ -963,7 +1065,7 @@ mod tests {
     }
 
     #[test]
-    #[should_panic(expected = "Denominator cannot be zero")]
+    #[should_panic(expected = "attempt to divide by zero")]
     fn test_from_turn_ratio_panic_on_zero_denominator() {
         let _ = Angle64::from_turn_ratio(1, 0);
     }
