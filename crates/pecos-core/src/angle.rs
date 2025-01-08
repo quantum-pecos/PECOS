@@ -429,7 +429,6 @@ mod tests {
     use super::*;
     use rand::Rng;
     use std::f64::consts::{FRAC_PI_2, FRAC_PI_4, PI, TAU};
-    use rand::Rng;
 
     // Basic Construction and Properties
     #[test]

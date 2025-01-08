@@ -5,13 +5,15 @@
 
 use super::Angle;
 use num_traits::{
-    Bounded, FromPrimitive, ToPrimitive, Unsigned, WrappingAdd, WrappingMul, WrappingNeg,
+    Bounded, FromPrimitive, PrimInt, ToPrimitive, Unsigned, WrappingAdd, WrappingMul, WrappingNeg,
     WrappingSub, Zero,
 };
+use std::fmt::Debug;
 use std::ops::Rem;
 use std::str::FromStr;
 
 /// Error types for angle parsing
+#[allow(clippy::module_name_repetitions)]
 #[derive(Debug, PartialEq, Eq)]
 pub enum ParseAngleError {
     /// Input string format was invalid
@@ -43,16 +45,20 @@ impl std::error::Error for ParseAngleError {}
 impl<T> FromStr for Angle<T>
 where
     T: Unsigned
-    + Copy
-    + ToPrimitive
-    + FromPrimitive
-    + Zero
-    + Bounded
-    + WrappingAdd
-    + WrappingSub
-    + WrappingMul
-    + WrappingNeg
-    + Rem<Output = T>,
+        + Copy
+        + ToPrimitive
+        + FromPrimitive
+        + Zero
+        + Bounded
+        + WrappingAdd
+        + WrappingSub
+        + WrappingMul
+        + WrappingNeg
+        + Rem<Output = T>
+        + PrimInt
+        + Default
+        + Debug
+        + TryFrom<u128>,
 {
     type Err = ParseAngleError;
 
@@ -64,16 +70,20 @@ where
 impl<T> Angle<T>
 where
     T: Unsigned
-    + Copy
-    + ToPrimitive
-    + FromPrimitive
-    + Zero
-    + Bounded
-    + WrappingAdd
-    + WrappingSub
-    + WrappingMul
-    + WrappingNeg
-    + Rem<Output = T>,
+        + Copy
+        + ToPrimitive
+        + FromPrimitive
+        + Zero
+        + Bounded
+        + WrappingAdd
+        + WrappingSub
+        + WrappingMul
+        + WrappingNeg
+        + Rem<Output = T>
+        + PrimInt
+        + Default
+        + Debug
+        + TryFrom<u128>,
 {
     /// Creates an angle from a string representation of radians.
     ///
@@ -83,6 +93,7 @@ where
     /// - "3π" or "3pi"
     /// - "3π/2" or "3pi/2"
     /// - "3 π / 2" or "3*π/2"
+    /// - "1.5" or "-1.5" (raw radian values)
     ///
     /// # Examples
     /// ```
@@ -97,76 +108,121 @@ where
     /// - The numerator or denominator can't be parsed
     /// - The denominator is zero
     /// - The resulting angle would overflow
+    #[allow(clippy::cast_precision_loss)]
     pub fn from_str_radians(s: &str) -> Result<Self, ParseAngleError> {
-        let s = s.trim().replace(' ', "").replace('*', "").to_lowercase();
+        println!("Parsing string: {s}");
+        let s = s.trim().replace([' ', '*'], "").to_lowercase();
+        println!("After trim and lowercase: {s}");
 
+        // First check if it's just "pi" or "π" or "-pi" or "-π"
         if s == "pi" || s == "π" {
-            return Ok(Self::new(T::max_value() / T::from_u8(2).unwrap()));
+            return Ok(Self::from_radians(std::f64::consts::PI));
+        } else if s == "-pi" || s == "-π" {
+            return Ok(Self::from_radians(-std::f64::consts::PI));
         }
 
+        // If we have a decimal point, parse as floating point radians
+        if s.contains('.') {
+            let value = s
+                .parse::<f64>()
+                .map_err(|_| ParseAngleError::InvalidNumerator)?;
+            if !value.is_finite() {
+                return Err(ParseAngleError::Overflow);
+            }
+            return Ok(Self::from_radians(value));
+        }
+
+        // Split into numerator and denominator parts
         let (num_part, den_part) = if let Some((n, d)) = s.split_once('/') {
+            println!("Split into num: {n}, den: {d}");
             (n, Some(d))
         } else {
+            println!("No split, full value: {s}");
             (s.as_str(), None)
         };
 
-        let (num, has_pi) = if num_part.contains("pi") || num_part.contains('π') {
+        // Parse numerator, handling pi/π multiplier
+        let (num_val, has_pi) = if num_part.contains("pi") || num_part.contains('π') {
             let n = num_part.replace("pi", "").replace('π', "");
-            let num = if n.is_empty() || n == "-" {
-                if n == "-" { -1.0 } else { 1.0 }
+            println!("Pi case, n after replacement: '{n}'");
+            let num = if n.is_empty() {
+                println!("Empty n, using 1");
+                1
+            } else if n == "-" {
+                println!("Just minus sign, using -1");
+                -1
             } else {
-                n.parse::<f64>().map_err(|_| ParseAngleError::InvalidNumerator)?
+                // Try parsing - if it fails, determine if it's invalid format or overflow
+                match n.parse::<i64>() {
+                    Ok(val) => {
+                        println!("Parsed i64: {val}");
+                        val
+                    }
+                    Err(e) => {
+                        println!("Failed to parse i64: {e}");
+                        // Check if it's a valid number format that's just too big
+                        let is_valid = n.starts_with('-')
+                            && n[1..].chars().all(|c| c.is_ascii_digit())
+                            || n.chars().all(|c| c.is_ascii_digit());
+                        if is_valid {
+                            return Err(ParseAngleError::Overflow);
+                        }
+                        return Err(ParseAngleError::InvalidNumerator);
+                    }
+                }
             };
             (num, true)
+        } else if let Ok(val) = num_part.parse::<i64>() {
+            (val, false)
         } else {
-            (num_part.parse::<f64>().map_err(|_| ParseAngleError::InvalidNumerator)?, false)
-        };
-
-        let den = if let Some(d) = den_part {
-            let den = d.parse::<f64>().map_err(|_| ParseAngleError::InvalidDenominator)?;
-            if den == 0.0 {
-                return Err(ParseAngleError::DivisionByZero);
+            let is_valid = num_part.starts_with('-')
+                && num_part[1..].chars().all(|c| c.is_ascii_digit())
+                || num_part.chars().all(|c| c.is_ascii_digit());
+            if is_valid {
+                return Err(ParseAngleError::Overflow);
             }
-            den
+            return Err(ParseAngleError::InvalidNumerator);
+        };
+        println!("Parsed num_val: {num_val}, has_pi: {has_pi}");
+
+        // Parse denominator
+        let den_val = if let Some(d) = den_part {
+            match d.parse::<i64>() {
+                Ok(den) => {
+                    if den == 0 {
+                        return Err(ParseAngleError::DivisionByZero);
+                    }
+                    den
+                }
+                Err(_) => return Err(ParseAngleError::InvalidDenominator),
+            }
         } else {
-            1.0
+            1
+        };
+        println!("Parsed den_val: {den_val}");
+
+        // Check for potential overflow in multiplication when has_pi is true
+        if has_pi && (num_val.checked_mul(2).is_none() || den_val.checked_mul(2).is_none()) {
+            return Err(ParseAngleError::Overflow);
+        }
+
+        // Convert to angle using appropriate method
+        let result = if has_pi {
+            Ok(Self::from_turn_ratio(num_val, den_val * 2))
+        } else {
+            let radians = num_val as f64 / den_val as f64;
+            println!("Converting non-pi case to radians: {radians}");
+            Ok(Self::from_radians(radians))
         };
 
-        let radians = if has_pi {
-            num * std::f64::consts::PI / den
-        } else {
-            num / den
-        };
-
-        let max_value = T::max_value()
-            .to_f64()
-            .ok_or(ParseAngleError::Overflow)?;
-
-        let normalized = radians.rem_euclid(std::f64::consts::TAU);
-        let fraction = (normalized / std::f64::consts::TAU * max_value).round();
-
-        // Ensure the fraction aligns perfectly with constants
-        let fraction = if fraction > max_value {
-            max_value
-        } else if fraction < 0.0 {
-            0.0
-        } else {
-            fraction
-        };
-
-        T::from_f64(fraction)
-            .map(Self::new)
-            .ok_or(ParseAngleError::Overflow)
+        println!("Final result: {result:?}");
+        result
     }
-
-
 }
-
 #[cfg(test)]
 mod tests {
     use super::*;
     use crate::Angle64;
-    use std::f64::consts::{FRAC_PI_2, PI};
 
     #[test]
     fn test_parse_basic_pi() {
@@ -267,20 +323,34 @@ mod tests {
     #[test]
     fn test_parse_edge_cases() {
         // Very large numbers
-        assert!(Angle64::from_str_radians(&format!("{}pi", i64::MAX)).is_err());
+        assert!(
+            Angle64::from_str_radians(&format!("{}pi", i64::MAX)).is_err(),
+            "failed to deal with large numbers"
+        );
 
-        // Negative numbers
+        // Negative numbers - Note: -pi/2 gets normalized to 3pi/2
         let neg_quarter = Angle64::from_str_radians("-pi/2").unwrap();
-        assert!((neg_quarter.to_radians() + FRAC_PI_2).abs() < 1e-10);
+        assert_eq!(
+            neg_quarter,
+            Angle64::THREE_QUARTERS_TURN,
+            "failed to handle negative numbers"
+        );
 
         // Zero
-        assert!(Angle64::from_str_radians("0").unwrap().is_zero());
-        assert!(Angle64::from_str_radians("0pi").unwrap().is_zero());
+        assert!(
+            Angle64::from_str_radians("0").unwrap().is_zero(),
+            "failed to handle zero (0)"
+        );
+        assert!(
+            Angle64::from_str_radians("0pi").unwrap().is_zero(),
+            "failed to handle zero (0pi)"
+        );
 
         // Just negative sign
         assert_eq!(
-            Angle64::from_str_radians("-pi").unwrap().to_radians(),
-            -PI
+            Angle64::from_str_radians("-pi").unwrap(),
+            Angle64::HALF_TURN,
+            "failed to handle -pi"
         );
     }
 }
