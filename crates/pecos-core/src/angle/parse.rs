@@ -520,7 +520,7 @@ mod tests {
     }
 
     #[test]
-    fn test_invalid_formats_mutiple_pi() {
+    fn test_invalid_formats_multiple_pi() {
         // Multiple pi symbols
         assert_eq!(
             Angle64::from_str_radians("pipi"),
