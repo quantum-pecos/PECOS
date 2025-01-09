@@ -30,15 +30,11 @@ use std::str::FromStr;
 #[allow(clippy::module_name_repetitions)]
 #[derive(Debug, PartialEq, Eq)]
 pub enum ParseAngleError {
-    /// The input string format was invalid
+    /// Covers all syntax errors (e.g., malformed input, empty string, multiple π symbols)
     InvalidFormat,
-    /// The numerator portion could not be parsed as a number
-    InvalidNumerator,
-    /// The denominator portion could not be parsed as a number
-    InvalidDenominator,
-    /// The denominator was zero, which would result in division by zero
+    /// Division by zero in fractions
     DivisionByZero,
-    /// The resulting angle value would be too large to represent in the target type
+    /// Angle value exceeds the representable range
     Overflow,
 }
 
@@ -46,8 +42,6 @@ impl std::fmt::Display for ParseAngleError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
             Self::InvalidFormat => write!(f, "invalid angle format"),
-            Self::InvalidNumerator => write!(f, "invalid numerator"),
-            Self::InvalidDenominator => write!(f, "invalid denominator"),
             Self::DivisionByZero => write!(f, "division by zero"),
             Self::Overflow => write!(f, "angle too large to represent"),
         }
@@ -174,6 +168,20 @@ where
     pub fn from_str_radians(s: &str) -> Result<Self, ParseAngleError> {
         let s = s.trim().replace([' ', '*'], "").to_lowercase();
 
+        if s.is_empty() {
+            return Err(ParseAngleError::InvalidFormat);
+        }
+
+        // Check if the input starts with "/", ends with "/", or starts with "-/"
+        if s.starts_with('/') || s.ends_with('/') || s.starts_with("-/") {
+            return Err(ParseAngleError::InvalidFormat);
+        }
+
+        // Check for multiple π symbols (existing logic)
+        if s.matches('π').count() > 1 || s.matches("pi").count() > 1 {
+            return Err(ParseAngleError::InvalidFormat);
+        }
+
         // First check if it's just "pi" or "π" or "-pi" or "-π"
         if s == "pi" || s == "π" {
             return Ok(Self::from_radians(std::f64::consts::PI));
@@ -200,12 +208,13 @@ where
         } else if let Ok(val) = num_part.parse::<i64>() {
             (val, false)
         } else {
-            let is_valid = num_part.starts_with('-') && num_part[1..].chars().all(|c| c.is_ascii_digit())
+            let is_valid = num_part.starts_with('-')
+                && num_part[1..].chars().all(|c| c.is_ascii_digit())
                 || num_part.chars().all(|c| c.is_ascii_digit());
             if is_valid {
                 return Err(ParseAngleError::Overflow);
             }
-            return Err(ParseAngleError::InvalidNumerator);
+            return Err(ParseAngleError::InvalidFormat);
         };
 
         // Parse denominator
@@ -217,7 +226,7 @@ where
                     }
                     den
                 }
-                Err(_) => return Err(ParseAngleError::InvalidDenominator),
+                Err(_) => return Err(ParseAngleError::InvalidFormat),
             }
         } else {
             1
@@ -240,7 +249,7 @@ where
     /// Handle cases involving decimal points
     fn parse_decimal(s: &str) -> Result<f64, ParseAngleError> {
         if let Some((_, _)) = s.split_once('/') {
-            return Err(ParseAngleError::InvalidNumerator);
+            return Err(ParseAngleError::InvalidFormat);
         }
 
         let has_pi = s.contains("pi") || s.contains('π');
@@ -256,7 +265,7 @@ where
                 .find('.')
                 .expect("decimal point position not found despite contains('.') being true");
             if pi_pos < dot_pos {
-                return Err(ParseAngleError::InvalidNumerator);
+                return Err(ParseAngleError::InvalidFormat);
             }
         }
 
@@ -264,18 +273,22 @@ where
             // Remove pi/π and parse number first
             let n = s.replace("pi", "").replace('π', "").trim().to_string();
             if !is_valid_decimal(&n) {
-                return Err(ParseAngleError::InvalidNumerator);
+                return Err(ParseAngleError::InvalidFormat);
             }
-            let value = n.parse::<f64>().map_err(|_| ParseAngleError::InvalidNumerator)?;
+            let value = n
+                .parse::<f64>()
+                .map_err(|_| ParseAngleError::InvalidFormat)?;
             if !value.is_finite() {
                 return Err(ParseAngleError::Overflow);
             }
             Ok(value * std::f64::consts::PI)
         } else {
             if !is_valid_decimal(s) {
-                return Err(ParseAngleError::InvalidNumerator);
+                return Err(ParseAngleError::InvalidFormat);
             }
-            let value = s.parse::<f64>().map_err(|_| ParseAngleError::InvalidNumerator)?;
+            let value = s
+                .parse::<f64>()
+                .map_err(|_| ParseAngleError::InvalidFormat)?;
             if !value.is_finite() {
                 return Err(ParseAngleError::Overflow);
             }
@@ -301,7 +314,7 @@ where
             if is_valid {
                 Err(ParseAngleError::Overflow)
             } else {
-                Err(ParseAngleError::InvalidNumerator)
+                Err(ParseAngleError::InvalidFormat)
             }
         }
     }
@@ -435,17 +448,17 @@ mod tests {
         // These should all be invalid formats
         assert_eq!(
             Angle64::from_str_radians("1.5.2pi"),
-            Err(ParseAngleError::InvalidNumerator),
+            Err(ParseAngleError::InvalidFormat),
             "multiple decimals should be invalid"
         );
         assert_eq!(
             Angle64::from_str_radians("pi.2"),
-            Err(ParseAngleError::InvalidNumerator),
+            Err(ParseAngleError::InvalidFormat),
             "decimal after pi should be invalid"
         );
         assert_eq!(
             Angle64::from_str_radians("1.2pi/2"),
-            Err(ParseAngleError::InvalidNumerator),
+            Err(ParseAngleError::InvalidFormat),
             "decimal with fraction should be invalid"
         );
     }
@@ -454,7 +467,7 @@ mod tests {
     fn test_parse_errors() {
         assert_eq!(
             Angle64::from_str_radians("invalid"),
-            Err(ParseAngleError::InvalidNumerator)
+            Err(ParseAngleError::InvalidFormat)
         );
         assert_eq!(
             Angle64::from_str_radians("pi/0"),
@@ -462,7 +475,7 @@ mod tests {
         );
         assert_eq!(
             Angle64::from_str_radians("pi/invalid"),
-            Err(ParseAngleError::InvalidDenominator)
+            Err(ParseAngleError::InvalidFormat)
         );
     }
 
@@ -503,6 +516,118 @@ mod tests {
             Angle64::from_str_radians("-pi").unwrap(),
             Angle64::HALF_TURN,
             "failed to handle -pi"
+        );
+    }
+
+    #[test]
+    fn test_invalid_formats_mutiple_pi() {
+        // Multiple pi symbols
+        assert_eq!(
+            Angle64::from_str_radians("pipi"),
+            Err(ParseAngleError::InvalidFormat),
+            "multiple consecutive pi symbols should be invalid"
+        );
+        assert_eq!(
+            Angle64::from_str_radians("2pi3pi"),
+            Err(ParseAngleError::InvalidFormat),
+            "multiple pi symbols should be invalid"
+        );
+        assert_eq!(
+            Angle64::from_str_radians("πpiπ"),
+            Err(ParseAngleError::InvalidFormat),
+            "mixed pi symbols should be invalid"
+        );
+    }
+
+    #[test]
+    fn test_invalid_formats_fraction_bars() {
+        // Multiple or misplaced fraction bars
+        assert_eq!(
+            Angle64::from_str_radians("pi/2/3"),
+            Err(ParseAngleError::InvalidFormat),
+            "multiple fraction bars should be invalid"
+        );
+        assert_eq!(
+            Angle64::from_str_radians("1/2/3"),
+            Err(ParseAngleError::InvalidFormat),
+            "multiple fraction bars without pi should be invalid"
+        );
+        assert_eq!(
+            Angle64::from_str_radians("/2"),
+            Err(ParseAngleError::InvalidFormat),
+            "leading fraction bar should be invalid"
+        );
+        assert_eq!(
+            Angle64::from_str_radians("2/"),
+            Err(ParseAngleError::InvalidFormat),
+            "trailing fraction bar should be invalid"
+        );
+        assert_eq!(
+            Angle64::from_str_radians("2//3"),
+            Err(ParseAngleError::InvalidFormat),
+            "consecutive fraction bars should be invalid"
+        );
+    }
+
+    #[test]
+    fn test_invalid_formats_empty_string() {
+        // Empty strings and whitespace
+        assert_eq!(
+            Angle64::from_str_radians(""),
+            Err(ParseAngleError::InvalidFormat),
+            "empty string should be invalid"
+        );
+        assert_eq!(
+            Angle64::from_str_radians("   "),
+            Err(ParseAngleError::InvalidFormat),
+            "whitespace only should be invalid"
+        );
+    }
+
+    #[test]
+    fn test_invalid_formats_decimal_fraction() {
+        // Mixed decimal and fraction forms
+        assert_eq!(
+            Angle64::from_str_radians("1.2/3"),
+            Err(ParseAngleError::InvalidFormat),
+            "decimal in fraction numerator should be invalid"
+        );
+        assert_eq!(
+            Angle64::from_str_radians("1/2.3"),
+            Err(ParseAngleError::InvalidFormat),
+            "decimal in fraction denominator should be invalid"
+        );
+        assert_eq!(
+            Angle64::from_str_radians("1.2pi/3"),
+            Err(ParseAngleError::InvalidFormat),
+            "decimal with pi in fraction should be invalid"
+        );
+    }
+
+    #[test]
+    fn test_invalid_starts_with_slash() {
+        assert_eq!(
+            Angle64::from_str_radians("/3"),
+            Err(ParseAngleError::InvalidFormat),
+            "front slash should be invalid"
+        );
+    }
+
+    #[test]
+    fn test_invalid_ends_with_slash() {
+        assert_eq!(
+            Angle64::from_str_radians("3/"),
+            Err(ParseAngleError::InvalidFormat),
+            "trailing slash should be invalid"
+        );
+    }
+
+    #[test]
+    fn test_invalid_starts_with_negative_slash() {
+        assert_eq!(
+            Angle64::from_str_radians("-/3"),
+            Err(ParseAngleError::InvalidFormat),
+            "front negative slash should be invalid"
         );
     }
 }
