@@ -599,6 +599,12 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "4443176a9f2c162692bd3d352d745ef9413eec5782a80d8fd6f8a1ac692a07f7"
 
 [[package]]
+name = "fixedbitset"
+version = "0.5.7"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "1d674e81391d1e1ab681a28d99df07927c6d4aa5b027d7da16ba32d1d21ecd99"
+
+[[package]]
 name = "flamegraph"
 version = "0.6.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1169,10 +1175,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "pecos-decoders"
-version = "0.1.1"
-
-[[package]]
 name = "pecos-python"
 version = "0.1.1"
 dependencies = [
@@ -1184,8 +1186,8 @@ dependencies = [
 name = "pecos-qec"
 version = "0.1.1"
 dependencies = [
- "pecos-decoders",
- "pecos-qsim",
+ "pecos-core",
+ "petgraph",
 ]
 
 [[package]]
@@ -1201,6 +1203,16 @@ name = "percent-encoding"
 version = "2.3.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "e3148f5046208a5d56bcfc03053e3ca6334e51da8dfb19b6cdc8b306fae3283e"
+
+[[package]]
+name = "petgraph"
+version = "0.7.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "e2b1374ec32450264534c67d1ccb5ca09818c4db8fd87cf97478d0df2fa44c65"
+dependencies = [
+ "fixedbitset",
+ "indexmap",
+]
 
 [[package]]
 name = "pin-project-lite"

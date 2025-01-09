@@ -10,9 +10,12 @@
 // or implied. See the License for the specific language governing permissions and limitations under
 // the License.
 
+pub mod qubit_id;
 mod sets;
 mod sims_rngs;
+mod stabilizer_code;
 
+pub use qubit_id::QubitId;
 pub use sets::element::{Element, IndexableElement};
 pub use sets::set::Set;
 pub use sets::vec_set::VecSet;

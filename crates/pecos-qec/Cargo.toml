@@ -11,8 +11,8 @@ categories.workspace = true
 description = "QEC for Rust PECOS."
 
 [dependencies]
-pecos-qsim = { workspace = true }
-pecos-decoders = { workspace = true}
+petgraph = { workspace = true }
+pecos-core = { workspace = true }
 
 [lints]
 workspace = true
