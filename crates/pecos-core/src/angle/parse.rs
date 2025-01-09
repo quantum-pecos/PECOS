@@ -81,6 +81,32 @@ where
     }
 }
 
+fn is_valid_decimal(s: &str) -> bool {
+    // String should not start with a decimal point
+    if s.starts_with('.') {
+        return false;
+    }
+
+    let mut dot_count = 0;
+    let mut saw_digit = false;
+    let chars = s.chars().enumerate();
+
+    for (i, c) in chars {
+        match c {
+            '-' if i == 0 => continue,
+            '.' => {
+                dot_count += 1;
+                if dot_count > 1 {
+                    return false;
+                }
+            }
+            c if c.is_ascii_digit() => saw_digit = true,
+            _ => return false,
+        }
+    }
+    saw_digit && dot_count <= 1
+}
+
 impl<T> Angle<T>
 where
     T: Unsigned
@@ -119,6 +145,14 @@ where
     /// - For pi-based fractions (like "π/2"), uses exact ratio arithmetic
     /// - For decimal values, uses floating point conversion
     ///
+    /// # Panics
+    /// This function will panic if:
+    /// - A decimal point is found but `s.find('.')` returns None
+    /// - Pi is detected (via `has_pi`) but neither "pi" nor "π" can be found in the string
+    ///
+    /// These conditions should be impossible given the logic flow, but are documented
+    /// for completeness.
+    ///
     /// # Examples
     /// ```
     /// use pecos_core::Angle64;
@@ -147,15 +181,55 @@ where
             return Ok(Self::from_radians(-std::f64::consts::PI));
         }
 
-        // If we have a decimal point, parse as floating point radians
+        // Handle decimal numbers (with or without pi)
         if s.contains('.') {
-            let value = s
-                .parse::<f64>()
-                .map_err(|_| ParseAngleError::InvalidNumerator)?;
-            if !value.is_finite() {
-                return Err(ParseAngleError::Overflow);
+            if let Some((_, _)) = s.split_once('/') {
+                return Err(ParseAngleError::InvalidNumerator);
             }
-            return Ok(Self::from_radians(value));
+
+            let has_pi = s.contains("pi") || s.contains('π');
+
+            // If pi/π comes before the decimal point, it's invalid
+            if has_pi && s.contains('.') {
+                // Both pi_pos and dot_pos are guaranteed to exist because of the has_pi and contains('.') checks
+                let pi_pos = s
+                    .find("pi")
+                    .or_else(|| s.find('π'))
+                    .expect("pi position not found despite has_pi being true");
+                let dot_pos = s
+                    .find('.')
+                    .expect("decimal point position not found despite contains('.') being true");
+                if pi_pos < dot_pos {
+                    return Err(ParseAngleError::InvalidNumerator);
+                }
+            }
+
+            let num = if has_pi {
+                // Remove pi/π and parse number first
+                let n = s.replace("pi", "").replace('π', "").trim().to_string();
+                if !is_valid_decimal(&n) {
+                    return Err(ParseAngleError::InvalidNumerator);
+                }
+                let value = n
+                    .parse::<f64>()
+                    .map_err(|_| ParseAngleError::InvalidNumerator)?;
+                if !value.is_finite() {
+                    return Err(ParseAngleError::Overflow);
+                }
+                value * std::f64::consts::PI
+            } else {
+                if !is_valid_decimal(&s) {
+                    return Err(ParseAngleError::InvalidNumerator);
+                }
+                let value = s
+                    .parse::<f64>()
+                    .map_err(|_| ParseAngleError::InvalidNumerator)?;
+                if !value.is_finite() {
+                    return Err(ParseAngleError::Overflow);
+                }
+                value
+            };
+            return Ok(Self::from_radians(num));
         }
 
         // Split into numerator and denominator parts
@@ -174,19 +248,16 @@ where
                 -1
             } else {
                 // Try parsing - if it fails, determine if it's invalid format or overflow
-                match n.parse::<i64>() {
-                    Ok(val) => val,
-                    Err(e) => {
-                        println!("Failed to parse i64: {e}");
-                        // Check if it's a valid number format that's just too big
-                        let is_valid = n.starts_with('-')
-                            && n[1..].chars().all(|c| c.is_ascii_digit())
-                            || n.chars().all(|c| c.is_ascii_digit());
-                        if is_valid {
-                            return Err(ParseAngleError::Overflow);
-                        }
-                        return Err(ParseAngleError::InvalidNumerator);
+                if let Ok(val) = n.parse::<i64>() {
+                    val
+                } else {
+                    // Check if it's a valid number format that's just too big
+                    let is_valid = n.starts_with('-') && n[1..].chars().all(|c| c.is_ascii_digit())
+                        || n.chars().all(|c| c.is_ascii_digit());
+                    if is_valid {
+                        return Err(ParseAngleError::Overflow);
                     }
+                    return Err(ParseAngleError::InvalidNumerator);
                 }
             };
             (num, true)
@@ -223,7 +294,6 @@ where
         }
 
         // Convert to angle using appropriate method
-
         if has_pi {
             Ok(Self::from_turn_ratio(num_val, den_val * 2))
         } else {
@@ -236,6 +306,7 @@ where
 mod tests {
     use super::*;
     use crate::Angle64;
+    use std::f64::consts::PI;
 
     #[test]
     fn test_parse_basic_pi() {
@@ -309,6 +380,70 @@ mod tests {
     fn test_parse_non_pi() {
         let angle = Angle64::from_str_radians("1.5").unwrap();
         assert!((angle.to_radians() - 1.5).abs() < 1e-10);
+    }
+    #[test]
+    fn test_parse_pi_decimal() {
+        // Test various decimal * pi formats
+        let test_cases = [
+            ("1.5 * pi", 1.5),
+            ("0.5pi", 0.5),
+            ("0.25 * pi", 0.25),
+            ("0.3 pi", 0.3),
+            ("-0.5pi", 1.5),
+            ("0.75 * pi", 0.75),
+        ];
+
+        for (input, multiplier) in test_cases {
+            let angle = Angle64::from_str_radians(input).unwrap();
+            let actual_radians = angle.to_radians();
+            let expected_radians = multiplier * PI;
+            assert!(
+                (actual_radians - expected_radians).abs() < 1e-10,
+                "Failed for input: {input}"
+            );
+        }
+    }
+
+    // Make sure we also handle π symbol the same way
+    #[test]
+    fn test_parse_pi_symbol_decimal() {
+        // Test various decimal * π formats
+        let test_cases = [
+            ("1.5 * π", 1.5),
+            ("0.5π", 0.5),
+            ("0.25 * π", 0.25),
+            ("0.3 π", 0.3),
+            ("-0.5π", 1.5),
+            ("0.75 * π", 0.75),
+        ];
+
+        for (input, multiplier) in test_cases {
+            let angle = Angle64::from_str_radians(input).unwrap();
+            assert!(
+                (angle.to_radians() - multiplier * PI).abs() < 1e-10,
+                "Failed for input: {input}"
+            );
+        }
+    }
+
+    #[test]
+    fn test_parse_decimal_errors() {
+        // These should all be invalid formats
+        assert_eq!(
+            Angle64::from_str_radians("1.5.2pi"),
+            Err(ParseAngleError::InvalidNumerator),
+            "multiple decimals should be invalid"
+        );
+        assert_eq!(
+            Angle64::from_str_radians("pi.2"),
+            Err(ParseAngleError::InvalidNumerator),
+            "decimal after pi should be invalid"
+        );
+        assert_eq!(
+            Angle64::from_str_radians("1.2pi/2"),
+            Err(ParseAngleError::InvalidNumerator),
+            "decimal with fraction should be invalid"
+        );
     }
 
     #[test]
