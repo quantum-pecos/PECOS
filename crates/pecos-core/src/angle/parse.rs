@@ -183,53 +183,7 @@ where
 
         // Handle decimal numbers (with or without pi)
         if s.contains('.') {
-            if let Some((_, _)) = s.split_once('/') {
-                return Err(ParseAngleError::InvalidNumerator);
-            }
-
-            let has_pi = s.contains("pi") || s.contains('π');
-
-            // If pi/π comes before the decimal point, it's invalid
-            if has_pi && s.contains('.') {
-                // Both pi_pos and dot_pos are guaranteed to exist because of the has_pi and contains('.') checks
-                let pi_pos = s
-                    .find("pi")
-                    .or_else(|| s.find('π'))
-                    .expect("pi position not found despite has_pi being true");
-                let dot_pos = s
-                    .find('.')
-                    .expect("decimal point position not found despite contains('.') being true");
-                if pi_pos < dot_pos {
-                    return Err(ParseAngleError::InvalidNumerator);
-                }
-            }
-
-            let num = if has_pi {
-                // Remove pi/π and parse number first
-                let n = s.replace("pi", "").replace('π', "").trim().to_string();
-                if !is_valid_decimal(&n) {
-                    return Err(ParseAngleError::InvalidNumerator);
-                }
-                let value = n
-                    .parse::<f64>()
-                    .map_err(|_| ParseAngleError::InvalidNumerator)?;
-                if !value.is_finite() {
-                    return Err(ParseAngleError::Overflow);
-                }
-                value * std::f64::consts::PI
-            } else {
-                if !is_valid_decimal(&s) {
-                    return Err(ParseAngleError::InvalidNumerator);
-                }
-                let value = s
-                    .parse::<f64>()
-                    .map_err(|_| ParseAngleError::InvalidNumerator)?;
-                if !value.is_finite() {
-                    return Err(ParseAngleError::Overflow);
-                }
-                value
-            };
-            return Ok(Self::from_radians(num));
+            return Ok(Self::from_radians(Self::parse_decimal(&s)?));
         }
 
         // Split into numerator and denominator parts
@@ -242,30 +196,11 @@ where
         // Parse numerator, handling pi/π multiplier
         let (num_val, has_pi) = if num_part.contains("pi") || num_part.contains('π') {
             let n = num_part.replace("pi", "").replace('π', "");
-            let num = if n.is_empty() {
-                1
-            } else if n == "-" {
-                -1
-            } else {
-                // Try parsing - if it fails, determine if it's invalid format or overflow
-                if let Ok(val) = n.parse::<i64>() {
-                    val
-                } else {
-                    // Check if it's a valid number format that's just too big
-                    let is_valid = n.starts_with('-') && n[1..].chars().all(|c| c.is_ascii_digit())
-                        || n.chars().all(|c| c.is_ascii_digit());
-                    if is_valid {
-                        return Err(ParseAngleError::Overflow);
-                    }
-                    return Err(ParseAngleError::InvalidNumerator);
-                }
-            };
-            (num, true)
+            (Self::parse_pi_numerator(&n)?, true)
         } else if let Ok(val) = num_part.parse::<i64>() {
             (val, false)
         } else {
-            let is_valid = num_part.starts_with('-')
-                && num_part[1..].chars().all(|c| c.is_ascii_digit())
+            let is_valid = num_part.starts_with('-') && num_part[1..].chars().all(|c| c.is_ascii_digit())
                 || num_part.chars().all(|c| c.is_ascii_digit());
             if is_valid {
                 return Err(ParseAngleError::Overflow);
@@ -299,6 +234,75 @@ where
         } else {
             let radians = num_val as f64 / den_val as f64;
             Ok(Self::from_radians(radians))
+        }
+    }
+
+    /// Handle cases involving decimal points
+    fn parse_decimal(s: &str) -> Result<f64, ParseAngleError> {
+        if let Some((_, _)) = s.split_once('/') {
+            return Err(ParseAngleError::InvalidNumerator);
+        }
+
+        let has_pi = s.contains("pi") || s.contains('π');
+
+        // If pi/π comes before the decimal point, it's invalid
+        if has_pi && s.contains('.') {
+            // Both pi_pos and dot_pos are guaranteed to exist because of the has_pi and contains('.') checks
+            let pi_pos = s
+                .find("pi")
+                .or_else(|| s.find('π'))
+                .expect("pi position not found despite has_pi being true");
+            let dot_pos = s
+                .find('.')
+                .expect("decimal point position not found despite contains('.') being true");
+            if pi_pos < dot_pos {
+                return Err(ParseAngleError::InvalidNumerator);
+            }
+        }
+
+        if has_pi {
+            // Remove pi/π and parse number first
+            let n = s.replace("pi", "").replace('π', "").trim().to_string();
+            if !is_valid_decimal(&n) {
+                return Err(ParseAngleError::InvalidNumerator);
+            }
+            let value = n.parse::<f64>().map_err(|_| ParseAngleError::InvalidNumerator)?;
+            if !value.is_finite() {
+                return Err(ParseAngleError::Overflow);
+            }
+            Ok(value * std::f64::consts::PI)
+        } else {
+            if !is_valid_decimal(s) {
+                return Err(ParseAngleError::InvalidNumerator);
+            }
+            let value = s.parse::<f64>().map_err(|_| ParseAngleError::InvalidNumerator)?;
+            if !value.is_finite() {
+                return Err(ParseAngleError::Overflow);
+            }
+            Ok(value)
+        }
+    }
+
+    /// Handle parsing of numerator part when pi is present
+    fn parse_pi_numerator(n: &str) -> Result<i64, ParseAngleError> {
+        if n.is_empty() {
+            return Ok(1);
+        }
+        if n == "-" {
+            return Ok(-1);
+        }
+        // Try parsing - if it fails, determine if it's invalid format or overflow
+        if let Ok(val) = n.parse::<i64>() {
+            Ok(val)
+        } else {
+            // Check if it's a valid number format that's just too big
+            let is_valid = n.starts_with('-') && n[1..].chars().all(|c| c.is_ascii_digit())
+                || n.chars().all(|c| c.is_ascii_digit());
+            if is_valid {
+                Err(ParseAngleError::Overflow)
+            } else {
+                Err(ParseAngleError::InvalidNumerator)
+            }
         }
     }
 }
