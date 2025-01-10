@@ -13,13 +13,17 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
-    from pecos.slr.vars import Elem, QReg, Qubit, Reg
+    from collections.abc import Sequence
+
+    from pecos.slr.vars import Elem, Qubit, QubitArray, Reg, RegSlice
+
+from dataclasses import dataclass
 
 from pecos.slr.fund import Statement
 
 
 class Barrier(Statement):
-    def __init__(self, *qregs: QReg | tuple[QReg] | Qubit):
+    def __init__(self, *qregs: QubitArray | tuple[QubitArray] | Qubit):
         self.qregs = qregs
 
 
@@ -45,3 +49,11 @@ class Permute(Statement):
         self.elems_i = elems_i
         self.elems_f = elems_f
         self.comment = comment
+
+
+@dataclass
+class Reorder(Statement):
+    """Command to reorder elements of a slice."""
+
+    slice: RegSlice
+    permutation: Sequence[int]

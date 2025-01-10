@@ -1104,6 +1104,7 @@ dependencies = [
     { name = "pecos-rslib" },
     { name = "phir" },
     { name = "scipy" },
+    { name = "typeguard" },
 ]
 
 [package.optional-dependencies]
@@ -1171,6 +1172,7 @@ requires-dist = [
     { name = "quantum-pecos", extras = ["wasmtime"], marker = "extra == 'wasm-all'" },
     { name = "qulacs", marker = "extra == 'qulacs'", specifier = ">=0.6.4" },
     { name = "scipy", specifier = ">=1.1.0" },
+    { name = "typeguard", specifier = ">=4.0" },
     { name = "wasmer", marker = "extra == 'wasmer'", specifier = "~=1.1.0" },
     { name = "wasmer-compiler-cranelift", marker = "extra == 'wasmer'", specifier = "~=1.1.0" },
     { name = "wasmtime", marker = "extra == 'wasmtime'", specifier = ">=13.0" },
@@ -1370,6 +1372,18 @@ wheels = [
     { url = "https://files.pythonhosted.org/packages/5b/b9/1ed31d167be802da0fc95020d04cd27b7d7065cc6fbefdd2f9186f60d7bd/tomli-2.2.1-cp313-cp313-win32.whl", hash = "sha256:d3f5614314d758649ab2ab3a62d4f2004c825922f9e370b29416484086b264ec", size = 98724 },
     { url = "https://files.pythonhosted.org/packages/c7/32/b0963458706accd9afcfeb867c0f9175a741bf7b19cd424230714d722198/tomli-2.2.1-cp313-cp313-win_amd64.whl", hash = "sha256:a38aa0308e754b0e3c67e344754dff64999ff9b513e691d0e786265c93583c69", size = 109383 },
     { url = "https://files.pythonhosted.org/packages/6e/c2/61d3e0f47e2b74ef40a68b9e6ad5984f6241a942f7cd3bbfbdbd03861ea9/tomli-2.2.1-py3-none-any.whl", hash = "sha256:cb55c73c5f4408779d0cf3eef9f762b9c9f147a77de7b258bef0a5628adc85cc", size = 14257 },
+]
+
+[[package]]
+name = "typeguard"
+version = "4.4.1"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "typing-extensions" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/62/c3/400917dd37d7b8c07e9723f3046818530423e1e759a56a22133362adab00/typeguard-4.4.1.tar.gz", hash = "sha256:0d22a89d00b453b47c49875f42b6601b961757541a2e1e0ef517b6e24213c21b", size = 74959 }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/f2/53/9465dedf2d69fe26008e7732cf6e0a385e387c240869e7d54eed49782a3c/typeguard-4.4.1-py3-none-any.whl", hash = "sha256:9324ec07a27ec67fc54a9c063020ca4c0ae6abad5e9f0f9804ca59aee68c6e21", size = 35635 },
 ]
 
 [[package]]

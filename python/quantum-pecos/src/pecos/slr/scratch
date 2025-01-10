@@ -1,0 +1,517 @@
+
+User guide
+Checking types directly
+
+The most straightfoward way to do type checking with Typeguard is with check_type(). It can be used as as a beefed-up version of isinstance() that also supports checking against annotations in the typing module:
+
+from typeguard import check_type
+
+# Raises TypeCheckError if there's a problem
+check_type([1234], List[int])
+
+It’s also useful for safely casting the types of objects dynamically constructed from external sources:
+
+import json
+from typing import List, TypedDict
+
+from typeguard import check_type
+
+# Example contents of "people.json":
+# [
+#   {"name": "John Smith", "phone": "111-123123", "address": "123 Main Street"},
+#   {"name": "Jane Smith", "phone": "111-456456", "address": "123 Main Street"}
+# ]
+
+class Person(TypedDict):
+    name: str
+    phone: str
+    address: str
+
+ with open("people.json") as f:
+    people = check_type(json.load(f), List[Person])
+
+With this code, static type checkers will recognize the type of people to be List[Person].
+Using the decorator
+
+The @typechecked decorator is the simplest way to add type checking on a case-by-case basis. It can be used on functions directly, or on entire classes, in which case all the contained methods are instrumented:
+
+from typeguard import typechecked
+
+@typechecked
+def some_function(a: int, b: float, c: str, *args: str) -> bool:
+    ...
+    return retval
+
+@typechecked
+class SomeClass:
+    # All type annotated methods (including static and class methods and properties)
+    # are type checked.
+    # Does not apply to inner classes!
+    def method(x: int) -> int:
+        ...
+
+The decorator instruments functions by fetching the source code, parsing it to an abstract syntax tree using ast.parse(), modifying it to add type checking, and finally compiling the modified AST into byte code. This code is then used to make a new function object that is used to replace the original one.
+
+To explicitly set type checking options on a per-function basis, you can pass them as keyword arguments to @typechecked:
+
+from typeguard import CollectionCheckStrategy, typechecked
+
+@typechecked(collection_check_strategy=CollectionCheckStrategy.ALL_ITEMS)
+def some_function(a: int, b: float, c: str, *args: str) -> bool:
+    ...
+    return retval
+
+This also allows you to override the global options for specific functions when using the import hook.
+
+Note
+
+You should always place this decorator closest to the original function, as it will not work when there is another decorator wrapping the function. For the same reason, when you use it on a class that has wrapping decorators on its methods, such methods will not be instrumented. In contrast, the import hook has no such restrictions.
+Using the import hook
+
+The import hook, when active, automatically instruments all type annotated functions to type check arguments, return values and values yielded by or sent to generator functions. This allows for a non-invasive method of run time type checking. This method does not modify the source code on disk, but instead modifies its AST (Abstract Syntax Tree) when the module is loaded.
+
+Using the import hook is as straightforward as installing it before you import any modules you wish to be type checked. Give it the name of your top level package (or a list of package names):
+
+from typeguard import install_import_hook
+
+install_import_hook('myapp')
+from myapp import some_module  # import only AFTER installing the hook, or it won't take effect
+
+If you wish, you can uninstall the import hook:
+
+manager = install_import_hook('myapp')
+from myapp import some_module
+manager.uninstall()
+
+or using the context manager approach:
+
+with install_import_hook('myapp'):
+    from myapp import some_module
+
+You can also customize the logic used to select which modules to instrument:
+
+from typeguard import TypeguardFinder, install_import_hook
+
+class CustomFinder(TypeguardFinder):
+    def should_instrument(self, module_name: str):
+        # disregard the module names list and instrument all loaded modules
+        return True
+
+install_import_hook('', cls=CustomFinder)
+
+Notes on forward reference handling
+
+The internal type checking functions, injected to instrumented code by either @typechecked or the import hook, use the “naked” versions of any annotations, undoing any quotations in them (and the effects of from __future__ import annotations). As such, in instrumented code, the forward_ref_policy only applies when using type variables containing forward references, or type aliases likewise containing forward references.
+
+To facilitate the use of types only available to static type checkers, Typeguard recognizes module-level imports guarded by if typing.TYPE_CHECKING: or if TYPE_CHECKING: (add the appropriate typing imports). Imports made within such blocks on the module level will be replaced in calls to internal type checking functions with Any.
+Using the pytest plugin
+
+Typeguard comes with a plugin for pytest (v7.0 or newer) that installs the import hook (explained in the previous section). To use it, run pytest with the appropriate --typeguard-packages option. For example, if you wanted to instrument the foo.bar and xyz packages for type checking, you can do the following:
+
+pytest --typeguard-packages=foo.bar,xyz
+
+It is also possible to set option for the pytest plugin using pytest’s own configuration. For example, here’s how you might specify several options in pyproject.toml:
+
+[tool.pytest.ini_options]
+typeguard-packages = """
+foo.bar
+xyz"""
+typeguard-debug-instrumentation = true
+typeguard-typecheck-fail-callback = "mypackage:failcallback"
+typeguard-forward-ref-policy = "ERROR"
+typeguard-collection-check-strategy = "ALL_ITEMS"
+
+See the next section for details on how the individual options work.
+
+Note
+
+There is currently no support for specifying a customized module finder.
+Setting configuration options
+
+There are several configuration options that can be set that influence how type checking is done. The typeguard.config (which is of type TypeCheckConfiguration) controls the options applied to code instrumented via either @typechecked or the import hook. The check_type(), function, however, uses the built-in defaults and is not affected by the global configuration, so you must pass any configuration overrides explicitly with each call.
+
+You can also override specific configuration options in instrumented functions (or entire classes) by passing keyword arguments to @typechecked. You can do this even if you’re using the import hook, as the import hook will remove the decorator to ensure that no double instrumentation takes place. If you’re using the import hook to type check your code only during tests and don’t want to include typeguard as a run-time dependency, you can use a dummy replacement for the decorator.
+
+For example, the following snippet will only import the decorator during a pytest run:
+
+import sys
+
+if "pytest" in sys.modules:
+    from typeguard import typechecked
+else:
+    from typing import TypeVar
+    _T = TypeVar("_T")
+
+    def typechecked(target: _T, **kwargs) -> _T:
+        return target if target else typechecked
+
+Suppressing type checks
+Temporarily disabling type checks
+
+If you need to temporarily suppress type checking, you can use the suppress_type_checks() function, either as a context manager or a decorator, to skip the checks:
+
+from typeguard import check_type, suppress_type_checks
+
+with suppress_type_checks():
+    check_type(1, str)  # would fail without the suppression
+
+@suppress_type_checks
+def my_suppressed_function(x: int) -> None:
+    ...
+
+Suppression state is tracked globally. Suppression ends only when all the context managers have exited and all calls to decorated functions have returned.
+Permanently suppressing type checks for selected functions
+
+To exclude specific functions from run time type checking, you can use one of the following decorators:
+
+        @typeguard_ignore: prevents the decorated function from being instrumentated by the import hook
+
+        @no_type_check: as above, but disables static type checking too
+
+For example, calling the function defined below will not result in a type check error when the containing module is instrumented by the import hook:
+
+from typeguard import typeguard_ignore
+
+@typeguard_ignore
+def f(x: int) -> int:
+    return str(x)
+
+Warning
+
+The @no_type_check_decorator decorator is not currently recognized by Typeguard.
+Suppressing the @typechecked decorator in production
+
+If you’re using the @typechecked decorator to gradually introduce run-time type checks to your code base, you can disable the checks in production by running Python in optimized mode (as opposed to debug mode which is the default mode). You can do this by either starting Python with the -O or -OO option, or by setting the PYTHONOPTIMIZE environment variable. This will cause @typechecked to become a no-op when the import hook is not being used to instrument the code.
+Debugging instrumented code
+
+If you find that your code behaves in an unexpected fashion with the Typeguard instrumentation in place, you should set the typeguard.config.debug_instrumentation flag to True. This will print all the instrumented code after the modifications, which you can check to find the reason for the unexpected behavior.
+
+If you’re using the pytest plugin, you can also pass the --typeguard-debug-instrumentation and -s flags together for the same effect.
+
+Features
+What does Typeguard check?
+
+The following type checks are implemented in Typeguard:
+
+    Types of arguments passed to instrumented functions
+
+    Types of values returned from instrumented functions
+
+    Types of values yielded from instrumented generator functions
+
+    Types of values sent to instrumented generator functions
+
+    Types of values assigned to local variables within instrumented functions
+
+What does Typeguard NOT check?
+
+The following type checks are not yet supported in Typeguard:
+
+    Types of values assigned to class or instance variables
+
+    Types of values assigned to global or nonlocal variables
+
+    Stubs defined with @overload (the implementation is checked if instrumented)
+
+    yield from statements in generator functions
+
+    ParamSpec and Concatenate are currently ignored
+
+    Types where they are shadowed by arguments with the same name (e.g. def foo(x: type, type: str): ...)
+
+Other limitations
+Local references to nested classes
+
+Forward references from methods pointing to non-local nested classes cannot currently be resolved:
+
+class Outer:
+    class Inner:
+        pass
+
+    # Cannot be resolved as the name is no longer available
+    def method(self) -> "Inner":
+        return Outer.Inner()
+
+This shortcoming may be resolved in a future release.
+Using @typechecked on top of other decorators
+
+As @typechecked works by recompiling the target function with instrumentation added, it needs to replace all the references to the original function with the new one. This could be impossible when it’s placed on top of another decorator that wraps the original function. It has no way of telling that other decorator that the target function should be switched to a new one. To work around this limitation, either place @typechecked at the bottom of the decorator stack, or use the import hook instead.
+Protocol checking
+
+As of version 4.3.0, Typeguard can check instances and classes against Protocols, regardless of whether they were annotated with @runtime_checkable.
+
+The only current limitation is that argument annotations are not checked for compatibility, however this should be covered by static type checkers pretty well.
+Special considerations for if TYPE_CHECKING:
+
+Both the import hook and @typechecked avoid checking against anything imported in a module-level if TYPE_CHECKING: (or if typing.TYPE_CHECKING:) block, since those types will not be available at run time. Therefore, no errors or warnings are emitted for such annotations, even when they would normally not be found.
+Support for generator functions
+
+For generator functions, the checks applied depend on the function’s return annotation. For example, the following function gets its yield, send and return values type checked:
+
+from collections.abc import Generator
+
+def my_generator() -> Generator[int, str, bool]:
+    a = yield 6
+    return True
+
+In contrast, the following generator function only gets its yield value checked:
+
+from collections.abc import Iterator
+
+def my_generator() -> Iterator[int]:
+    a = yield 6
+    return True
+
+Asynchronous generators work just the same way, except they don’t support returning values other than None, so the annotation only has two items:
+
+from collections.abc import AsyncGenerator
+
+async def my_generator() -> AsyncGenerator[int, str]:
+    a = yield 6
+
+Overall, the following type annotations will work for generator function type checking:
+
+    typing.Generator
+
+    collections.abc.Generator
+
+    typing.Iterator
+
+    collections.abc.Iterator
+
+    typing.Iterable
+
+    collections.abc.Iterable
+
+    typing.AsyncIterator
+
+    collections.abc.AsyncIterator
+
+    typing.AsyncIterable
+
+    collections.abc.AsyncIterable
+
+    typing.AsyncGenerator
+
+    collections.abc.AsyncGenerator
+
+Support for PEP 604 unions on Pythons older than 3.10
+
+The PEP 604 X | Y notation was introduced in Python 3.10, but it can be used with older Python versions in modules where from __future__ import annotations is present. Typeguard contains a special parser that lets it convert these to older Union annotations internally.
+Support for generic built-in collection types on Pythons older than 3.9
+
+The built-in collection types (list, tuple, dict, set and frozenset) gained support for generics in Python 3.9. For earlier Python versions, Typeguard provides a way to work with such annotations by substituting them with the equivalent typing types. The only requirement for this to work is the use of from __future__ import annotations in all such modules.
+Support for mock objects
+
+Typeguard handles the unittest.mock.Mock class (and its subclasses) specially, bypassing any type checks when encountering instances of these classes. Note that any “spec” class passed to the mock object is currently not respected.
+Supported standard library annotations
+
+The following types from the standard library have specialized support:
+
+Type(s)
+
+
+Notes
+
+typing.Any
+
+
+Any type passes type checks against this annotation. Inheriting from Any (typing.Any on Python 3.11+, or typing.extensions.Any) will pass any type check
+
+typing.Annotated
+
+
+Original annotation is unwrapped and typechecked normally
+
+BinaryIO
+
+
+Specialized instance checks are performed
+typing.Callable
+collections.abc.Callable
+
+
+Argument count is checked but types are not (yet)
+dict
+typing.Dict
+
+
+Keys and values are typechecked
+
+typing.IO
+
+
+Specialized instance checks are performed
+list
+typing.List
+
+
+Contents are typechecked
+
+typing.Literal
+
+
+typing.LiteralString
+
+
+Checked as str
+typing.Mapping
+typing.MutableMapping
+collections.abc.Mapping
+collections.abc.MutableMapping
+
+
+Keys and values are typechecked
+
+typing.NamedTuple
+
+
+Field values are typechecked
+typing.Never
+typing.NoReturn
+
+
+Supported in argument and return type annotations
+
+typing.Protocol
+
+
+Run-time protocols are checked with isinstance(), others are ignored
+
+typing.Self
+
+set
+frozenset
+typing.Set
+typing.AbstractSet
+
+
+Contents are typechecked
+typing.Sequence
+collections.abc.Sequence
+
+
+Contents are typechecked
+
+typing.TextIO
+
+
+Specialized instance checks are performed
+tuple
+typing.Tuple
+
+
+Contents are typechecked
+type
+typing.Type
+
+
+typing.TypeGuard
+
+
+Checked as bool
+
+typing.TypedDict
+
+
+Contents are typechecked; On Python 3.8 and earlier, total from superclasses is not respected (see #101 for more information); On Python 3.9.0, false positives can happen when constructing typing.TypedDict classes using old-style syntax (see issue 42059)
+
+typing.TypeVar
+
+
+Constraints and bound types are typechecked
+
+typing.Union
+
+
+PEP 604 unions are supported on all Python versions when from __future__ import annotations is used
+
+
+Extending Typeguard
+Adding new type checkers
+
+The range of types supported by Typeguard can be extended by writing a type checker lookup function and one or more type checker functions. The former will return one of the latter, or None if the given value does not match any of your custom type checker functions.
+
+The lookup function receives three arguments:
+
+    The origin type (the annotation with any arguments stripped from it)
+
+    The previously stripped out generic arguments, if any
+
+    Extra arguments from the Annotated annotation, if any
+
+For example, if the annotation was tuple,, the lookup function would be called with tuple, (), (). If the type was parametrized, like tuple[str, int], it would be called with tuple, (str, int), (). If the annotation was Annotated[tuple[str, int], "foo", "bar"], the arguments would instead be tuple, (str, int), ("foo", "bar").
+
+The checker function receives four arguments:
+
+    The value to be type checked
+
+    The origin type
+
+    The generic arguments from the annotation (empty tuple when the annotation was not parametrized)
+
+    The memo object (TypeCheckMemo)
+
+There are a couple of things to take into account when writing a type checker:
+
+    If your type checker function needs to do further type checks (such as type checking items in a collection), you need to use check_type_internal() (and pass along memo to it)
+
+    If you’re type checking collections, your checker function should respect the collection_check_strategy setting, available from config
+
+Changed in version 4.0: In Typeguard 4.0, checker functions must respect the settings in memo.config, rather than the global configuration
+
+The following example contains a lookup function and type checker for a custom class (MySpecialType):
+
+from __future__ import annotations
+from inspect import isclass
+from typing import Any
+
+from typeguard import TypeCheckError, TypeCheckerCallable, TypeCheckMemo
+
+
+class MySpecialType:
+    pass
+
+
+def check_my_special_type(
+    value: Any, origin_type: Any, args: tuple[Any, ...], memo: TypeCheckMemo
+) -> None:
+    if not isinstance(value, MySpecialType):
+        raise TypeCheckError('is not my special type')
+
+
+def my_checker_lookup(
+    origin_type: Any, args: tuple[Any, ...], extras: tuple[Any, ...]
+) -> TypeCheckerCallable | None:
+    if isclass(origin_type) and issubclass(origin_type, MySpecialType):
+        return check_my_special_type
+
+    return None
+
+Registering your type checker lookup function with Typeguard
+
+Just writing a type checker lookup function doesn’t do anything by itself. You’ll have to advertise your type checker lookup function to Typeguard somehow. There are two ways to do that (pick just one):
+
+    Append to typeguard.checker_lookup_functions
+
+    Add an entry point to your project in the typeguard.checker_lookup group
+
+If you’re packaging your project with standard packaging tools, it may be better to add an entry point instead of registering it manually, because manual registration requires the registration code to run first before the lookup function can work.
+
+To manually register the type checker lookup function with Typeguard:
+
+from typeguard import checker_lookup_functions
+
+checker_lookup_functions.append(my_checker_lookup)
+
+For adding entry points to your project packaging metadata, the exact method may vary depending on your packaging tool of choice, but the standard way (supported at least by recent versions of setuptools) is to add this to pyproject.toml:
+
+[project.entry-points]
+typeguard.checker_lookup = {myplugin = "myapp.my_plugin_module:my_checker_lookup"}
+
+The configuration above assumes that the globally unique (within the typeguard.checker_lookup namespace) entry point name for your lookup function is myplugin, it lives in the myapp.my_plugin_module and the name of the function there is my_checker_lookup.
+
+Note
+
+After modifying your project configuration, you may have to reinstall it in order for the entry point to become discoverable.
+

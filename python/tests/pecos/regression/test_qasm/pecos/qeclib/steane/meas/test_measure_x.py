@@ -7,5 +7,5 @@ def test_MeasureX(compare_qasm):
     a = QReg("a_test", 1)
     out = CReg("out_test", 1)
 
-    block = NoFlagMeasureX(q, a, out)
+    block = NoFlagMeasureX([q[i] for i in range(q.size)], a, out)
     compare_qasm(block)

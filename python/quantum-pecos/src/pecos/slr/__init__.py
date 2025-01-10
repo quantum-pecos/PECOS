@@ -13,13 +13,25 @@ from pecos.slr.block import Block
 from pecos.slr.cond_block import If, Repeat
 from pecos.slr.main import Main
 from pecos.slr.main import Main as SLR  # noqa: N814
-from pecos.slr.misc import Barrier, Comment, Permute
-from pecos.slr.vars import Bit, CReg, QReg, Qubit, Vars
+from pecos.slr.misc import Barrier, Comment, Permute, Reorder
+from pecos.slr.vars import (
+    Bit,
+    BitArray,
+    BitSlice,
+    CReg,
+    QReg,
+    Qubit,
+    QubitArray,
+    QubitSlice,
+    Vars,
+)
 
 __all__ = [
     "SLR",
     "Barrier",
     "Bit",
+    "BitArray",
+    "BitSlice",
     "Block",
     "CReg",
     "Comment",
@@ -28,6 +40,9 @@ __all__ = [
     "Permute",
     "QReg",
     "Qubit",
+    "QubitArray",
+    "QubitSlice",
+    "Reorder",
     "Repeat",
     "Vars",
 ]
