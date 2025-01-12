@@ -32,6 +32,11 @@ use std::f64::consts::{FRAC_PI_2, FRAC_PI_4};
 pub trait ArbitraryRotationGateable<T: IndexableElement>: CliffordGateable<T> {
     /// Applies a rotation around the X-axis by an angle `theta`.
     ///
+    /// Gate RX(θ) = exp(-i θ X/2) = cos(θ/2) I - i*sin(θ/2) X
+    ///
+    /// RX(θ) = [[cos(θ/2), -i*sin(θ/2)],
+    ///          [-i*sin(θ/2), cos(θ/2)]]
+    ///
     /// # Parameters
     /// - `theta`: The rotation angle in radians.
     /// - `q`: The target qubit index.
@@ -41,6 +46,11 @@ pub trait ArbitraryRotationGateable<T: IndexableElement>: CliffordGateable<T> {
     fn rx(&mut self, theta: f64, q: T) -> &mut Self;
 
     /// Applies a rotation around the Y-axis by an angle `theta`.
+    ///
+    /// Gate RY(θ) = exp(-i θ Y/2) = cos(θ/2) I - i*sin(θ/2) Y
+    ///
+    /// RY(θ) = [[cos(θ/2), -sin(θ/2)],
+    ///          [-sin(θ/2), cos(θ/2)]]
     ///
     /// By default, this is implemented in terms of `sz`, `rx`, and `szdg` gates.
     ///
@@ -57,6 +67,11 @@ pub trait ArbitraryRotationGateable<T: IndexableElement>: CliffordGateable<T> {
 
     /// Applies a rotation around the Z-axis by an angle `theta`.
     ///
+    /// Gate RZ(θ) = exp(-i θ Z/2) = cos(θ/2) I - i*sin(θ/2) Z
+    ///
+    /// RZ(θ) = [[cos(θ/2)-i*sin(θ/2), 0],
+    ///          [0, cos(θ/2)+i*sin(θ/2)]]
+    ///
     /// # Parameters
     /// - `theta`: The rotation angle in radians.
     /// - `q`: The target qubit index.
@@ -65,7 +80,10 @@ pub trait ArbitraryRotationGateable<T: IndexableElement>: CliffordGateable<T> {
     /// A mutable reference to `Self` for method chaining.
     fn rz(&mut self, theta: f64, q: T) -> &mut Self;
 
-    /// Applies a general single-qubit unitary gate with the specified parameters.
+    /// Applies a general single-qubit unitary U(theta, phi, lambda) gate.
+    ///
+    /// `U1_3` = [[cos(θ/2), -e^(iλ)sin(θ/2)],
+    ///         [e^(iφ)sin(θ/2), e^(i(λ+φ))cos(θ/2)]]
     ///
     /// By default, this is implemented in terms of `rz` and `ry` gates.
     ///
@@ -82,7 +100,7 @@ pub trait ArbitraryRotationGateable<T: IndexableElement>: CliffordGateable<T> {
         self.rz(lambda, q).ry(theta, q).rz(phi, q)
     }
 
-    /// Applies an XY-plane rotation gate with a specified angle and axis.
+    /// Applies an X-Y plane rotation gate with a specified angle and axis.
     ///
     /// By default, this is implemented in terms of `rz` and `ry` gates.
     ///
@@ -126,6 +144,8 @@ pub trait ArbitraryRotationGateable<T: IndexableElement>: CliffordGateable<T> {
 
     /// Applies a two-qubit XX rotation gate.
     ///
+    /// Apply RXX(θ) = exp(-i θ XX/2) gate
+    ///
     /// By default, this is implemented in terms of Hadamard (`h`) and ZZ rotation (`rzz`) gates.
     ///
     /// # Parameters
@@ -140,7 +160,14 @@ pub trait ArbitraryRotationGateable<T: IndexableElement>: CliffordGateable<T> {
         self.h(q1).h(q2).rzz(theta, q1, q2).h(q1).h(q2)
     }
 
-    /// Applies a two-qubit YY rotation gate.
+    /// Apply RYY(θ) = exp(-i θ YY/2) gate, which implements evolution under the YY coupling between two qubits.
+    ///
+    /// The YY coupling generates entanglement between qubits through the Y⊗Y interaction.
+    /// For example, RYY(π/2) transforms basis states as follows:
+    /// - |00⟩ → (|00⟩ - i|11⟩)/√2
+    /// - |11⟩ → (|11⟩ - i|00⟩)/√2
+    /// - |01⟩ → (|01⟩ + i|10⟩)/√2
+    /// - |10⟩ → (|10⟩ + i|01⟩)/√2
     ///
     /// By default, this is implemented in terms of SX and ZZ rotation (`rzz`) gates.
     ///
@@ -156,7 +183,24 @@ pub trait ArbitraryRotationGateable<T: IndexableElement>: CliffordGateable<T> {
         self.sx(q1).sx(q2).rzz(theta, q1, q2).sxdg(q1).sxdg(q2)
     }
 
-    /// Applies a two-qubit ZZ rotation gate.
+    /// Apply RZZ(θ) = exp(-i θ ZZ/2) gate, implementing evolution under the ZZ coupling between two qubits.
+    ///
+    /// The ZZ coupling represents a phase interaction between qubits that is diagonal in the computational basis.
+    /// It is a key component in many quantum algorithms and appears naturally in various physical implementations.
+    /// The operation adds a θ/2 phase when the qubits have the same value, and -θ/2 phase when they differ.
+    ///
+    /// The action on basis states is:
+    /// - |00⟩ → exp(-iθ/2)|00⟩
+    /// - |11⟩ → exp(-iθ/2)|11⟩
+    /// - |01⟩ → exp(iθ/2)|01⟩
+    /// - |10⟩ → exp(iθ/2)|10⟩
+    ///
+    /// The matrix:
+    /// ```text
+    /// RZZ(θ) = [[e^(-iθ/2),     0,          0,          0        ],
+    ///           [0,          e^(iθ/2),      0,          0        ],
+    ///           [0,             0,       e^(iθ/2),      0        ],
+    ///           [0,             0,          0,       e^(-iθ/2)   ]]
     ///
     /// # Parameters
     /// - `theta`: The rotation angle in radians.

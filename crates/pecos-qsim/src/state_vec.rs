@@ -252,12 +252,27 @@ impl QuantumSimulator for StateVec {
 }
 
 impl CliffordGateable<usize> for StateVec {
-    /// Apply Pauli-X gate
+    /// Implementation of Pauli-X gate for state vectors.
+    ///
+    /// See [`CliffordGateable::x`] for mathematical details and gate properties.
+    /// This implementation uses direct state vector manipulation for performance.
+    ///
+    /// # Examples
+    /// ```rust
+    /// use pecos_qsim::{QuantumSimulator, StateVec, CliffordGateable};
+    ///
+    /// let mut state = StateVec::new(2);
+    ///
+    /// // Flip first qubit
+    /// state.x(0);
+    ///
+    /// // Create Bell state using X gate
+    /// state.h(1).cx(1, 0);
+    /// ```
     ///
     /// # Safety
-    ///
     /// This function assumes that:
-    /// - `target` is a valid qubit indices (i.e., `< number of qubits`).
+    /// - `target` is a valid qubit index (i.e., `< number of qubits`).
     /// - These conditions must be ensured by the caller or a higher-level component.
     #[inline]
     fn x(&mut self, target: usize) -> &mut Self {
@@ -271,12 +286,24 @@ impl CliffordGateable<usize> for StateVec {
         self
     }
 
-    /// Apply Y = [[0, -i], [i, 0]] gate to target qubit
+    /// Implementation of Pauli-Y gate for state vectors.
+    ///
+    /// See [`CliffordGateable::y`] for mathematical details and gate properties.
+    /// This implementation directly updates complex amplitudes including phases.
+    ///
+    /// # Examples
+    /// ```rust
+    /// use pecos_qsim::{QuantumSimulator, StateVec, CliffordGateable};
+    ///
+    /// let mut state = StateVec::new(1);
+    ///
+    /// // Apply Y gate to create state with imaginary amplitudes
+    /// state.y(0);  // Creates i|1⟩
+    /// ```
     ///
     /// # Safety
-    ///
     /// This function assumes that:
-    /// - `target` is a valid qubit indices (i.e., `< number of qubits`).
+    /// - `target` is a valid qubit index (i.e., `< number of qubits`).
     /// - These conditions must be ensured by the caller or a higher-level component.
     #[inline]
     fn y(&mut self, target: usize) -> &mut Self {
@@ -291,12 +318,24 @@ impl CliffordGateable<usize> for StateVec {
         self
     }
 
-    /// Apply Z = [[1, 0], [0, -1]] gate to target qubit
+    /// Implementation of Pauli-Z gate for state vectors.
+    ///
+    /// See [`CliffordGateable::z`] for mathematical details and gate properties.
+    /// Takes advantage of diagonal structure for optimal performance.
+    ///
+    /// # Examples
+    /// ```rust
+    /// use pecos_qsim::{QuantumSimulator, StateVec, CliffordGateable};
+    ///
+    /// let mut state = StateVec::new(1);
+    ///
+    /// // Create superposition and apply phase
+    /// state.h(0).z(0);  // Creates (|0⟩ - |1⟩)/√2
+    /// ```
     ///
     /// # Safety
-    ///
     /// This function assumes that:
-    /// - `target` is a valid qubit indices (i.e., `< number of qubits`).
+    /// - `target` is a valid qubit index (i.e., `< number of qubits`).
     /// - These conditions must be ensured by the caller or a higher-level component.
     #[inline]
     fn z(&mut self, target: usize) -> &mut Self {
@@ -308,6 +347,25 @@ impl CliffordGateable<usize> for StateVec {
         self
     }
 
+    /// Implementation of square root of Z (S) gate for state vectors.
+    ///
+    /// See [`CliffordGateable::sz`] for mathematical details and gate properties.
+    /// Implemented using optimized single-qubit rotation.
+    ///
+    /// # Examples
+    /// ```rust
+    /// use pecos_qsim::{QuantumSimulator, StateVec, CliffordGateable};
+    ///
+    /// let mut state = StateVec::new(1);
+    ///
+    /// // Create state with π/2 phase
+    /// state.h(0).sz(0);  // Creates (|0⟩ + i|1⟩)/√2
+    /// ```
+    ///
+    /// # Safety
+    /// This function assumes that:
+    /// - `target` is a valid qubit index (i.e., `< number of qubits`).
+    /// - These conditions must be ensured by the caller or a higher-level component.
     #[inline]
     fn sz(&mut self, q: usize) -> &mut Self {
         self.single_qubit_rotation(
@@ -319,12 +377,24 @@ impl CliffordGateable<usize> for StateVec {
         )
     }
 
-    /// Apply Hadamard gate to the target qubit
+    /// Implementation of Hadamard gate for state vectors.
+    ///
+    /// See [`CliffordGateable::h`] for mathematical details and gate properties.
+    /// This implementation directly computes the superposition amplitudes.
+    ///
+    /// # Examples
+    /// ```rust
+    /// use pecos_qsim::{QuantumSimulator, StateVec, CliffordGateable};
+    ///
+    /// let mut state = StateVec::new(2);
+    ///
+    /// // Create Bell state using Hadamard
+    /// state.h(0).cx(0, 1);
+    /// ```
     ///
     /// # Safety
-    ///
     /// This function assumes that:
-    /// - `target` is a valid qubit indices (i.e., `< number of qubits`).
+    /// - `target` is a valid qubit index (i.e., `< number of qubits`).
     /// - These conditions must be ensured by the caller or a higher-level component.
     #[inline]
     fn h(&mut self, target: usize) -> &mut Self {
@@ -346,13 +416,22 @@ impl CliffordGateable<usize> for StateVec {
         self
     }
 
-    /// Apply controlled-X gate
-    /// CX = |0⟩⟨0| ⊗ I + |1⟩⟨1| ⊗ X
+    /// Implementation of controlled-X (CNOT) gate for state vectors.
     ///
-    /// See [`CliffordGateable::cx`] for detailed documentation.
+    /// See [`CliffordGateable::cx`] for mathematical details and gate properties.
+    /// Uses bit manipulation for fast controlled operations.
+    ///
+    /// # Examples
+    /// ```rust
+    /// use pecos_qsim::{QuantumSimulator, StateVec, CliffordGateable};
+    ///
+    /// let mut state = StateVec::new(3);
+    ///
+    /// // Create GHZ state with CNOT cascade
+    /// state.h(0).cx(0, 1).cx(1, 2);
+    /// ```
     ///
     /// # Safety
-    ///
     /// This function assumes that:
     /// - `control` and `target` are valid qubit indices (i.e., `< number of qubits`).
     /// - `control != target`.
@@ -370,11 +449,22 @@ impl CliffordGateable<usize> for StateVec {
         self
     }
 
-    /// Apply controlled-Y gate
-    /// CY = |0⟩⟨0| ⊗ I + |1⟩⟨1| ⊗ Y
+    /// Implementation of controlled-Y gate for state vectors.
+    ///
+    /// See [`CliffordGateable::cy`] for mathematical details and gate properties.
+    /// Combines bit manipulation with phase updates for controlled-Y operation.
+    ///
+    /// # Examples
+    /// ```rust
+    /// use pecos_qsim::{QuantumSimulator, StateVec, CliffordGateable};
+    ///
+    /// let mut state = StateVec::new(2);
+    ///
+    /// // Create entangled state with imaginary phase
+    /// state.h(0).cy(0, 1);  // Creates (|00⟩ + i|11⟩)/√2
+    /// ```
     ///
     /// # Safety
-    ///
     /// This function assumes that:
     /// - `control` and `target` are valid qubit indices (i.e., `< number of qubits`).
     /// - `control != target`.
@@ -399,11 +489,22 @@ impl CliffordGateable<usize> for StateVec {
         self
     }
 
-    /// Apply controlled-Z gate
-    /// CZ = |0⟩⟨0| ⊗ I + |1⟩⟨1| ⊗ Z
+    /// Implementation of controlled-Z gate for state vectors.
+    ///
+    /// See [`CliffordGateable::cz`] for mathematical details and gate properties.
+    /// Takes advantage of diagonal structure for optimal performance.
+    ///
+    /// # Examples
+    /// ```rust
+    /// use pecos_qsim::{QuantumSimulator, StateVec, CliffordGateable};
+    ///
+    /// let mut state = StateVec::new(2);
+    ///
+    /// // Create cluster state
+    /// state.h(0).h(1).cz(0, 1);
+    /// ```
     ///
     /// # Safety
-    ///
     /// This function assumes that:
     /// - `control` and `target` are valid qubit indices (i.e., `< number of qubits`).
     /// - `control != target`.
@@ -422,10 +523,22 @@ impl CliffordGateable<usize> for StateVec {
         self
     }
 
-    /// Apply a SWAP gate between two qubits
+    /// Implementation of SWAP gate for state vectors.
+    ///
+    /// See [`CliffordGateable::swap`] for mathematical details and gate properties.
+    /// Uses bit manipulation for efficient state vector updates.
+    ///
+    /// # Examples
+    /// ```rust
+    /// use pecos_qsim::{QuantumSimulator, StateVec, CliffordGateable};
+    ///
+    /// let mut state = StateVec::new(2);
+    ///
+    /// // Create state and swap qubits
+    /// state.h(0).x(1).swap(0, 1);
+    /// ```
     ///
     /// # Safety
-    ///
     /// This function assumes that:
     /// - `qubit1` and `qubit2` are valid qubit indices (i.e., `< number of qubits`).
     /// - `qubit1 != qubit2`.
@@ -449,12 +562,28 @@ impl CliffordGateable<usize> for StateVec {
         self
     }
 
-    /// Measure a single qubit in the Z basis and collapse the state
+    /// Implementation of Z-basis measurement for state vectors.
+    ///
+    /// See [`CliffordGateable::mz`] for mathematical details and measurement properties.
+    /// Computes measurement probabilities and performs state collapse.
+    ///
+    /// # Examples
+    /// ```rust
+    /// use pecos_qsim::{QuantumSimulator, StateVec, CliffordGateable};
+    ///
+    /// let mut state = StateVec::new(2);
+    ///
+    /// // Create Bell state and measure first qubit
+    /// state.h(0).cx(0, 1);
+    /// let result = state.mz(0);
+    /// // Second qubit measurement will match first
+    /// let result2 = state.mz(1);
+    /// assert_eq!(result.outcome, result2.outcome);
+    /// ```
     ///
     /// # Safety
-    ///
     /// This function assumes that:
-    /// - `target` is a valid qubit indices (i.e., `< number of qubits`).
+    /// - `target` is a valid qubit index (i.e., `< number of qubits`).
     /// - These conditions must be ensured by the caller or a higher-level component.
     #[inline]
     fn mz(&mut self, target: usize) -> MeasurementResult {
@@ -496,14 +625,25 @@ impl CliffordGateable<usize> for StateVec {
 }
 
 impl ArbitraryRotationGateable<usize> for StateVec {
-    /// Gate RX(θ) = exp(-i θ X/2) = cos(θ/2) I - i*sin(θ/2) X
-    /// RX(θ) = [[cos(θ/2), -i*sin(θ/2)],
-    ///          [-i*sin(θ/2), cos(θ/2)]]
+    /// Implementation of rotation around the X-axis.
+    ///
+    /// See [`ArbitraryRotationGateable::rx`] for mathematical details and gate properties.
+    /// This implementation directly updates amplitudes in the state vector for optimal performance.
+    ///
+    /// # Examples
+    /// ```rust
+    /// use pecos_qsim::{QuantumSimulator, StateVec, ArbitraryRotationGateable};
+    /// use std::f64::consts::FRAC_PI_2;
+    ///
+    /// let mut state = StateVec::new(1);
+    ///
+    /// // Create superposition with phase
+    /// state.rx(FRAC_PI_2, 0);  // Creates (|0⟩ - i|1⟩)/√2
+    /// ```
     ///
     /// # Safety
-    ///
     /// This function assumes that:
-    /// - `target` is a valid qubit indices (i.e., `< number of qubits`).
+    /// - `target` is a valid qubit index (i.e., `< number of qubits`).
     /// - These conditions must be ensured by the caller or a higher-level component.
     #[inline]
     fn rx(&mut self, theta: f64, target: usize) -> &mut Self {
@@ -518,14 +658,25 @@ impl ArbitraryRotationGateable<usize> for StateVec {
         )
     }
 
-    /// Gate RY(θ) = exp(-i θ Y/2) = cos(θ/2) I - i*sin(θ/2) Y
-    /// RY(θ) = [[cos(θ/2), -sin(θ/2)],
-    ///          [-sin(θ/2), cos(θ/2)]]
+    /// Implementation of rotation around the Y-axis.
+    ///
+    /// See [`ArbitraryRotationGateable::ry`] for mathematical details and gate properties.
+    /// This implementation directly updates amplitudes in the state vector for optimal performance.
+    ///
+    /// # Examples
+    /// ```rust
+    /// use pecos_qsim::{QuantumSimulator, StateVec, ArbitraryRotationGateable};
+    /// use std::f64::consts::PI;
+    ///
+    /// let mut state = StateVec::new(1);
+    ///
+    /// // Create equal superposition
+    /// state.ry(PI/2.0, 0);  // Creates (|0⟩ + |1⟩)/√2
+    /// ```
     ///
     /// # Safety
-    ///
     /// This function assumes that:
-    /// - `target` is a valid qubit indices (i.e., `< number of qubits`).
+    /// - `target` is a valid qubit index (i.e., `< number of qubits`).
     /// - These conditions must be ensured by the caller or a higher-level component.
     #[inline]
     fn ry(&mut self, theta: f64, target: usize) -> &mut Self {
@@ -540,16 +691,26 @@ impl ArbitraryRotationGateable<usize> for StateVec {
         )
     }
 
-    /// Gate RZ(θ) = exp(-i θ Z/2) = cos(θ/2) I - i*sin(θ/2) Z
-    /// RZ(θ) = [[cos(θ/2)-i*sin(θ/2), 0],
-    ///          [0, cos(θ/2)+i*sin(θ/2)]]
+    /// Implementation of rotation around the Z-axis.
+    ///
+    /// See [`ArbitraryRotationGateable::rz`] for mathematical details and gate properties.
+    /// Takes advantage of the diagonal structure in computational basis for optimal performance.
+    ///
+    /// # Examples
+    /// ```rust
+    /// use pecos_qsim::{QuantumSimulator, StateVec, CliffordGateable, ArbitraryRotationGateable};
+    /// use std::f64::consts::FRAC_PI_4;
+    ///
+    /// let mut state = StateVec::new(1);
+    ///
+    /// // Create superposition and add phase
+    /// state.h(0).rz(FRAC_PI_4, 0);  // T gate equivalent
+    /// ```
     ///
     /// # Safety
-    ///
     /// This function assumes that:
-    /// - `target` is a valid qubit indices (i.e., `< number of qubits`).
+    /// - `target` is a valid qubit index (i.e., `< number of qubits`).
     /// - These conditions must be ensured by the caller or a higher-level component.
-    #[inline]
     fn rz(&mut self, theta: f64, target: usize) -> &mut Self {
         let e_pos = Complex64::from_polar(1.0, -theta / 2.0);
         let e_neg = Complex64::from_polar(1.0, theta / 2.0);
@@ -563,14 +724,25 @@ impl ArbitraryRotationGateable<usize> for StateVec {
         )
     }
 
-    /// Apply U(theta, phi, lambda) gate
-    /// `U1_3` = [[cos(θ/2), -e^(iλ)sin(θ/2)],
-    ///         [e^(iφ)sin(θ/2), e^(i(λ+φ))cos(θ/2)]]
+    /// Implementation of general single-qubit unitary rotation.
+    ///
+    /// See [`ArbitraryRotationGateable::u`] for mathematical details and gate properties.
+    /// This implementation directly updates amplitudes in the state vector.
+    ///
+    /// # Examples
+    /// ```rust
+    /// use pecos_qsim::{QuantumSimulator, StateVec, ArbitraryRotationGateable};
+    /// use std::f64::consts::{PI, FRAC_PI_2};
+    ///
+    /// let mut state = StateVec::new(1);
+    ///
+    /// // Create arbitrary rotation (equivalent to TH up to global phase)
+    /// state.u(FRAC_PI_2, 0.0, FRAC_PI_2, 0);
+    /// ```
     ///
     /// # Safety
-    ///
     /// This function assumes that:
-    /// - `target` is a valid qubit indices (i.e., `< number of qubits`).
+    /// - `target` is a valid qubit index (i.e., `< number of qubits`).
     /// - These conditions must be ensured by the caller or a higher-level component.
     #[inline]
     fn u(&mut self, theta: f64, phi: f64, lambda: f64, target: usize) -> &mut Self {
@@ -586,12 +758,25 @@ impl ArbitraryRotationGateable<usize> for StateVec {
         self.single_qubit_rotation(target, u00, u01, u10, u11)
     }
 
-    /// Single qubit rotation in the X-Y plane.
+    /// Implementation of single-qubit rotation in XY plane.
+    ///
+    /// See [`ArbitraryRotationGateable::r1xy`] for mathematical details and gate properties.
+    /// Optimized for rotations in the XY plane of the Bloch sphere.
+    ///
+    /// # Examples
+    /// ```rust
+    /// use pecos_qsim::{QuantumSimulator, StateVec, ArbitraryRotationGateable};
+    /// use std::f64::consts::FRAC_PI_2;
+    ///
+    /// let mut state = StateVec::new(1);
+    ///
+    /// // 90-degree rotation around X+Y axis
+    /// state.r1xy(FRAC_PI_2, FRAC_PI_2, 0);
+    /// ```
     ///
     /// # Safety
-    ///
     /// This function assumes that:
-    /// - `target` is a valid qubit indices (i.e., `< number of qubits`).
+    /// - `target` is a valid qubit index (i.e., `< number of qubits`).
     /// - These conditions must be ensured by the caller or a higher-level component.
     #[inline]
     fn r1xy(&mut self, theta: f64, phi: f64, target: usize) -> &mut Self {
@@ -608,11 +793,23 @@ impl ArbitraryRotationGateable<usize> for StateVec {
         self.single_qubit_rotation(target, r00, r01, r10, r11)
     }
 
-    /// Apply RXX(θ) = exp(-i θ XX/2) gate
-    /// This implements evolution under the XX coupling between two qubits
+    /// Implementation of two-qubit XX rotation.
+    ///
+    /// See [`ArbitraryRotationGateable::rxx`] for mathematical details and gate properties.
+    /// This implementation directly updates amplitudes in the state vector for optimal performance.
+    ///
+    /// # Examples
+    /// ```rust
+    /// use pecos_qsim::{QuantumSimulator, StateVec, ArbitraryRotationGateable};
+    /// use std::f64::consts::FRAC_PI_2;
+    ///
+    /// let mut state = StateVec::new(2);
+    ///
+    /// // Create maximally entangled state
+    /// state.rxx(FRAC_PI_2, 0, 1);  // Creates (|00⟩ - i|11⟩)/√2
+    /// ```
     ///
     /// # Safety
-    ///
     /// This function assumes that:
     /// - `qubit1` and `qubit2` are valid qubit indices (i.e., `< number of qubits`).
     /// - `qubit1 != qubit2`.
@@ -654,10 +851,27 @@ impl ArbitraryRotationGateable<usize> for StateVec {
         self
     }
 
-    /// Apply RYY(θ) = exp(-i θ YY/2) gate
+    /// Implementation of the RYY(θ) gate for state vectors.
+    ///
+    /// See [`ArbitraryRotationGateable::ryy`] for mathematical details and gate properties.
+    /// This implementation directly updates amplitudes in the state vector for optimal performance.
+    ///
+    /// # Examples
+    /// ```rust
+    /// use pecos_qsim::{QuantumSimulator, StateVec, CliffordGateable, ArbitraryRotationGateable};
+    /// use std::f64::consts::FRAC_PI_2;
+    ///
+    /// let mut state = StateVec::new(2);
+    ///
+    /// // Create entangled state
+    /// state.h(0)
+    ///      .cx(0, 1);
+    ///
+    /// // Apply RYY rotation
+    /// state.ryy(FRAC_PI_2, 0, 1);
+    /// ```
     ///
     /// # Safety
-    ///
     /// This function assumes that:
     /// - `qubit1` and `qubit2` are valid qubit indices (i.e., `< number of qubits`).
     /// - `qubit1 != qubit2`.
@@ -693,16 +907,26 @@ impl ArbitraryRotationGateable<usize> for StateVec {
         self
     }
 
-    /// Apply RZZ(θ) = exp(-i θ ZZ/2) gate
+    /// Implementation of the RZZ(θ) gate for state vectors.
     ///
-    /// This is an optimized implementation of the general two-qubit unitary:
-    /// ```text
-    /// RZZ(θ) = [[e^(-iθ/2),     0,          0,          0        ],
-    ///           [0,          e^(iθ/2),      0,          0        ],
-    ///           [0,             0,       e^(iθ/2),      0        ],
-    ///           [0,             0,          0,       e^(-iθ/2)   ]]
+    /// See [`ArbitraryRotationGateable::rzz`] for mathematical details and gate properties.
+    /// Takes advantage of the diagonal structure in the computational basis for optimal performance.
+    ///
+    /// # Examples
+    /// ```rust
+    /// use pecos_qsim::{QuantumSimulator, StateVec, CliffordGateable, ArbitraryRotationGateable};
+    /// use std::f64::consts::PI;
+    ///
+    /// let mut state = StateVec::new(3);
+    ///
+    /// // Create GHZ state
+    /// state.h(0)
+    ///      .cx(0, 1)
+    ///      .cx(1, 2);
+    ///
+    /// // Apply phase rotation between first and last qubit
+    /// state.rzz(PI/4.0, 0, 2);
     /// ```
-    /// Optimized by taking advantage of the diagonal structure.
     ///
     /// # Safety
     ///

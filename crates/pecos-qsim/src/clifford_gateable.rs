@@ -927,6 +927,8 @@ pub trait CliffordGateable<T: IndexableElement>: QuantumSimulator {
     /// * `q1` - Control qubit index.
     /// * `q2` - Target qubit index.
     ///
+    /// CX = |0⟩⟨0| ⊗ I + |1⟩⟨1| ⊗ X
+    ///
     /// # Pauli Transformation
     /// ```text
     /// XI → XX
@@ -961,6 +963,8 @@ pub trait CliffordGateable<T: IndexableElement>: QuantumSimulator {
     /// # Arguments
     /// * `q1` - Control qubit index.
     /// * `q2` - Target qubit index.
+    ///
+    /// CY = |0⟩⟨0| ⊗ I + |1⟩⟨1| ⊗ Y
     ///
     /// # Pauli Transformation
     /// ```text
@@ -999,6 +1003,8 @@ pub trait CliffordGateable<T: IndexableElement>: QuantumSimulator {
     /// # Arguments
     /// * `q1` - First qubit index.
     /// * `q2` - Second qubit index.
+    ///
+    /// CZ = |0⟩⟨0| ⊗ I + |1⟩⟨1| ⊗ Z
     ///
     /// # Pauli Transformation
     /// ```text
@@ -1538,7 +1544,7 @@ pub trait CliffordGateable<T: IndexableElement>: QuantumSimulator {
         meas
     }
 
-    /// Measures the +Z Pauli operator, projecting to the measured eigenstate.
+    /// Measures the +Z Pauli operator, projecting to the measured eigenstate (collapse the state).
     ///
     /// Projects the state into either the |0⟩ or |1⟩ eigenstate based on the
     /// measurement outcome. This is the standard computational basis measurement.
