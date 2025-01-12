@@ -147,9 +147,8 @@ where
     /// ```
     ///
     /// # Safety
-    ///
     /// This function assumes that:
-    /// - `qubit` is a valid qubit indices (i.e., `< number of qubits`).
+    /// - `qubit` is a valid qubit index (i.e., `< number of qubits`).
     /// - These conditions must be ensured by the caller or a higher-level component.
     #[inline]
     pub fn single_qubit_rotation(
@@ -183,7 +182,6 @@ where
     ///      [u30, u31, u32, u33]]
     ///
     /// # Safety
-    ///
     /// This function assumes that:
     /// - `qubit1` and `qubit2` are valid qubit indices (i.e., `< number of qubits`).
     /// - `qubit1 != qubit2`.
@@ -272,11 +270,11 @@ impl CliffordGateable<usize> for StateVec {
     ///
     /// # Safety
     /// This function assumes that:
-    /// - `target` is a valid qubit index (i.e., `< number of qubits`).
+    /// - `qubit` is a valid qubit index (i.e., `< number of qubits`).
     /// - These conditions must be ensured by the caller or a higher-level component.
     #[inline]
-    fn x(&mut self, target: usize) -> &mut Self {
-        let step = 1 << target;
+    fn x(&mut self, qubit: usize) -> &mut Self {
+        let step = 1 << qubit;
 
         for i in (0..self.state.len()).step_by(2 * step) {
             for offset in 0..step {
@@ -303,7 +301,7 @@ impl CliffordGateable<usize> for StateVec {
     ///
     /// # Safety
     /// This function assumes that:
-    /// - `target` is a valid qubit index (i.e., `< number of qubits`).
+    /// - `qubit` is a valid qubit index (i.e., `< number of qubits`).
     /// - These conditions must be ensured by the caller or a higher-level component.
     #[inline]
     fn y(&mut self, target: usize) -> &mut Self {
@@ -335,12 +333,12 @@ impl CliffordGateable<usize> for StateVec {
     ///
     /// # Safety
     /// This function assumes that:
-    /// - `target` is a valid qubit index (i.e., `< number of qubits`).
+    /// - `qubit` is a valid qubit index (i.e., `< number of qubits`).
     /// - These conditions must be ensured by the caller or a higher-level component.
     #[inline]
-    fn z(&mut self, target: usize) -> &mut Self {
+    fn z(&mut self, qubit: usize) -> &mut Self {
         for i in 0..self.state.len() {
-            if (i >> target) & 1 == 1 {
+            if (i >> qubit) & 1 == 1 {
                 self.state[i] = -self.state[i];
             }
         }
@@ -364,12 +362,12 @@ impl CliffordGateable<usize> for StateVec {
     ///
     /// # Safety
     /// This function assumes that:
-    /// - `target` is a valid qubit index (i.e., `< number of qubits`).
+    /// - `qubit` is a valid qubit index (i.e., `< number of qubits`).
     /// - These conditions must be ensured by the caller or a higher-level component.
     #[inline]
-    fn sz(&mut self, q: usize) -> &mut Self {
+    fn sz(&mut self, qubit: usize) -> &mut Self {
         self.single_qubit_rotation(
-            q,
+            qubit,
             Complex64::new(1.0, 0.0), // u00
             Complex64::new(0.0, 0.0), // u01
             Complex64::new(0.0, 0.0), // u10
@@ -394,12 +392,12 @@ impl CliffordGateable<usize> for StateVec {
     ///
     /// # Safety
     /// This function assumes that:
-    /// - `target` is a valid qubit index (i.e., `< number of qubits`).
+    /// - `qubit` is a valid qubit index (i.e., `< number of qubits`).
     /// - These conditions must be ensured by the caller or a higher-level component.
     #[inline]
-    fn h(&mut self, target: usize) -> &mut Self {
+    fn h(&mut self, qubit: usize) -> &mut Self {
         let factor = Complex64::new(1.0 / 2.0_f64.sqrt(), 0.0);
-        let step = 1 << target;
+        let step = 1 << qubit;
 
         for i in (0..self.state.len()).step_by(2 * step) {
             for offset in 0..step {
@@ -433,16 +431,16 @@ impl CliffordGateable<usize> for StateVec {
     ///
     /// # Safety
     /// This function assumes that:
-    /// - `control` and `target` are valid qubit indices (i.e., `< number of qubits`).
-    /// - `control != target`.
+    /// - `qubit1` and `qubit2` are valid qubit indices (i.e., `< number of qubits`).
+    /// - `qubit1 != qubit2`.
     /// - These conditions must be ensured by the caller or a higher-level component.
     #[inline]
-    fn cx(&mut self, control: usize, target: usize) -> &mut Self {
+    fn cx(&mut self, qubit1: usize, qubit2: usize) -> &mut Self {
         for i in 0..self.state.len() {
-            let control_val = (i >> control) & 1;
-            let target_val = (i >> target) & 1;
+            let control_val = (i >> qubit1) & 1;
+            let target_val = (i >> qubit2) & 1;
             if control_val == 1 && target_val == 0 {
-                let flipped_i = i ^ (1 << target);
+                let flipped_i = i ^ (1 << qubit2);
                 self.state.swap(i, flipped_i);
             }
         }
@@ -466,18 +464,18 @@ impl CliffordGateable<usize> for StateVec {
     ///
     /// # Safety
     /// This function assumes that:
-    /// - `control` and `target` are valid qubit indices (i.e., `< number of qubits`).
-    /// - `control != target`.
+    /// - `qubit1` and `qubit2` are valid qubit indices (i.e., `< number of qubits`).
+    /// - `qubit1 != qubit2`.
     /// - These conditions must be ensured by the caller or a higher-level component.
     #[inline]
-    fn cy(&mut self, control: usize, target: usize) -> &mut Self {
+    fn cy(&mut self, qubit1: usize, qubit2: usize) -> &mut Self {
         // Only process when control bit is 1 and target bit is 0
         for i in 0..self.state.len() {
-            let control_val = (i >> control) & 1;
-            let target_val = (i >> target) & 1;
+            let control_val = (i >> qubit1) & 1;
+            let target_val = (i >> qubit2) & 1;
 
             if control_val == 1 && target_val == 0 {
-                let flipped_i = i ^ (1 << target);
+                let flipped_i = i ^ (1 << qubit2);
 
                 // Y gate has different phases than X
                 // Y = [[0, -i], [i, 0]]
@@ -506,15 +504,15 @@ impl CliffordGateable<usize> for StateVec {
     ///
     /// # Safety
     /// This function assumes that:
-    /// - `control` and `target` are valid qubit indices (i.e., `< number of qubits`).
-    /// - `control != target`.
+    /// - `qubit1` and `qubit2` are valid qubit indices (i.e., `< number of qubits`).
+    /// - `qubit1 != qubit2`.
     /// - These conditions must be ensured by the caller or a higher-level component.
     #[inline]
-    fn cz(&mut self, control: usize, target: usize) -> &mut Self {
+    fn cz(&mut self, qubit1: usize, qubit2: usize) -> &mut Self {
         // CZ is simpler - just add phase when both control and target are 1
         for i in 0..self.state.len() {
-            let control_val = (i >> control) & 1;
-            let target_val = (i >> target) & 1;
+            let control_val = (i >> qubit1) & 1;
+            let target_val = (i >> qubit2) & 1;
 
             if control_val == 1 && target_val == 1 {
                 self.state[i] = -self.state[i];
@@ -583,11 +581,11 @@ impl CliffordGateable<usize> for StateVec {
     ///
     /// # Safety
     /// This function assumes that:
-    /// - `target` is a valid qubit index (i.e., `< number of qubits`).
+    /// - `qubit` is a valid qubit index (i.e., `< number of qubits`).
     /// - These conditions must be ensured by the caller or a higher-level component.
     #[inline]
-    fn mz(&mut self, target: usize) -> MeasurementResult {
-        let step = 1 << target;
+    fn mz(&mut self, qubit: usize) -> MeasurementResult {
+        let step = 1 << qubit;
         let mut prob_one = 0.0;
 
         // Calculate probability of measuring |1⟩
@@ -604,7 +602,7 @@ impl CliffordGateable<usize> for StateVec {
         // Collapse and normalize state
         let mut norm = 0.0;
         for i in 0..self.state.len() {
-            let bit = (i >> target) & 1;
+            let bit = (i >> qubit) & 1;
             if bit == result {
                 norm += self.state[i].norm_sqr();
             } else {
@@ -643,12 +641,12 @@ impl ArbitraryRotationGateable<usize> for StateVec {
     ///
     /// # Safety
     /// This function assumes that:
-    /// - `target` is a valid qubit index (i.e., `< number of qubits`).
+    /// - `qubit` is a valid qubit index (i.e., `< number of qubits`).
     /// - These conditions must be ensured by the caller or a higher-level component.
     #[inline]
-    fn rx(&mut self, theta: f64, target: usize) -> &mut Self {
-        let cos = (theta / 2.0).cos();
-        let sin = (theta / 2.0).sin();
+    fn rx(&mut self, qubit: f64, target: usize) -> &mut Self {
+        let cos = (qubit / 2.0).cos();
+        let sin = (qubit / 2.0).sin();
         self.single_qubit_rotation(
             target,
             Complex64::new(cos, 0.0),
@@ -676,14 +674,14 @@ impl ArbitraryRotationGateable<usize> for StateVec {
     ///
     /// # Safety
     /// This function assumes that:
-    /// - `target` is a valid qubit index (i.e., `< number of qubits`).
+    /// - `qubit` is a valid qubit index (i.e., `< number of qubits`).
     /// - These conditions must be ensured by the caller or a higher-level component.
     #[inline]
-    fn ry(&mut self, theta: f64, target: usize) -> &mut Self {
+    fn ry(&mut self, theta: f64, qubit: usize) -> &mut Self {
         let cos = (theta / 2.0).cos();
         let sin = (theta / 2.0).sin();
         self.single_qubit_rotation(
-            target,
+            qubit,
             Complex64::new(cos, 0.0),
             Complex64::new(-sin, 0.0),
             Complex64::new(sin, 0.0),
@@ -709,14 +707,14 @@ impl ArbitraryRotationGateable<usize> for StateVec {
     ///
     /// # Safety
     /// This function assumes that:
-    /// - `target` is a valid qubit index (i.e., `< number of qubits`).
+    /// - `qubit` is a valid qubit index (i.e., `< number of qubits`).
     /// - These conditions must be ensured by the caller or a higher-level component.
-    fn rz(&mut self, theta: f64, target: usize) -> &mut Self {
+    fn rz(&mut self, theta: f64, qubit: usize) -> &mut Self {
         let e_pos = Complex64::from_polar(1.0, -theta / 2.0);
         let e_neg = Complex64::from_polar(1.0, theta / 2.0);
 
         self.single_qubit_rotation(
-            target,
+            qubit,
             e_pos,
             Complex64::new(0.0, 0.0),
             Complex64::new(0.0, 0.0),
@@ -742,10 +740,10 @@ impl ArbitraryRotationGateable<usize> for StateVec {
     ///
     /// # Safety
     /// This function assumes that:
-    /// - `target` is a valid qubit index (i.e., `< number of qubits`).
+    /// - `qubit` is a valid qubit index (i.e., `< number of qubits`).
     /// - These conditions must be ensured by the caller or a higher-level component.
     #[inline]
-    fn u(&mut self, theta: f64, phi: f64, lambda: f64, target: usize) -> &mut Self {
+    fn u(&mut self, theta: f64, phi: f64, lambda: f64, qubit: usize) -> &mut Self {
         let cos = (theta / 2.0).cos();
         let sin = (theta / 2.0).sin();
 
@@ -755,7 +753,7 @@ impl ArbitraryRotationGateable<usize> for StateVec {
         let u10 = Complex64::from_polar(sin, phi);
         let u11 = Complex64::from_polar(cos, phi + lambda);
 
-        self.single_qubit_rotation(target, u00, u01, u10, u11)
+        self.single_qubit_rotation(qubit, u00, u01, u10, u11)
     }
 
     /// Implementation of single-qubit rotation in XY plane.
@@ -776,10 +774,10 @@ impl ArbitraryRotationGateable<usize> for StateVec {
     ///
     /// # Safety
     /// This function assumes that:
-    /// - `target` is a valid qubit index (i.e., `< number of qubits`).
+    /// - `qubit` is a valid qubit index (i.e., `< number of qubits`).
     /// - These conditions must be ensured by the caller or a higher-level component.
     #[inline]
-    fn r1xy(&mut self, theta: f64, phi: f64, target: usize) -> &mut Self {
+    fn r1xy(&mut self, theta: f64, phi: f64, qubit: usize) -> &mut Self {
         let cos = (theta / 2.0).cos();
         let sin = (theta / 2.0).sin();
 
@@ -790,7 +788,7 @@ impl ArbitraryRotationGateable<usize> for StateVec {
         let r11 = Complex64::new(cos, 0.0); // cos(θ/2)
 
         // Apply the single-qubit rotation using the matrix elements
-        self.single_qubit_rotation(target, r00, r01, r10, r11)
+        self.single_qubit_rotation(qubit, r00, r01, r10, r11)
     }
 
     /// Implementation of two-qubit XX rotation.
@@ -929,7 +927,6 @@ impl ArbitraryRotationGateable<usize> for StateVec {
     /// ```
     ///
     /// # Safety
-    ///
     /// This function assumes that:
     /// - `qubit1` and `qubit2` are valid qubit indices (i.e., `< number of qubits`).
     /// - `qubit1 != qubit2`.
@@ -989,7 +986,7 @@ mod tests {
     /// - `state2`: A reference to the second state vector.
     ///
     /// # Panics
-    /// Panics if the states differ in norm or relative phase beyond a small numerical tolerance.
+    /// The function will panic if the states differ in norm or relative phase beyond a small numerical tolerance.
     fn assert_states_equal(state1: &[Complex64], state2: &[Complex64]) {
         const TOLERANCE: f64 = 1e-10;
 
