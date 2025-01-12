@@ -952,23 +952,36 @@ impl ArbitraryRotationGateable<usize> for StateVec {
     }
 }
 
-/// ## Key Invariants
-/// - **Normalization**: The total probability (norm squared) of the state vector
-///   must always be 1.
-/// - **Unitarity**: All gate operations must preserve the norm of the state vector.
-/// - **Phase Consistency**: States are compared up to a global phase.
+
+/// Test suite for state vector quantum simulation.
 ///
-/// ## Testing Strategy
-/// - **Unit Tests**: Validate individual operations (e.g., `RX`, `RY`, `RZ`, `CX`, `CY`, etc.).
-/// - **Compositional Tests**: Verify decompositions, commutation relations, and symmetry properties.
-/// - **Edge Cases**: Test with boundary values (e.g., `θ = 0`, `θ = 2π`) and systems near memory limits.
-/// - **Randomized Tests**: Evaluate probabilistic operations like measurement and ensure statistical validity.
-/// - **Integration Tests**: Combine operations to ensure the overall system behaves as expected.
+/// # Organization
+/// The tests are organized into several categories:
+/// - Basic state manipulation and access (new state, preparation, etc.)
+/// - Single-qubit gate operations (X, Y, Z, H, etc.)
+/// - Two-qubit gate operations (CX, CY, CZ, SWAP)
+/// - Rotation gates (RX, RY, RZ, RXX, RYY, RZZ)
+/// - Measurement operations
+/// - Gate relationships and decompositions
+/// - Edge cases and numerical stability
+/// - System scaling and locality
 ///
-/// ## Test Organization
-/// - Each gate or operation is tested independently for correctness.
-/// - Helper functions like `assert_states_equal` are used to compare quantum states up to global phase.
-/// - Failures provide clear diagnostic outputs for debugging, including mismatches and intermediate states.
+/// # Testing Strategy
+/// Tests verify:
+/// 1. Basic correctness: Each operation produces expected output states
+/// 2. Mathematical properties: Unitarity, phase relationships, commutation
+/// 3. Physical requirements: State normalization, measurement statistics
+/// 4. Implementation properties: Numerical stability, locality of operations
+/// 5. Gate relationships: Standard decompositions and equivalent implementations
+///
+/// # Helper Functions
+/// - `assert_states_equal`: Compares quantum states up to global phase
+/// - `assert_state_vectors_match`: Detailed comparison with tolerance checking
+///
+/// # Notes
+/// - Tests use standard tolerances of 1e-10 for floating point comparisons
+/// - Random tests use fixed seeds for reproducibility
+/// - Large system tests verify scaling behavior up to 20 qubits
 #[cfg(test)]
 mod tests {
     use super::*;
