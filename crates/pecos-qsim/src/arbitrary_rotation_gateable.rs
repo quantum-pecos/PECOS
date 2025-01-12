@@ -226,8 +226,7 @@ pub trait ArbitraryRotationGateable<T: IndexableElement>: CliffordGateable<T> {
     /// # Note
     /// The current implementation might have a reversed order of operations.
     #[inline]
-    fn rxxryyrzz(&mut self, theta: f64, phi: f64, lambda: f64, q1: T, q2: T) -> &mut Self {
-        // TODO: This is likely backwards..
+    fn rzzryyrxx(&mut self, theta: f64, phi: f64, lambda: f64, q1: T, q2: T) -> &mut Self {
         self.rxx(theta, q1, q2).ryy(phi, q1, q2).rzz(lambda, q1, q2)
     }
 }
