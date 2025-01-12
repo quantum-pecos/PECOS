@@ -21,6 +21,7 @@
 //! let radians = half_turn.to_radians();
 //! assert!((radians - std::f64::consts::PI).abs() < 1e-6);
 //! ```
+mod parse;
 
 use num_traits::{
     Bounded, FromPrimitive, PrimInt, ToPrimitive, Unsigned, WrappingAdd, WrappingMul, WrappingNeg,
@@ -37,6 +38,8 @@ pub type Angle8 = Angle<u8>;
 #[allow(clippy::module_name_repetitions)]
 pub type Angle16 = Angle<u16>;
 
+pub use parse::ParseAngleError;
+
 /// Alias for `Angle` with a 32-bit unsigned integer.
 #[allow(clippy::module_name_repetitions)]
 pub type Angle32 = Angle<u32>;
@@ -51,8 +54,33 @@ pub type Angle128 = Angle<u128>;
 
 /// A fixed-point representation for angles, stored as a fraction of a full turn (2π radians).
 ///
-/// - The fractional range is `[0, 2^n)` for an `n`-bit unsigned integer.
-/// - Modular arithmetic ensures that angles wrap around naturally at a full turn.
+/// # Implementation Details
+/// - Uses a fixed-point representation in the range [0, 2^n) for an n-bit unsigned integer
+/// - The full range of the integer type represents one complete turn (2π radians)
+/// - All operations (addition, subtraction, etc.) automatically wrap around at full turns
+/// - Provides both exact ratio-based and floating-point conversion methods
+///
+/// # Precision
+/// The precision depends on the bit width of the underlying type:
+/// - u8: 8 bits (256 distinct angles)
+/// - u16: 16 bits (65,536 distinct angles)
+/// - u32: 32 bits (~4.3 billion distinct angles)
+/// - u64: 64 bits (high precision)
+/// - u128: 128 bits (extremely high precision)
+///
+/// # Examples
+/// ```rust
+/// use pecos_core::Angle64;
+///
+/// // Basic arithmetic wraps around automatically
+/// let quarter = Angle64::QUARTER_TURN;
+/// let half = quarter + quarter;
+/// assert_eq!(half, Angle64::HALF_TURN);
+///
+/// // Conversion to radians for trigonometry
+/// let radians = half.to_radians();
+/// assert!((radians - std::f64::consts::PI).abs() < 1e-6);
+/// ```
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Default, PartialOrd, Ord)]
 pub struct Angle<T: Unsigned + Copy> {
     fraction: T, // Fixed-point fractional representation in [0, 2^n) turns
