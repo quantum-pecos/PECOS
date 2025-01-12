@@ -9,7 +9,7 @@ from pecos.slr import (
     QubitSlice,
     Reorder,
 )
-from typeguard import TypeCheckError
+from typeguard import TypeCheckError, typechecked
 
 
 def test_basic_slicing():
@@ -350,7 +350,7 @@ def test_slice_type_safety_for_blocks_with_wrong_slice_type():
     # This should raise a TypeError
     with pytest.raises(
         TypeCheckError,
-        match=r"argument \"qubits\" \(pecos.slr.vars.BitSlice\) Expected QubitSlice, got BitSlice",
+        match=r"argument \"qubits\" \(pecos.slr.vars.BitSlice\) Expected QubitSlice\[4\] of size 4, got 7",
     ):
         MyBlock(barr[0:7])
 
@@ -368,3 +368,53 @@ def test_slice_type_safety_for_blocks_with_qubit_slice():
 
     qarr = QubitArray("q", 10)
     MyBlock(qarr[0:4])  # Should just work
+
+
+def test_various_slice_inputs():
+    """Tests Rust-like flexibility in accepting different types that provide N elements."""
+    qarr = QubitArray("q", 4)  # Exactly 4 qubits
+    qarr_big = QubitArray("q", 10)
+    slice_four = qarr_big[0:4]  # Slice of 4
+
+    @typechecked
+    def process_four(qubits: QubitSlice[4]):
+        pass
+
+    # These should work:
+    process_four(qarr)  # Direct array of right size
+    process_four(slice_four)  # Slice of right size
+    process_four(qarr_big[2:6])  # Different slice of right size
+    process_four(qarr_big[[0, 2, 4, 6]])  # Discrete indices of right size
+    process_four(qarr_big[6:2:-1])  # Negative step but right size
+
+    # Edge cases that should fail:
+    with pytest.raises(TypeCheckError):
+        process_four(qarr_big[0:5])  # Too many elements
+
+    with pytest.raises(TypeCheckError):
+        process_four(qarr_big[0:3])  # Too few elements
+
+    with pytest.raises(TypeCheckError):
+        process_four(BitArray("c", 4))  # Wrong type even though right size
+
+    with pytest.raises(TypeError):
+        process_four(None)  # None should fail clearly
+
+    # Test empty array/slices
+    with pytest.raises(TypeCheckError):
+        process_four(QubitArray("q", 0))  # Empty array
+
+    with pytest.raises(TypeCheckError):
+        process_four(qarr_big[4:4])  # Empty slice
+
+
+# TODO: This shouldn't happen!!!
+def test_weird_dynamic_type_checking():
+    """Tests that we can use dynamic type checking to handle various types of slicing."""
+    from pecos.qeclib.qubit import H
+    from pecos.slr import Main
+
+    Main(
+        qslice := QubitSlice,
+        H(qslice),
+    )

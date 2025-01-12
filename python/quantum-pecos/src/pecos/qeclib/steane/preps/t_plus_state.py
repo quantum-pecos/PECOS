@@ -13,13 +13,13 @@ from pecos.qeclib import qubit
 from pecos.qeclib.steane.gates_sq.face_rots import F
 from pecos.qeclib.steane.preps.encoding_circ import EncodingCircuit
 from pecos.qeclib.steane.preps.plus_h_state import PrepHStateFT, PrepHStateFTRUS
-from pecos.slr import Bit, Block, Comment, CReg, QReg
+from pecos.slr import BitSlice, Block, Comment, QubitSlice
 
 
 class PrepEncodeTPlusNonFT(Block):
     """Uses the encoding circuit to non-fault-tolerantly initialize the logical T|+> magic state."""
 
-    def __init__(self, q: QReg):
+    def __init__(self, q: QubitSlice[7]):
         super().__init__(
             Comment("Initialize logical |T> = T|+>\n============================="),
             qubit.Prep(q[6]),
@@ -32,7 +32,7 @@ class PrepEncodeTPlusNonFT(Block):
 class PrepEncodeTDagPlusNonFT(Block):
     """Uses the encoding circuit to non-fault-tolerantly initialize the logical T|+> magic state."""
 
-    def __init__(self, q: QReg):
+    def __init__(self, q: QubitSlice[7]):
         super().__init__(
             Comment("Initialize logical |T> = T|+>\n============================="),
             qubit.Prep(q[6]),
@@ -56,15 +56,15 @@ class PrepEncodeTPlusFT(Block):
 
     def __init__(
         self,
-        d: QReg,
-        a: QReg,
-        out: CReg,
-        reject: Bit,
-        flag_x: CReg,
-        flag_z: CReg,
-        flags: CReg,
-        last_raw_syn_x: CReg,
-        last_raw_syn_z: CReg,
+        d: QubitSlice[7],
+        a: QubitSlice[3],
+        out: BitSlice[2],
+        reject: BitSlice[1],
+        flag_x: BitSlice[3],
+        flag_z: BitSlice[3],
+        flags: BitSlice[3],
+        last_raw_syn_x: BitSlice[3],
+        last_raw_syn_z: BitSlice[3],
     ):
         super().__init__(
             PrepHStateFT(
@@ -97,15 +97,15 @@ class PrepEncodeTPlusFTRUS(Block):
 
     def __init__(
         self,
-        d: QReg,
-        a: QReg,
-        out: CReg,
-        reject: Bit,
-        flag_x: CReg,
-        flag_z: CReg,
-        flags: CReg,
-        last_raw_syn_x: CReg,
-        last_raw_syn_z: CReg,
+        d: QubitSlice[7],
+        a: QubitSlice[3],
+        out: BitSlice[2],
+        reject: BitSlice[1],
+        flag_x: BitSlice[3],
+        flag_z: BitSlice[3],
+        flags: BitSlice[3],
+        last_raw_syn_x: BitSlice[3],
+        last_raw_syn_z: BitSlice[3],
         limit: int,
     ):
         # NOTE: For QASM, have to avoid nested If statements

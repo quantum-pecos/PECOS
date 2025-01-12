@@ -14,16 +14,13 @@ from pecos.qeclib.qubit import Prep
 from pecos.qeclib.steane.gates_sq import sqrt_paulis
 from pecos.qeclib.steane.gates_sq.hadamards import H
 from pecos.qeclib.steane.gates_sq.paulis import X, Z
-from pecos.slr import Barrier, Bit, Block, Comment, If, QReg, Qubit, Repeat
+from pecos.slr import Barrier, BitSlice, Block, Comment, If, QubitSlice, Repeat
 
 
 class PrepEncodingNonFTZero(Block):
     """Represents the non-fault-tolerant encoding circuit for the Steane code."""
 
-    def __init__(self, q: QReg):
-        if len(q.elems) != 7:
-            msg = f"Size of register {len(q.elems)} != 7"
-            raise Exception(msg)
+    def __init__(self, q: QubitSlice[7]):
 
         super().__init__(
             qubit.H(
@@ -50,9 +47,9 @@ class PrepZeroVerify(Block):
 
     def __init__(
         self,
-        qubits: QReg,
-        ancilla: Qubit,
-        init_bit: Bit,
+        qubits: QubitSlice[7],
+        ancilla: QubitSlice[1],
+        init_bit: BitSlice[1],
         *,
         reset_ancilla: bool = True,
     ):
@@ -87,17 +84,17 @@ class PrepEncodingFTZero(Block):
     """Represents the non-fault-tolerant encoding circuit for the Steane code.
 
     Args:
-        data (QReg[7]):
-        ancilla (Qubit):
-        init_bit (Bit):
+        data (QubitSlice[7]):
+        ancilla (QubitSlice[1]):
+        init_bit (BitSlice[1]):
         reset (bool):
     """
 
     def __init__(
         self,
-        data: QReg,
-        ancilla: Qubit,
-        init_bit: Bit,
+        data: QubitSlice[7],
+        ancilla: QubitSlice[1],
+        init_bit: BitSlice[1],
         *,
         reset: bool = True,
     ):
@@ -131,9 +128,9 @@ class PrepRUS(Block):
 
     def __init__(
         self,
-        q: QReg,
-        a: Qubit,
-        init: Bit,
+        q: QubitSlice[7],
+        a: QubitSlice[1],
+        init: BitSlice[1],
         limit: int,
         state: str = "|0>",
         *,
@@ -161,7 +158,7 @@ class PrepRUS(Block):
 class LogZeroRot(Block):
     """Rotate logical |0> to appropriate Pauli state."""
 
-    def __init__(self, q: QReg, state: str):
+    def __init__(self, q: QubitSlice[7], state: str):
         super().__init__()
 
         match state:

@@ -10,11 +10,11 @@
 # specific language governing permissions and limitations under the License.
 
 from pecos.qeclib import qubit
-from pecos.slr import Block, Comment, CReg, QReg, Qubit
+from pecos.slr import BitSlice, Block, Comment, QubitSlice
 
 
 class NoFlagMeasureX(Block):
-    def __init__(self, d: list[Qubit], a: QReg, out: CReg):
+    def __init__(self, d: QubitSlice[7], a: QubitSlice[1], out: BitSlice[1]):
         super().__init__()
 
         self.extend(

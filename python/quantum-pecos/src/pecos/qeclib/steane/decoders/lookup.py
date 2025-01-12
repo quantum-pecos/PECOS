@@ -16,20 +16,20 @@ from pecos.qeclib import qubit
 from pecos.slr import Block, Comment, If
 
 if TYPE_CHECKING:
-    from pecos.slr import Bit, CReg, QReg
+    from pecos.slr import BitSlice, QubitSlice
 
 
 class FlagLookupQASM(Block):
     def __init__(
         self,
         basis: str,
-        syn: CReg,
-        syndromes: CReg,
-        raw_syn: CReg,
-        pf: Bit,
-        flag: CReg,
-        flags: CReg,
-        scratch: CReg,
+        syn: BitSlice[3],
+        syndromes: BitSlice[3],
+        raw_syn: BitSlice[3],
+        pf: BitSlice[1],
+        flag: BitSlice[3],
+        flags: BitSlice[3],
+        scratch: BitSlice[3],
     ):
         super().__init__()
 
@@ -91,15 +91,15 @@ BEGIN Run {basis} decoder
 class FlagLookupQASMActiveCorrectionX(Block):
     def __init__(
         self,
-        qubits: QReg,
-        syn: CReg,
-        syndromes: CReg,
-        raw_syn: CReg,
-        pf: Bit,
-        flag: CReg,
-        flags: CReg,
-        scratch: CReg,
-        pf_bit_copy: Bit | None = None,
+        qubits: QubitSlice[7],
+        syn: BitSlice[3],
+        syndromes: BitSlice[3],
+        raw_syn: BitSlice[3],
+        pf: BitSlice[1],
+        flag: BitSlice[3],
+        flags: BitSlice[3],
+        scratch: BitSlice[7],
+        pf_bit_copy: BitSlice[1] | None = None,
     ):
         super().__init__()
         # qasm_syn_decoder('X', syn_x, flag_x, 'last_raw_syn_x', 'pf_z1')
@@ -115,7 +115,7 @@ class FlagLookupQASMActiveCorrectionX(Block):
                 pf=pf,
                 flag=flag,
                 flags=flags,
-                scratch=scratch,
+                scratch=scratch[:3],
             ),
         )
 
@@ -166,15 +166,15 @@ class FlagLookupQASMActiveCorrectionX(Block):
 class FlagLookupQASMActiveCorrectionZ(Block):
     def __init__(
         self,
-        qubits,
-        syn,
-        syndromes,
-        raw_syn,
-        pf,
-        flag,
-        flags,
-        scratch,
-        pf_bit_copy: Bit = None,
+        qubits: QubitSlice[7],
+        syn: BitSlice[3],
+        syndromes: BitSlice[3],
+        raw_syn: BitSlice[3],
+        pf: BitSlice[1],
+        flag: BitSlice[3],
+        flags: BitSlice[3],
+        scratch: BitSlice[7],
+        pf_bit_copy: BitSlice[1] = None,
     ):
         super().__init__()
         q = qubits
@@ -190,7 +190,7 @@ class FlagLookupQASMActiveCorrectionZ(Block):
                 pf=pf,
                 flag=flag,
                 flags=flags,
-                scratch=scratch,
+                scratch=scratch[:3],
             ),
         )
 

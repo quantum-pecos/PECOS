@@ -28,10 +28,20 @@ from pecos.qeclib.steane.preps.t_plus_state import (
     PrepEncodeTPlusNonFT,
 )
 from pecos.qeclib.steane.qec.qec_3parallel import ParallelFlagQECActiveCorrection
-from pecos.slr import Block, CReg, If, Permute, QReg, Vars
+from pecos.slr import (
+    BitArray,
+    Block,
+    If,
+    Permute,
+    QubitArray,
+    Vars,
+)
 
 if TYPE_CHECKING:
-    from pecos.slr import Bit
+    from pecos.slr import (
+        BitSlice,
+        QubitSlice,
+    )
 
 
 class Steane(Vars):
@@ -44,12 +54,12 @@ class Steane(Vars):
         self,
         name: str,
         default_rus_limit: int = 3,
-        ancillas: QReg | None = None,
+        ancillas: QubitSlice[3] | None = None,
     ):
         super().__init__()
-        self.d = QReg(f"{name}_d", 7)
-        self.a = ancillas or QReg(f"{name}_a", 3)
-        self.c = CReg(f"{name}_c", 32)
+        self.d = QubitArray(f"{name}_d", 7)
+        self.a = ancillas or QubitArray(f"{name}_a", 3)
+        self.c = BitArray(f"{name}_c", 32)
 
         if self.a.size < 3:
             msg = f"Steane ancilla registers must have >= 3 qubits (provided: {self.a.size})"
@@ -57,21 +67,21 @@ class Steane(Vars):
 
         # TODO: Make it so I can put these in self.c... need to convert things like if(c) and c = a ^ b, a = 0;
         #  to allow lists of bits
-        self.syn_meas = CReg(f"{name}_syn_meas", 32)
-        self.last_raw_syn_x = CReg(f"{name}_last_raw_syn_x", 32)
-        self.last_raw_syn_z = CReg(f"{name}_last_raw_syn_z", 32)
-        self.scratch = CReg(f"{name}_scratch", 32)
-        self.flag_x = CReg(f"{name}_flag_x", 3)
-        self.flag_z = CReg(f"{name}_flags_z", 3)
+        self.syn_meas = BitArray(f"{name}_syn_meas", 32)
+        self.last_raw_syn_x = BitArray(f"{name}_last_raw_syn_x", 32)
+        self.last_raw_syn_z = BitArray(f"{name}_last_raw_syn_z", 32)
+        self.scratch = BitArray(f"{name}_scratch", 32)
+        self.flag_x = BitArray(f"{name}_flag_x", 3)
+        self.flag_z = BitArray(f"{name}_flags_z", 3)
 
-        self.flags = CReg(f"{name}_flags", 3)  # weird error when using [c, c, c]
+        self.flags = BitArray(f"{name}_flags", 3)  # weird error when using [c, c, c]
 
-        self.raw_meas = CReg(f"{name}_raw_meas", 7)
+        self.raw_meas = BitArray(f"{name}_raw_meas", 7)
 
-        self.syn_x = CReg(f"{name}_syn_x", 3)
-        self.syn_z = CReg(f"{name}_syn_z", 3)
-        self.syndromes = CReg(f"{name}_syndromes", 3)
-        self.verify_prep = CReg(f"{name}_verify_prep", 32)
+        self.syn_x = BitArray(f"{name}_syn_x", 3)
+        self.syn_z = BitArray(f"{name}_syn_z", 3)
+        self.syndromes = BitArray(f"{name}_syndromes", 3)
+        self.verify_prep = BitArray(f"{name}_verify_prep", 32)
 
         self.vars = [
             self.d,
@@ -99,51 +109,55 @@ class Steane(Vars):
         )
 
         # derived classical registers
-        c = self.c
-        self.log_raw = c[1]
-        self.log = c[2]
-        self.pf_x = c[3]
-        self.pf_z = c[4]
-        self.t_meas = c[5]
-        self.tdg_meas = c[6]
+        self.log_raw = self.c[[1]]
+        self.log = self.c[[2]]
+        self.pf_x = self.c[[3]]
+        self.pf_z = self.c[[4]]
+        self.t_meas = self.c[[5]]
+        self.tdg_meas = self.c[[6]]
 
         self.default_rus_limit = default_rus_limit
 
-    def p(self, state: str, reject: Bit | None = None, rus_limit: int | None = None):
+    def p(
+        self,
+        state: str,
+        reject: BitSlice[1] | None = None,
+        rus_limit: int | None = None,
+    ):
         """Prepare a logical qubit in a logical Pauli basis state."""
         block = PrepRUS(
-            q=self.d,
-            a=self.a[0],
-            init=self.verify_prep[0],
+            q=self.d[:],
+            a=self.a[[0]],
+            init=self.verify_prep[[0]],
             limit=rus_limit or self.default_rus_limit,
             state=state,
             first_round_reset=True,
         )
         if reject is not None:
-            block.extend(reject.set(self.verify_prep[0]))
+            block.extend(reject.set(self.verify_prep[[0]]))
         return block
 
-    def px(self, reject: Bit | None = None, rus_limit: int | None = None):
+    def px(self, reject: BitSlice[1] | None = None, rus_limit: int | None = None):
         """Prepare logical |+X>, a.k.a. |+>"""
         return self.p("+X", reject=reject, rus_limit=rus_limit)
 
-    def pnx(self, reject: Bit | None = None, rus_limit: int | None = None):
+    def pnx(self, reject: BitSlice[1] | None = None, rus_limit: int | None = None):
         """Prepare logical |-X>, a.k.a. |->"""
         return self.p("-X", reject=reject, rus_limit=rus_limit)
 
-    def py(self, reject: Bit | None = None, rus_limit: int | None = None):
+    def py(self, reject: BitSlice[1] | None = None, rus_limit: int | None = None):
         """Prepare logical |+Y>, a.k.a. |+i>"""
         return self.p("+Y", reject=reject, rus_limit=rus_limit)
 
-    def pny(self, reject: Bit | None = None, rus_limit: int | None = None):
+    def pny(self, reject: BitSlice[1] | None = None, rus_limit: int | None = None):
         """Prepare logical |-Y>, a.k.a. |-i>"""
         return self.p("-Y", reject=reject, rus_limit=rus_limit)
 
-    def pz(self, reject: Bit | None = None, rus_limit: int | None = None):
+    def pz(self, reject: BitSlice[1] | None = None, rus_limit: int | None = None):
         """Prepare logical |+Z>, a.k.a. |0>"""
         return self.p("+Z", reject=reject, rus_limit=rus_limit)
 
-    def pnz(self, reject: Bit | None = None, rus_limit: int | None = None):
+    def pnz(self, reject: BitSlice[1] | None = None, rus_limit: int | None = None):
         """Prepare logical |-Z>, a.k.a. |1>"""
         return self.p("-Z", reject=reject, rus_limit=rus_limit)
 
@@ -151,32 +165,32 @@ class Steane(Vars):
         """Prepare logical T|+X> in a non-fault tolerant manner."""
 
         return PrepEncodeTPlusNonFT(
-            q=self.d,
+            q=self.d[:],
         )
 
     def prep_t_plus_state(
         self,
-        reject: Bit | None = None,
+        reject: BitSlice[1] | None = None,
         rus_limit: int | None = None,
     ):
-        """Prepare logical T|+X> in a fault tolerant manner."""
+        """Prepare logical T|+X> in a fault-tolerant manner."""
         block = Block(
             self.scratch.set(0),
             PrepEncodeTPlusFTRUS(
-                d=self.d,
+                d=self.d[:],
                 a=self.a,
-                out=self.scratch,
-                reject=self.scratch[2],  # the first two bits are used by "out"
-                flag_x=self.flag_x,
-                flag_z=self.flag_z,
-                flags=self.flags,
-                last_raw_syn_x=self.last_raw_syn_x,
-                last_raw_syn_z=self.last_raw_syn_z,
+                out=self.scratch[0:2],
+                reject=self.scratch[[2]],
+                flag_x=self.flag_x[:],
+                flag_z=self.flag_z[:],
+                flags=self.flags[:],
+                last_raw_syn_x=self.last_raw_syn_x[:3],
+                last_raw_syn_z=self.last_raw_syn_z[:3],
                 limit=rus_limit or self.default_rus_limit,
             ),
         )
         if reject is not None:
-            block.extend(reject.set(self.scratch[2]))
+            block.extend(reject.set(self.scratch[[2]]))
         return block
 
     def nonft_prep_tdg_plus_state(self):
@@ -188,10 +202,10 @@ class Steane(Vars):
 
     def prep_tdg_plus_state(
         self,
-        reject: Bit | None = None,
+        reject: BitSlice[1] | None = None,
         rus_limit: int | None = None,
     ):
-        """Prepare logical Tdg|+X> in a fault tolerant manner."""
+        """Prepare logical Tdg|+X> in a fault-tolerant manner."""
         return Block(
             self.prep_t_plus_state(reject=reject, rus_limit=rus_limit),
             self.szdg(),
@@ -242,7 +256,12 @@ class Steane(Vars):
             If(self.t_meas == 1).Then(self.sz()),
         )
 
-    def t(self, aux: Steane, reject: Bit | None = None, rus_limit: int | None = None):
+    def t(
+        self,
+        aux: Steane,
+        reject: BitSlice[1] | None = None,
+        rus_limit: int | None = None,
+    ):
         """T gate via teleportation using fault-tolerant initialization of the T|+> state."""
         return Block(
             aux.prep_t_plus_state(reject=reject, rus_limit=rus_limit),
@@ -260,7 +279,12 @@ class Steane(Vars):
             If(self.tdg_meas == 1).Then(self.szdg()),
         )
 
-    def tdg(self, aux: Steane, reject: Bit | None = None, rus_limit: int | None = None):
+    def tdg(
+        self,
+        aux: Steane,
+        reject: BitSlice[1] | None = None,
+        rus_limit: int | None = None,
+    ):
         """Tdg gate via teleportation using fault-tolerant initialization of the Tdg|+> state."""
         return Block(
             aux.prep_tdg_plus_state(reject=reject, rus_limit=rus_limit),
@@ -292,7 +316,7 @@ class Steane(Vars):
     def t_tel(
         self,
         aux: Steane,
-        reject: Bit | None = None,
+        reject: BitSlice[1] | None = None,
         rus_limit: int | None = None,
     ):
         """Warning:
@@ -333,7 +357,7 @@ class Steane(Vars):
     def tdg_tel(
         self,
         aux: Steane,
-        reject: Bit | None = None,
+        reject: BitSlice[1] | None = None,
         rus_limit: int | None = None,
     ):
         """Warning:
@@ -356,8 +380,8 @@ class Steane(Vars):
     def t_cor(
         self,
         aux: Steane,
-        reject: Bit | None = None,
-        flag: Bit | None = None,
+        reject: BitSlice[1] | None = None,
+        flag: BitSlice[1] | None = None,
         rus_limit: int | None = None,
     ):
         """T gate via teleportation using fault-tolerant initialization of the T|+> state.
@@ -375,14 +399,14 @@ class Steane(Vars):
             self.last_raw_syn_z.set(0),
             self.pf_x.set(0),
             FlagLookupQASMActiveCorrectionZ(
-                self.d,
-                self.syn_z,
-                self.syn_z,
-                self.last_raw_syn_z,
+                self.d[:],
+                self.syn_z[:],
+                self.syn_z[:],
+                self.last_raw_syn_z[:],
                 self.pf_x,
-                self.syn_z,
-                self.syn_z,
-                self.scratch,
+                self.syn_z[:],  # TODO: why are these both the same. give reason
+                self.syn_z[:],
+                self.scratch[:7],
             ),
             # logical correction
             If(self.t_meas == 1).Then(self.sz()),
@@ -394,8 +418,8 @@ class Steane(Vars):
     def tdg_cor(
         self,
         aux: Steane,
-        reject: Bit | None = None,
-        flag: Bit | None = None,
+        reject: BitSlice[1] | None = None,
+        flag: BitSlice[1] | None = None,
         rus_limit: int | None = None,
     ):
         """Tdg gate via teleportation using fault-tolerant initialization of the Tdg|+> state.
@@ -413,14 +437,14 @@ class Steane(Vars):
             self.last_raw_syn_z.set(0),
             self.pf_x.set(0),
             FlagLookupQASMActiveCorrectionZ(
-                self.d,
-                self.syn_z,
-                self.syn_z,
-                self.last_raw_syn_z,
+                self.d[:],
+                self.syn_z[:],
+                self.syn_z[:],
+                self.last_raw_syn_z[:],
                 self.pf_x,
-                self.syn_z,
-                self.syn_z,
-                self.scratch,
+                self.syn_z[:],
+                self.syn_z[:],
+                self.scratch[:7],
             ),
             # logical correction
             If(self.tdg_meas == 1).Then(self.szdg()),
@@ -437,61 +461,61 @@ class Steane(Vars):
 
     def cx(self, target: Steane):
         """Logical CX"""
-        return transversal_tq.CX(self.d, target.d)
+        return transversal_tq.CX(self.d[:], target.d[:])
 
     def cy(self, target: Steane):
         """Logical CY"""
-        return transversal_tq.CY(self.d, target.d)
+        return transversal_tq.CY(self.d[:], target.d[:])
 
     def cz(self, target: Steane):
         """Logical CZ"""
-        return transversal_tq.CZ(self.d, target.d)
+        return transversal_tq.CZ(self.d[:], target.d[:])
 
-    def m(self, meas_basis: str, log: Bit | None = None):
+    def m(self, meas_basis: str, log: BitSlice[1] | None = None):
         """Destructively measure the logical qubit in some Pauli basis."""
         block = MeasDecode(
-            q=self.d,
+            q=self.d[:],
             meas_basis=meas_basis,
-            meas=self.raw_meas,
+            meas=self.raw_meas[:],
             log_raw=self.log_raw,
             log=self.log,
-            syn_meas=self.syn_meas,
+            syn_meas=self.syn_meas[:],
             pf_x=self.pf_x,
             pf_z=self.pf_z,
-            last_raw_syn_x=self.last_raw_syn_x,
-            last_raw_syn_z=self.last_raw_syn_z,
+            last_raw_syn_x=self.last_raw_syn_x[:3],
+            last_raw_syn_z=self.last_raw_syn_z[:3],
         )
         if log is not None:
             block.extend(log.set(self.log))
         return block
 
-    def mx(self, log: Bit | None = None):
+    def mx(self, log: BitSlice[1] | None = None):
         """Logical destructive measurement of the logical X operator."""
         return self.m("X", log=log)
 
-    def my(self, log: Bit | None = None):
+    def my(self, log: BitSlice[1] | None = None):
         """Logical destructive measurement of the logical Y operator."""
         return self.m("Y", log=log)
 
-    def mz(self, log: Bit | None = None):
+    def mz(self, log: BitSlice[1] | None = None):
         """Logical destructive measurement of the logical Z operator."""
         return self.m("Z", log=log)
 
-    def qec(self, flag: Bit | None = None):
+    def qec(self, flag: BitSlice[1] | None = None):
         block = ParallelFlagQECActiveCorrection(
-            q=self.d,
+            q=self.d[:],
             a=self.a,
-            flag_x=self.flag_x,
-            flag_z=self.flag_z,
-            flags=self.flags,
-            syn_x=self.syn_x,
-            syn_z=self.syn_z,
-            last_raw_syn_x=self.last_raw_syn_x,
-            last_raw_syn_z=self.last_raw_syn_z,
-            syndromes=self.syndromes,
+            flag_x=self.flag_x[:],
+            flag_z=self.flag_z[:],
+            flags=self.flags[:],
+            syn_x=self.syn_x[:],
+            syn_z=self.syn_z[:],
+            last_raw_syn_x=self.last_raw_syn_x[:3],
+            last_raw_syn_z=self.last_raw_syn_z[:3],
+            syndromes=self.syndromes[:],
             pf_x=self.pf_x,
             pf_z=self.pf_z,
-            scratch=self.scratch,
+            scratch=self.scratch[:7],
         )
         if flag is not None:
             block.extend(If(self.flags != 0).Then(flag.set(1)))
@@ -500,10 +524,10 @@ class Steane(Vars):
     def qec_steane(
         self,
         aux: Steane,
-        reject_x: Bit | None = None,
-        reject_z: Bit | None = None,
-        flag_x: Bit | None = None,
-        flag_z: Bit | None = None,
+        reject_x: BitSlice[1] | None = None,
+        reject_z: BitSlice[1] | None = None,
+        flag_x: BitSlice[1] | None = None,
+        flag_z: BitSlice[1] | None = None,
         rus_limit: int | None = None,
     ) -> Block:
         """Run a Steane-type error-correction cycle of this code."""
@@ -525,8 +549,8 @@ class Steane(Vars):
     def qec_steane_x(
         self,
         aux: Steane,
-        reject: Bit | None = None,
-        flag: Bit | None = None,
+        reject: BitSlice[1] | None = None,
+        flag: BitSlice[1] | None = None,
         rus_limit: int | None = None,
     ) -> Block:
         """Run a Steane-type error-correction cycle for X errors."""
@@ -539,14 +563,14 @@ class Steane(Vars):
             self.last_raw_syn_z.set(0),
             self.pf_x.set(0),
             FlagLookupQASMActiveCorrectionZ(
-                self.d,
-                self.syn_z,
-                self.syn_z,
-                self.last_raw_syn_z,
+                self.d[:],
+                self.syn_z[:],
+                self.syn_z[:],
+                self.last_raw_syn_z[:],
                 self.pf_x,
-                self.syn_z,
-                self.syn_z,
-                self.scratch,
+                self.syn_z[:],
+                self.syn_z[:],
+                self.scratch[:7],
             ),
         )
         if flag is not None:
@@ -556,8 +580,8 @@ class Steane(Vars):
     def qec_steane_z(
         self,
         aux: Steane,
-        reject: Bit | None = None,
-        flag: Bit | None = None,
+        reject: BitSlice[1] | None = None,
+        flag: BitSlice[1] | None = None,
         rus_limit: int | None = None,
     ) -> Block:
         """Run a Steane-type error-correction cycle for Z errors."""
@@ -570,14 +594,14 @@ class Steane(Vars):
             self.last_raw_syn_x.set(0),
             self.pf_z.set(0),
             FlagLookupQASMActiveCorrectionX(
-                self.d,
-                self.syn_x,
-                self.syn_x,
-                self.last_raw_syn_x,
+                self.d[:],
+                self.syn_x[:],
+                self.syn_x[:],
+                self.last_raw_syn_x[:],
                 self.pf_z,
-                self.syn_x,
-                self.syn_x,
-                self.scratch,
+                self.syn_x[:],
+                self.syn_x[:],
+                self.scratch[:7],
             ),
         )
         if flag is not None:
@@ -587,10 +611,10 @@ class Steane(Vars):
     def qec_tel(
         self,
         aux: Steane,
-        reject_x: Bit | None = None,
-        reject_z: Bit | None = None,
-        flag_x: Bit | None = None,
-        flag_z: Bit | None = None,
+        reject_x: BitSlice[1] | None = None,
+        reject_z: BitSlice[1] | None = None,
+        flag_x: BitSlice[1] | None = None,
+        flag_z: BitSlice[1] | None = None,
         rus_limit: int | None = None,
     ) -> Block:
         """Run a teleportation-based error correction cycle."""
@@ -602,8 +626,8 @@ class Steane(Vars):
     def qec_tel_x(
         self,
         aux: Steane,
-        reject: Bit | None = None,
-        flag: Bit | None = None,
+        reject: BitSlice[1] | None = None,
+        flag: BitSlice[1] | None = None,
         rus_limit: int | None = None,
     ) -> Block:
         """Run a teleportation-based error correction cycle for X errors."""
@@ -628,8 +652,8 @@ class Steane(Vars):
     def qec_tel_z(
         self,
         aux: Steane,
-        reject: Bit | None = None,
-        flag: Bit | None = None,
+        reject: BitSlice[1] | None = None,
+        flag: BitSlice[1] | None = None,
         rus_limit: int | None = None,
     ) -> Block:
         """Run a teleportation-based error correction cycle for Z errors."""
@@ -658,7 +682,7 @@ class Steane(Vars):
             Permute(self.a, other.a),
         )
         for var_a, var_b in zip(self.vars, other.vars):
-            if isinstance(var_a, CReg):
+            if isinstance(var_a, BitArray):
                 block.extend(
                     var_a.set(var_a ^ var_b),
                     var_b.set(var_b ^ var_a),

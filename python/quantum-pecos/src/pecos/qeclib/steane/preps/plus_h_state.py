@@ -18,7 +18,7 @@ from pecos.qeclib.steane.syn_extract.three_parallel_flagging import (
     ThreeParallelFlaggingXZZ,
     ThreeParallelFlaggingZXX,
 )
-from pecos.slr import Bit, Block, Comment, CReg, If, QReg, Repeat
+from pecos.slr import BitSlice, Block, Comment, If, QubitSlice, Repeat
 
 
 class PrepHStateFT(Block):
@@ -35,15 +35,15 @@ class PrepHStateFT(Block):
 
     def __init__(
         self,
-        d: QReg,
-        a: QReg,
-        out: CReg,
-        reject: Bit,
-        flag_x: CReg,
-        flag_z: CReg,
-        flags: CReg,
-        last_raw_syn_x: CReg,
-        last_raw_syn_z: CReg,
+        d: QubitSlice[7],
+        a: QubitSlice[3],
+        out: BitSlice[2],
+        reject: BitSlice[1],
+        flag_x: BitSlice[3],
+        flag_z: BitSlice[3],
+        flags: BitSlice[3],
+        last_raw_syn_x: BitSlice[3],
+        last_raw_syn_z: BitSlice[3],
         *,
         condition_qed: bool = True,
     ):
@@ -130,15 +130,15 @@ class PrepHStateFTRUS(Block):
 
     def __init__(
         self,
-        d: QReg,
-        a: QReg,
-        out: CReg,
-        reject: Bit,
-        flag_x: CReg,
-        flag_z: CReg,
-        flags: CReg,
-        last_raw_syn_x: CReg,
-        last_raw_syn_z: CReg,
+        d: QubitSlice[7],
+        a: QubitSlice[3],
+        out: BitSlice[2],
+        reject: BitSlice[1],
+        flag_x: BitSlice[3],
+        flag_z: BitSlice[3],
+        flags: BitSlice[3],
+        last_raw_syn_x: BitSlice[3],
+        last_raw_syn_z: BitSlice[3],
         limit: int,
     ):
         super().__init__(

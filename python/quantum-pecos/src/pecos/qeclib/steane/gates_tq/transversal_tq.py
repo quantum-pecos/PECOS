@@ -10,18 +10,11 @@
 # specific language governing permissions and limitations under the License.
 
 from pecos.qeclib import qubit
-from pecos.slr import Barrier, Block, Comment, QReg
+from pecos.slr import Barrier, Block, Comment, QubitSlice
 
 
 class CX(Block):
-    def __init__(self, q1: QReg, q2: QReg, *, barrier=True):
-        if len(q1.elems) != 7:
-            msg = f"Size of register {len(q1.elems)} != 7"
-            raise Exception(msg)
-
-        if len(q2.elems) != 7:
-            msg = f"Size of register {len(q2.elems)} != 7"
-            raise Exception(msg)
+    def __init__(self, q1: QubitSlice[7], q2: QubitSlice[7], *, barrier=True):
 
         super().__init__()
         self.extend(
@@ -49,14 +42,7 @@ class CX(Block):
 
 
 class CY(Block):
-    def __init__(self, q1: QReg, q2: QReg):
-        if len(q1.elems) != 7:
-            msg = f"Size of register {len(q1.elems)} != 7"
-            raise Exception(msg)
-
-        if len(q2.elems) != 7:
-            msg = f"Size of register {len(q2.elems)} != 7"
-            raise Exception(msg)
+    def __init__(self, q1: QubitSlice[7], q2: QubitSlice[7]):
 
         super().__init__(
             Comment("Transversal Logical CY"),
@@ -75,14 +61,7 @@ class CY(Block):
 
 
 class CZ(Block):
-    def __init__(self, q1: QReg, q2: QReg):
-        if len(q1.elems) != 7:
-            msg = f"Size of register {len(q1.elems)} != 7"
-            raise Exception(msg)
-
-        if len(q2.elems) != 7:
-            msg = f"Size of register {len(q2.elems)} != 7"
-            raise Exception(msg)
+    def __init__(self, q1: QubitSlice[7], q2: QubitSlice[7]):
 
         super().__init__(
             Comment("Transversal Logical CZ"),
@@ -101,14 +80,7 @@ class CZ(Block):
 
 
 class SZZ(Block):
-    def __init__(self, q1: QReg, q2: QReg):
-        if len(q1.elems) != 7:
-            msg = f"Size of register {len(q1.elems)} != 7"
-            raise Exception(msg)
-
-        if len(q2.elems) != 7:
-            msg = f"Size of register {len(q2.elems)} != 7"
-            raise Exception(msg)
+    def __init__(self, q1: QubitSlice[7], q2: QubitSlice[7]):
 
         super().__init__(
             Comment("Transversal Logical SZZ"),

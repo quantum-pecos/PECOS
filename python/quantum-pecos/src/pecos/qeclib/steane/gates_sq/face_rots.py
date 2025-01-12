@@ -10,7 +10,7 @@
 # specific language governing permissions and limitations under the License.
 
 from pecos.qeclib import qubit
-from pecos.slr import Block, QReg
+from pecos.slr import Block, QubitSlice
 
 
 class F(Block):
@@ -25,10 +25,7 @@ class F(Block):
     Y -> Z
     """
 
-    def __init__(self, q: QReg):
-        if len(q.elems) != 7:
-            msg = f"Size of register {len(q.elems)} != 7"
-            raise Exception(msg)
+    def __init__(self, q: QubitSlice[7]):
 
         super().__init__(
             qubit.F4dg(q),
@@ -47,10 +44,7 @@ class Fdg(Block):
     Y -> X
     """
 
-    def __init__(self, q: QReg):
-        if len(q.elems) != 7:
-            msg = f"Size of register {len(q.elems)} != 7"
-            raise Exception(msg)
+    def __init__(self, q: QubitSlice[7]):
 
         super().__init__(
             qubit.F4dg(q),

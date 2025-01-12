@@ -12,11 +12,11 @@ from __future__ import annotations
 
 from pecos.slr.fund import Node
 from pecos.slr.gen_codes.gen_qasm import QASMGenerator
-from pecos.slr.typechecking import TypeCheckedMeta
+from pecos.slr.typechecking import TypeCheckedABCMeta
 from pecos.slr.vars import Var, Vars
 
 
-class Block(Node, metaclass=TypeCheckedMeta):
+class Block(Node, metaclass=TypeCheckedABCMeta):
     """A collection of other operations and blocks."""
 
     def __init__(self, *args, ops=None, vargs=None, allow_no_ops=True):

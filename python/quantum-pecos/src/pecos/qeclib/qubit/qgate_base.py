@@ -12,16 +12,16 @@
 from __future__ import annotations
 
 import copy
-from abc import ABCMeta
 
 from pecos.slr.gen_codes.gen_qasm import QASMGenerator
+from pecos.slr.typechecking import TypeCheckedABCMeta
 
 # ruff: noqa: B024
 
 
 # TODO: Try to move more into using the class instead of instance. E.g., class methods, don't override call or
 #   use the whole H = HGate() type thing. H should be a class not an instance.
-class QGate(metaclass=ABCMeta):
+class QGate(metaclass=TypeCheckedABCMeta):
     """Quantum gates including unitaries, measurements, and preparations."""
 
     is_qgate = True
@@ -81,7 +81,7 @@ class QGate(metaclass=ABCMeta):
         return target.process_qgate(self)
 
 
-class TQGate(QGate, metaclass=ABCMeta):
+class TQGate(QGate, metaclass=TypeCheckedABCMeta):
     """Two qubit gates"""
 
     qsize = 2

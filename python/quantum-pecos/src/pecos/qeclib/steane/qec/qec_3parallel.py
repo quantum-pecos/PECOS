@@ -18,7 +18,7 @@ from pecos.qeclib.steane.syn_extract.three_parallel_flagging import (
     ThreeParallelFlaggingXZZ,
     ThreeParallelFlaggingZXX,
 )
-from pecos.slr import Bit, Block, CReg, If, QReg
+from pecos.slr import BitSlice, Block, If, QubitSlice
 
 
 class ParallelFlagQECActiveCorrection(Block):
@@ -26,19 +26,19 @@ class ParallelFlagQECActiveCorrection(Block):
 
     def __init__(
         self,
-        q: QReg,
-        a: QReg,
-        flag_x: CReg,
-        flag_z: CReg,
-        flags: CReg,
-        syn_x: CReg,
-        syn_z: CReg,
-        last_raw_syn_x: CReg,
-        last_raw_syn_z: CReg,
-        syndromes: CReg,
-        pf_x: Bit,
-        pf_z: Bit,
-        scratch: CReg,
+        q: QubitSlice[7],
+        a: QubitSlice[3],
+        flag_x: BitSlice[3],
+        flag_z: BitSlice[3],
+        flags: BitSlice[3],
+        syn_x: BitSlice[3],
+        syn_z: BitSlice[3],
+        last_raw_syn_x: BitSlice[3],
+        last_raw_syn_z: BitSlice[3],
+        syndromes: BitSlice[3],
+        pf_x: BitSlice[1],
+        pf_z: BitSlice[1],
+        scratch: BitSlice[7],
     ):
         super().__init__(
             # flagging XZZ checks

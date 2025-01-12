@@ -17,7 +17,7 @@ from pecos.qeclib.steane.gates_sq.sqrt_paulis import SX, SYdg
 from pecos.slr import Barrier, Block, Comment, If
 
 if TYPE_CHECKING:
-    from pecos.slr import Bit, CReg, QReg
+    from pecos.slr import BitSlice, QubitSlice
 
 
 class MeasureX(Block):
@@ -30,9 +30,9 @@ class MeasureX(Block):
 
     def __init__(
         self,
-        qubits: QReg,
-        meas_creg: CReg,
-        log_raw: Bit,
+        qubits: QubitSlice[7],
+        meas_creg: BitSlice[7],
+        log_raw: BitSlice[1],
         *,
         barrier: bool = True,
     ):
@@ -54,9 +54,9 @@ class MeasureY(Block):
 
     def __init__(
         self,
-        qubits: QReg,
-        meas_creg: CReg,
-        log_raw: Bit,
+        qubits: QubitSlice[7],
+        meas_creg: BitSlice[7],
+        log_raw: BitSlice[1],
         *,
         barrier: bool = True,
     ):
@@ -71,7 +71,14 @@ class MeasureY(Block):
 class MeasureZ(Block):
     """Measure in the logical Z basis."""
 
-    def __init__(self, qubits: QReg, meas: CReg, log_raw: Bit, *, barrier: bool = True):
+    def __init__(
+        self,
+        qubits: QubitSlice[7],
+        meas: BitSlice[7],
+        log_raw: BitSlice[1],
+        *,
+        barrier: bool = True,
+    ):
         super().__init__()
 
         q = qubits
@@ -106,7 +113,13 @@ class MeasureZ(Block):
 
 
 class Measure(Block):
-    def __init__(self, q: QReg, meas_creg: CReg, log_raw: Bit, meas_basis: str):
+    def __init__(
+        self,
+        q: QubitSlice[7],
+        meas_creg: BitSlice[7],
+        log_raw: BitSlice[1],
+        meas_basis: str,
+    ):
         super().__init__()
 
         if meas_basis == "X":
@@ -136,16 +149,16 @@ class ProcessMeas(Block):
     def __init__(
         self,
         basis: str,
-        meas: CReg,
-        log_raw_bit: Bit,
-        log_bit: Bit,
-        syn_meas: CReg,
-        pf_x: Bit,
-        pf_z: Bit,
+        meas: BitSlice[7],
+        log_raw_bit: BitSlice[1],
+        log_bit: BitSlice[1],
+        syn_meas: BitSlice[3],
+        pf_x: BitSlice[1],
+        pf_z: BitSlice[1],
         check_type="xz",
-        last_raw_syn_x: CReg | None = None,
-        last_raw_syn_y: CReg | None = None,
-        last_raw_syn_z: CReg | None = None,
+        last_raw_syn_x: BitSlice[3] | None = None,
+        last_raw_syn_y: BitSlice[3] | None = None,
+        last_raw_syn_z: BitSlice[3] | None = None,
         *,
         ft_meas: bool = True,
     ):
@@ -248,16 +261,16 @@ Determine correction to get logical output
 
 
 def MeasDecode(
-    q: QReg,
+    q: QubitSlice[7],
     meas_basis: str,
-    meas: CReg,
-    log_raw: Bit,
-    log: Bit,
-    syn_meas: CReg,
-    pf_x: Bit,
-    pf_z: Bit,
-    last_raw_syn_x: CReg,
-    last_raw_syn_z: CReg,
+    meas: BitSlice[7],
+    log_raw: BitSlice[1],
+    log: BitSlice[1],
+    syn_meas: BitSlice[3],
+    pf_x: BitSlice[1],
+    pf_z: BitSlice[1],
+    last_raw_syn_x: BitSlice[3],
+    last_raw_syn_z: BitSlice[3],
 ) -> Block:
     """Measure out in the appropriate logical basis, determine correction,
     apply to logical output."""

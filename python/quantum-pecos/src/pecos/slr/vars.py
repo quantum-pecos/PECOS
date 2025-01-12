@@ -325,6 +325,9 @@ class RegSlice(Generic[N]):
         """
         return Reorder(self, new_order)
 
+    def set(self, other):
+        return SET(self, other)
+
     def __iter__(self):
         if isinstance(self.indices, slice):
             start = self.indices.start
@@ -431,22 +434,27 @@ def check_slice_type_and_size(
     memo: Any,
 ) -> None:
     """Check both the slice type and size."""
-    # First check the type is correct
-    if issubclass(origin_type, QubitSlice):
-        if not isinstance(value, QubitSlice):
-            msg = f"Expected QubitSlice, got {type(value).__name__}"
-            raise TypeCheckError(msg)
-    elif issubclass(origin_type, BitSlice):
-        if not isinstance(value, BitSlice):
-            msg = f"Expected BitSlice, got {type(value).__name__}"
-            raise TypeCheckError(msg)
-
-    # Then check size
+    # Check size first
     if args and len(args) > 0:
         expected_size = args[0]
-        actual_size = len(list(value))
+        # Handle different types that can provide N elements
+        if isinstance(value, (QubitArray, BitArray)):
+            actual_size = len(value)
+        else:
+            actual_size = len(list(value))
+
         if actual_size != expected_size:
             msg = f"Expected {origin_type.__name__} of size {expected_size}, got {actual_size}"
+            raise TypeCheckError(msg)
+
+    # Then check type is compatible
+    if issubclass(origin_type, QubitSlice):
+        if not isinstance(value, (QubitSlice, QubitArray)):
+            msg = f"Expected QubitSlice or QubitArray, got {type(value).__name__}"
+            raise TypeCheckError(msg)
+    elif issubclass(origin_type, BitSlice):
+        if not isinstance(value, (BitSlice, BitArray)):
+            msg = f"Expected BitSlice or BitArray, got {type(value).__name__}"
             raise TypeCheckError(msg)
 
 

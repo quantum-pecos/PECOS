@@ -10,11 +10,11 @@
 # specific language governing permissions and limitations under the License.
 
 from pecos.qeclib import qubit
-from pecos.slr import Block, Comment, QReg
+from pecos.slr import Block, Comment, QubitSlice
 
 
 class EncodingCircuit(Block):
-    def __init__(self, q: QReg):
+    def __init__(self, q: QubitSlice[7]):
         self.q = q
         super().__init__()
         self.extend(

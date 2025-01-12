@@ -10,7 +10,7 @@
 # specific language governing permissions and limitations under the License.
 
 from pecos.qeclib import qubit as gq
-from pecos.slr import Barrier, Block, Comment, CReg, QReg
+from pecos.slr import Barrier, BitSlice, Block, Comment, QubitSlice
 
 
 class ThreeParallelFlaggingXZZ(Block):
@@ -27,13 +27,13 @@ class ThreeParallelFlaggingXZZ(Block):
 
     def __init__(
         self,
-        data: QReg,
-        ancillas: QReg,
-        flag_x: CReg,
-        flag_z: CReg,
-        flags: CReg,
-        last_raw_syn_x: CReg,
-        last_raw_syn_z: CReg,
+        data: QubitSlice[7],
+        ancillas: QubitSlice[3],
+        flag_x: BitSlice[3],
+        flag_z: BitSlice[3],
+        flags: BitSlice[3],
+        last_raw_syn_x: BitSlice[3],
+        last_raw_syn_z: BitSlice[3],
     ):
         super().__init__()
         d = data
@@ -118,13 +118,13 @@ class ThreeParallelFlaggingXZZ(Block):
 class ThreeParallelFlaggingZXX(Block):
     def __init__(
         self,
-        data: QReg,
-        ancillas: QReg,
-        flag_x: CReg,
-        flag_z: CReg,
-        flags: CReg,
-        last_raw_syn_x: CReg,
-        last_raw_syn_z: CReg,
+        data: QubitSlice[7],
+        ancillas: QubitSlice[3],
+        flag_x: BitSlice[3],
+        flag_z: BitSlice[3],
+        flags: BitSlice[3],
+        last_raw_syn_x: BitSlice[3],
+        last_raw_syn_z: BitSlice[3],
     ):
         super().__init__()
         d = data

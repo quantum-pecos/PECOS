@@ -14,6 +14,7 @@ from pecos.slr.cond_block import If, Repeat
 from pecos.slr.main import Main
 from pecos.slr.main import Main as SLR  # noqa: N814
 from pecos.slr.misc import Barrier, Comment, Permute, Reorder
+from pecos.slr.typechecking import TypeCheckedABCMeta
 from pecos.slr.vars import (
     Bit,
     BitArray,
@@ -44,5 +45,6 @@ __all__ = [
     "QubitSlice",
     "Reorder",
     "Repeat",
+    "TypeCheckedABCMeta",
     "Vars",
 ]

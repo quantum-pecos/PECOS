@@ -8,9 +8,15 @@
 # Unless required by applicable law or agreed to in writing, software distributed under the License is distributed on an
 # "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the License for the
 # specific language governing permissions and limitations under the License.
+from __future__ import annotations
+
+from typing import TYPE_CHECKING
 
 from pecos.qeclib import qubit
-from pecos.slr import Block, Comment, QReg
+from pecos.slr import Block, Comment
+
+if TYPE_CHECKING:
+    from pecos.slr import QubitSlice
 
 
 class H(Block):
@@ -23,10 +29,7 @@ class H(Block):
     Y -> -Y
     """
 
-    def __init__(self, q: QReg):
-        if len(q.elems) != 7:
-            msg = f"Size of register {len(q.elems)} != 7"
-            raise Exception(msg)
+    def __init__(self, q: QubitSlice[7]):
 
         super().__init__(
             Comment("Logical H"),

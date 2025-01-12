@@ -1,11 +1,11 @@
 from pecos.qeclib.steane.steane_class import Steane
-from pecos.slr import Barrier, CReg, If, Main
+from pecos.slr import Barrier, BitArray, If, Main
 
 
 def telep(prep_basis: str, meas_basis: str) -> Main:
     return Main(
-        m_bell := CReg("m_bell", size=2),
-        m_out := CReg("m_out", size=1),
+        m_bell := BitArray("m_bell", size=2),
+        m_out := BitArray("m_out", size=1),
         # Input state:
         sin := Steane("sin", default_rus_limit=2),
         smid := Steane("smid"),
@@ -60,9 +60,9 @@ def t_gate(prep_basis: str, meas_basis: str) -> Main:
         A logical program written in extended OpenQASM 2.0"""
 
     prog = Main(
-        m_reject := CReg("m_reject", size=2),
-        m_t := CReg("m_t", 1),
-        m_out := CReg("m_out", size=2),
+        m_reject := BitArray("m_reject", size=2),
+        m_t := BitArray("m_t", 1),
+        m_out := BitArray("m_out", size=2),
         # Input state:
         sin := Steane("sin", default_rus_limit=2),
         saux := Steane("saux"),

@@ -12,7 +12,7 @@
 from __future__ import annotations
 
 from pecos import __version__
-from pecos.slr.vars import QReg
+from pecos.slr.vars import QubitArray, QubitSlice
 
 
 class QASMGenerator:
@@ -152,7 +152,14 @@ class QASMGenerator:
         elif op_name == "Vars":
             op_str = None
 
-        elif op_name in ["CReg", "QReg"]:
+        elif op_name in [
+            "CReg",
+            "QReg",
+            "QubitSlice",
+            "QubitArray",
+            "BitSlice",
+            "BitArray",
+        ]:
             op_str = str(op.sym)
 
         elif op_name in ["Bit", "Qubit"]:
@@ -305,7 +312,7 @@ class QASMGenerator:
         str_list = []
 
         for q in op.qargs:
-            if isinstance(q, QReg):
+            if isinstance(q, (QubitArray, QubitSlice)):
                 lines = [f"{repr_str} {qubit};" for qubit in q]
                 str_list.extend(lines)
 

@@ -15,7 +15,7 @@ from typing import TYPE_CHECKING
 if TYPE_CHECKING:
     from collections.abc import Sequence
 
-    from pecos.slr.vars import Elem, Qubit, QubitArray, Reg, RegSlice
+    from pecos.slr.vars import Elem, Qubit, QubitArray, QubitSlice, Reg, RegSlice
 
 from dataclasses import dataclass
 
@@ -23,7 +23,7 @@ from pecos.slr.fund import Statement
 
 
 class Barrier(Statement):
-    def __init__(self, *qregs: QubitArray | tuple[QubitArray] | Qubit):
+    def __init__(self, *qregs: QubitArray | QubitSlice | Qubit):
         self.qregs = qregs
 
 

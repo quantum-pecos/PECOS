@@ -9,11 +9,17 @@
 # "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the License for the
 # specific language governing permissions and limitations under the License.
 from pecos.qeclib import qubit as gq
-from pecos.slr import Block, Comment, CReg, QReg
+from pecos.slr import BitSlice, Block, Comment, QubitSlice
 
 
 class SixUnflaggedSyn(Block):
-    def __init__(self, data: QReg, ancillas: QReg, syn_x: CReg, syn_z: CReg):
+    def __init__(
+        self,
+        data: QubitSlice[7],
+        ancillas: QubitSlice[3],
+        syn_x: BitSlice[3],
+        syn_z: BitSlice[3],
+    ):
         super().__init__()
 
         d = data
