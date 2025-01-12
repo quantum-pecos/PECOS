@@ -19,6 +19,25 @@ use rand_chacha::ChaCha8Rng;
 use num_complex::Complex64;
 use rand::Rng;
 
+/// A quantum state simulator using the state vector representation
+///
+/// StateVec maintains the full quantum state as a complex vector with 2ⁿ amplitudes
+/// for n qubits. This allows exact simulation of quantum operations but requires
+/// memory that scales exponentially with the number of qubits.
+///
+/// # Type Parameters
+/// * `R` - Random number generator type implementing SimRng trait
+///
+/// # Examples
+/// ```rust
+/// use pecos_qsim::StateVec;
+///
+/// // Create a new 2-qubit system
+/// let mut state = StateVec::new(2);
+///
+/// // Prepare a superposition state
+/// state.prepare_plus_state();
+/// ```
 #[derive(Clone, Debug)]
 pub struct StateVec<R = ChaCha8Rng>
 where
@@ -31,8 +50,8 @@ where
 
 impl StateVec {
     /// Create a new state initialized to |0...0⟩
-    #[must_use]
     #[inline]
+    #[must_use]
     pub fn new(num_qubits: usize) -> StateVec<ChaCha8Rng> {
         let rng = ChaCha8Rng::from_entropy();
         StateVec::with_rng(num_qubits, rng)
@@ -55,12 +74,30 @@ where
     /// let num = state.num_qubits();
     /// assert_eq!(num, 2);
     /// ```
-    #[must_use]
     #[inline]
+    #[must_use]
     pub fn num_qubits(&self) -> usize {
         self.num_qubits
     }
 
+    /// Create a new state vector with a custom random number generator. By doing so, one may set a
+    /// seed or utilize a different base random number generator.
+    ///
+    /// # Arguments
+    /// * `num_qubits` - Number of qubits in the system
+    /// * `rng` - Random number generator implementing SimRng trait
+    ///
+    /// # Examples
+    /// ```rust
+    /// use pecos_qsim::StateVec;
+    /// use rand_chacha::ChaCha12Rng;
+    /// use rand::SeedableRng;
+    ///
+    /// let rng = ChaCha12Rng::seed_from_u64(42);
+    /// let state = StateVec::with_rng(2, rng);
+    /// ```
+    #[inline]
+    #[must_use]
     pub fn with_rng(num_qubits: usize, rng: R) -> Self {
         let size = 1 << num_qubits; // 2^n
         let mut state = vec![Complex64::new(0.0, 0.0); size];
@@ -75,10 +112,9 @@ where
     /// Initialize from a custom state vector
     ///
     /// # Panics
-    ///
-    /// Panics if the input state requires more qubits then `StateVec` has.
-    #[must_use]
+    /// Code will panic if the input state requires more qubits then `StateVec` has.
     #[inline]
+    #[must_use]
     pub fn from_state(state: Vec<Complex64>, rng: R) -> Self {
         let num_qubits = state.len().trailing_zeros() as usize;
         assert_eq!(1 << num_qubits, state.len(), "Invalid state vector size");
@@ -92,9 +128,9 @@ where
     /// Prepare a specific computational basis state
     ///
     /// # Panics
-    ///
-    /// Panics if `basis_state` >= `2^num_qubits` (i.e., if the basis state index is too large for the number of qubits)
+    /// Code will panic if `basis_state` >= `2^num_qubits` (i.e., if the basis state index is too large for the number of qubits)
     #[inline]
+    #[must_use]
     pub fn prepare_computational_basis(&mut self, basis_state: usize) -> &mut Self {
         assert!(basis_state < 1 << self.num_qubits);
         self.state.fill(Complex64::new(0.0, 0.0));
@@ -102,8 +138,19 @@ where
         self
     }
 
-    /// Prepare all qubits in |+⟩ state
+    /// Prepare all qubits in the |+⟩ state, creating an equal superposition of all basis states
+    ///
+    /// This operation prepares the state (1/√2ⁿ)(|0...0⟩ + |0...1⟩ + ... + |1...1⟩)
+    /// where n is the number of qubits.
+    ///
+    /// # Examples
+    /// ```rust
+    /// use pecos_qsim::StateVec;
+    /// let mut state = StateVec::new(2);
+    /// state.prepare_plus_state();
+    /// ```
     #[inline]
+    #[must_use]
     pub fn prepare_plus_state(&mut self) -> &mut Self {
         let factor = Complex64::new(1.0 / f64::from(1 << self.num_qubits), 0.0);
         self.state.fill(factor);
@@ -111,8 +158,14 @@ where
     }
 
     /// Returns reference to the state vector
-    #[must_use]
+    ///
+    /// The state vector is guaranteed to be normalized such that the sum of
+    /// probability amplitudes squared equals 1.
+    ///
+    /// # Returns
+    /// A slice containing the complex amplitudes of the quantum state
     #[inline]
+    #[must_use]
     pub fn state(&self) -> &[Complex64] {
         &self.state
     }
@@ -120,10 +173,9 @@ where
     /// Returns the probability of measuring a specific basis state
     ///
     /// # Panics
-    ///
-    /// Panics if `basis_state` >= `2^num_qubits` (i.e., if the basis state index is too large for the number of qubits)
-    #[must_use]
+    /// Code will panic if `basis_state` >= `2^num_qubits` (i.e., if the basis state index is too large for the number of qubits)
     #[inline]
+    #[must_use]
     pub fn probability(&self, basis_state: usize) -> f64 {
         assert!(basis_state < 1 << self.num_qubits);
         self.state[basis_state].norm_sqr()
@@ -951,7 +1003,6 @@ impl ArbitraryRotationGateable<usize> for StateVec {
         self
     }
 }
-
 
 /// Test suite for state vector quantum simulation.
 ///
