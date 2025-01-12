@@ -438,28 +438,28 @@ impl RsStateVec {
                 Ok(None)
             }
 
-            "RXXRYYRZZ" => {
+            "RZZRYYRXX" => {
                 if let Some(params) = params {
                     match params.get_item("angles") {
                         Ok(Some(py_any)) => {
                             if let Ok(angles) = py_any.extract::<Vec<f64>>() {
                                 if angles.len() >= 3 {
                                     self.inner
-                                        .rxxryyrzz(angles[0], angles[1], angles[2], q1, q2);
+                                        .rzzryyrxx(angles[0], angles[1], angles[2], q1, q2);
                                 } else {
                                     return Err(PyErr::new::<pyo3::exceptions::PyValueError, _>(
-                                        "RXXRYYRZZ gate requires three angle parameters",
+                                        "RZZRYYRXX gate requires three angle parameters",
                                     ));
                                 }
                             } else {
                                 return Err(PyErr::new::<pyo3::exceptions::PyValueError, _>(
-                                    "Expected valid angle parameters for RXXRYYRZZ gate",
+                                    "Expected valid angle parameters for RZZRYYRXX gate",
                                 ));
                             }
                         }
                         Ok(None) => {
                             return Err(PyErr::new::<pyo3::exceptions::PyValueError, _>(
-                                "Angle parameters missing for RXXRYYRZZ gate",
+                                "Angle parameters missing for RZZRYYRXX gate",
                             ));
                         }
                         Err(err) => {

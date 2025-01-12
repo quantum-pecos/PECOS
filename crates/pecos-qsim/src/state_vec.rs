@@ -696,11 +696,11 @@ impl ArbitraryRotationGateable<usize> for StateVec {
     /// - `qubit` is a valid qubit index (i.e., `< number of qubits`).
     /// - These conditions must be ensured by the caller or a higher-level component.
     #[inline]
-    fn rx(&mut self, qubit: f64, target: usize) -> &mut Self {
-        let cos = (qubit / 2.0).cos();
-        let sin = (qubit / 2.0).sin();
+    fn rx(&mut self, theta: f64, qubit: usize) -> &mut Self {
+        let cos = (theta / 2.0).cos();
+        let sin = (theta / 2.0).sin();
         self.single_qubit_rotation(
-            target,
+            qubit,
             Complex64::new(cos, 0.0),
             Complex64::new(0.0, -sin),
             Complex64::new(0.0, -sin),

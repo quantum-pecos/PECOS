@@ -256,13 +256,13 @@ gate_dict = {
         qs,
         {"angle": params["angles"][0]} if "angles" in params else {"angle": 0},
     ),
-    "RXXRYYRZZ": lambda sim, qs, **params: sim._sim.run_2q_gate(
-        "RXXRYYRZZ",
+    "RZZRYYRXX": lambda sim, qs, **params: sim._sim.run_2q_gate(
+        "RZZRYYRXX",
         qs,
         {"angles": params["angles"]} if "angles" in params else {"angles": [0, 0, 0]},
     ),
     "R2XXYYZZ": lambda sim, qs, **params: sim._sim.run_2q_gate(
-        "RXXRYYRZZ",
+        "RZZRYYRXX",
         qs,
         {"angles": params["angles"]} if "angles" in params else {"angles": [0, 0, 0]},
     ),
