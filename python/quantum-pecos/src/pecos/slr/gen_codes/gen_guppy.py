@@ -13,6 +13,7 @@ from __future__ import annotations
 
 import linecache
 from textwrap import dedent
+
 from pecos.slr.vars import QReg
 
 
@@ -40,7 +41,7 @@ class GuppyGenerator:
             self.write("from guppylang import GuppyModule")
             self.write("import pecos.qeclib.guppy.func_helpers")
             self.write("")
-            self.write("mod = GuppyModule(\"mod\")")
+            self.write('mod = GuppyModule("mod")')
             self.write("mod.load_all(guppylang.std.quantum)")
             self.write("mod.load_all(guppylang.std.builtins)")
             self.write("mod.load_all(guppylang.std.angles)")
@@ -87,7 +88,7 @@ class GuppyGenerator:
         if block_name == "Main":
             for var in block.vars:
                 if type(var).__name__ == "CReg":
-                    self.write(f"result(\"{var.sym}\", bool_list2int({var.sym}))")
+                    self.write(f'result("{var.sym}", bool_list2int({var.sym}))')
 
                 elif type(var).__name__ == "QReg":
                     self.write(f"for _q in {var.sym}:")
@@ -427,12 +428,20 @@ class GuppyGenerator:
         if type(op.left).__name__ == "CReg":
             left_str = f"bool_list2int({op.left.sym})"
         else:
-            left_str = op.left.qasm() if hasattr(op.left, "qasm") else self.generate_op(op.left)
+            left_str = (
+                op.left.qasm()
+                if hasattr(op.left, "qasm")
+                else self.generate_op(op.left)
+            )
 
         if type(op.right).__name__ == "CReg":
             right_str = f"bool_list2int({op.right.sym})"
         else:
-            right_str = op.right.qasm() if hasattr(op.right, "qasm") else self.generate_op(op.right)
+            right_str = (
+                op.right.qasm()
+                if hasattr(op.right, "qasm")
+                else self.generate_op(op.right)
+            )
 
         return f"({left_str} {op.symbol} {right_str})"
 
@@ -492,19 +501,19 @@ def run_guppy_from_str(code_string):
     """
     Creates and evaluate a GuppyModule from a string of code.
     """
-    code_string = dedent(code_string).strip() + '\n'
+    code_string = dedent(code_string).strip() + "\n"
     filename = "<guppy-string>"
 
     linecache.cache[filename] = (
         len(code_string),
         None,
         code_string.splitlines(keepends=True),
-        filename
+        filename,
     )
 
     # Execute the code
     namespace = {}
-    code = compile(code_string, filename, 'exec')
+    code = compile(code_string, filename, "exec")
     exec(code, namespace, namespace)
 
-    return namespace['mod']
+    return namespace["mod"]

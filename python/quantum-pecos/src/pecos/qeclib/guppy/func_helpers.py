@@ -1,13 +1,12 @@
 import guppylang
-from guppylang import guppy
-from guppylang.std.quantum import qubit, measure_return, reset, x
-from guppylang.std.builtins import owned, result
-from guppylang import GuppyModule
+from guppylang import GuppyModule, guppy
+from guppylang.std.quantum import measure_return, qubit, reset, x
 
 func_helpers = GuppyModule("func_helpers")
 func_helpers.load_all(guppylang.std.quantum)
 func_helpers.load_all(guppylang.std.builtins)
 guppylang.enable_experimental_features()
+
 
 @guppy(func_helpers)
 def bool_list2int(bool_list: list[int]) -> int:
@@ -23,7 +22,9 @@ def bool_list2int(bool_list: list[int]) -> int:
 
     result = 0
     for bit in bool_list:
-        result = (result << 1) | bit  # Shift result left by 1 and add the current bit (True=1, False=0)
+        result = (
+            result << 1
+        ) | bit  # Shift result left by 1 and add the current bit (True=1, False=0)
     return result
 
 
@@ -46,6 +47,7 @@ def int2bool_list(value: int, size: int) -> list[int]:
     bool_list = [((value >> (size - 1 - i)) & 1) for i in range(size)]
     return bool_list
 
+
 @guppy(func_helpers)
 def list_insert_int(lst: list[int], index: int, value: int) -> list[int]:
     """Replace a value at a specific index in a list using only looping, pop, and append."""
@@ -63,6 +65,7 @@ def list_insert_int(lst: list[int], index: int, value: int) -> list[int]:
 
     return lst
 
+
 @guppy(func_helpers)
 def list_insert_bool(lst: list[int], index: int, value: bool) -> list[int]:
     """Replace a value at a specific index in a list using only looping, pop, and append."""
@@ -73,6 +76,7 @@ def list_insert_bool(lst: list[int], index: int, value: bool) -> list[int]:
         temp_value = 0
 
     return list_insert_int(lst, index, temp_value)
+
 
 @guppy(func_helpers)
 def measure_qlist(lst: list[qubit], index: int) -> bool:
@@ -88,15 +92,18 @@ def measure_qlist(lst: list[qubit], index: int) -> bool:
         lst.append(q)
     return value
 
+
 @guppy(func_helpers)
 def measure_to_bit(qs: list[qubit], qindex: int, cs: list[int], cindex: int) -> None:
     value: bool = measure_qlist(qs, qindex)
     list_insert_bool(cs, cindex, value)
 
+
 @guppy(func_helpers)
 def test_qubit(q: qubit) -> None:
     x(q)
     x(q)
+
 
 # @guppy(func_helpers)
 # def clist_result(clist: list[int], sym: str) -> None:

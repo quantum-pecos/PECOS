@@ -1,4 +1,5 @@
-from .gen_guppy import GuppyGenerator, run_guppy_from_str
+from pecos.slr.gen_codes.gen_guppy import GuppyGenerator, run_guppy_from_str
+
 
 class HUGRGenerator:
     """Compiles SLR code to HUGR JSON"""

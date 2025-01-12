@@ -1,10 +1,10 @@
 # import guppylang
-import guppylang.std.quantum
 import guppylang.std.builtins
+import guppylang.std.quantum
 from guppylang import GuppyModule
+
 from pecos.qeclib.guppy.func_helpers import func_helpers
 from pecos.qeclib.guppy.steane.preps.encoding_circ import encoding_circ_mod
-
 
 steane_module = GuppyModule("steanemodule")
 

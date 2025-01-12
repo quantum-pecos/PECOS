@@ -1,7 +1,6 @@
-from guppylang import guppy, GuppyModule
-from guppylang.std.quantum import reset, cx, h, qubit
 import guppylang
-from guppylang.std import builtins
+from guppylang import GuppyModule, guppy
+from guppylang.std.quantum import cx, h, qubit, reset
 
 # from pecos.qeclib.guppy.steane.mod import steane_module
 
@@ -10,6 +9,7 @@ encoding_circ_mod = GuppyModule("encoding_circ_mod")
 encoding_circ_mod.load_all(guppylang.std.quantum)
 encoding_circ_mod.load_all(guppylang.std.builtins)
 guppylang.enable_experimental_features()
+
 
 @guppy(encoding_circ_mod)
 def encoding_circuit(q: list[qubit]) -> None:

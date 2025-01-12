@@ -1,11 +1,16 @@
 from guppylang import guppy
-from guppylang.std.quantum import reset, cx, h, qubit
-
+from guppylang.std.quantum import qubit
+from pecos.qeclib.guppy.func_helpers import list_insert_int, measure_to_bit
 from pecos.qeclib.guppy.steane.mod import steane_module
-from pecos.qeclib.guppy.func_helpers import measure_to_bit, list_insert_int
+
 
 @guppy(steane_module)
-def measure_z(q: list[qubit], meas: list[int], log_raw_reg: list[int], log_raw_index) -> None:
+def measure_z(
+    q: list[qubit],
+    meas: list[int],
+    log_raw_reg: list[int],
+    log_raw_index,
+) -> None:
     # barrier q;
 
     measure_to_bit(q, 0, meas, 0)

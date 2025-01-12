@@ -12,6 +12,7 @@
 from pecos.qeclib.steane.steane_class import Steane
 from pecos.slr import Barrier, CReg, If, Main
 from pecos.slr.gen_codes.gen_guppy import GuppyGenerator
+
 # from pecos.slr.gen_codes.gen_hugr import HUGRGenerator
 
 # ruff: noqa: INP001

@@ -1,16 +1,13 @@
-from guppylang import guppy
 import guppylang
-from guppylang import GuppyModule
-from guppylang.std.quantum import x, measure, discard, cx, qubit
-from guppylang.std.builtins import result
-import guppylang
+from guppylang import GuppyModule, guppy
+from guppylang.std.quantum import discard
 from pecos.qeclib.guppy.steane import steane
 
 guppylang.enable_experimental_features()
 
 
-
 import pecos
+
 
 def test_steane_guppy():
     st = steane.module

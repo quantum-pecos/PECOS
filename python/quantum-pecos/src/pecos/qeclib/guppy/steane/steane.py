@@ -1,8 +1,7 @@
 import guppylang
-from guppylang import GuppyModule
-from guppylang import guppy
-from guppylang.std.quantum import qubit, cx, h, discard
+from guppylang import GuppyModule, guppy
 from guppylang.std.builtins import owned
+from guppylang.std.quantum import cx, discard, h, qubit
 
 # from pecos.qeclib.guppy.steane.preps.encoding_circ import encoding_circ_mod
 
@@ -12,6 +11,7 @@ module.load_all(guppylang.std.builtins)
 # module.load_all(encoding_circ_mod)
 
 guppylang.enable_experimental_features()
+
 
 @guppy.struct(module)
 class Steane:
@@ -42,6 +42,7 @@ class Steane:
     #     # for d in self.d:
     #     #     x(d)
 
+
 @guppy(module)
 def st_discard(code: Steane @ owned) -> None:
     for q in code.d:
@@ -52,5 +53,5 @@ def st_discard(code: Steane @ owned) -> None:
 def st_new() -> "Steane":
     return Steane(
         [qubit() for _ in range(7)],
-        0
+        0,
     )
