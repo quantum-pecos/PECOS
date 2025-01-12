@@ -13,27 +13,36 @@
 use super::arbitrary_rotation_gateable::ArbitraryRotationGateable;
 use super::clifford_gateable::{CliffordGateable, MeasurementResult};
 use super::quantum_simulator::QuantumSimulator;
+use pecos_core::SimRng;
+use rand_chacha::ChaCha8Rng;
 
 use num_complex::Complex64;
 use rand::Rng;
 
 #[derive(Clone, Debug)]
-pub struct StateVec {
+pub struct StateVec<R = ChaCha8Rng>
+where
+    R: SimRng,
+{
     num_qubits: usize,
     state: Vec<Complex64>,
+    rng: R,
 }
 
 impl StateVec {
     /// Create a new state initialized to |0...0⟩
     #[must_use]
     #[inline]
-    pub fn new(num_qubits: usize) -> Self {
-        let size = 1 << num_qubits; // 2^n
-        let mut state = vec![Complex64::new(0.0, 0.0); size];
-        state[0] = Complex64::new(1.0, 0.0); // Prep |0...0>
-        StateVec { num_qubits, state }
+    pub fn new(num_qubits: usize) -> StateVec<ChaCha8Rng> {
+        let rng = ChaCha8Rng::from_entropy();
+        StateVec::with_rng(num_qubits, rng)
     }
+}
 
+impl<R> StateVec<R>
+where
+    R: SimRng,
+{
     /// Returns the number of qubits in the system
     ///
     /// # Returns
@@ -52,6 +61,17 @@ impl StateVec {
         self.num_qubits
     }
 
+    pub fn with_rng(num_qubits: usize, rng: R) -> Self {
+        let size = 1 << num_qubits; // 2^n
+        let mut state = vec![Complex64::new(0.0, 0.0); size];
+        state[0] = Complex64::new(1.0, 0.0); // Prep |0...0>
+        StateVec {
+            num_qubits,
+            state,
+            rng,
+        }
+    }
+
     /// Initialize from a custom state vector
     ///
     /// # Panics
@@ -59,10 +79,14 @@ impl StateVec {
     /// Panics if the input state requires more qubits then `StateVec` has.
     #[must_use]
     #[inline]
-    pub fn from_state(state: Vec<Complex64>) -> Self {
+    pub fn from_state(state: Vec<Complex64>, rng: R) -> Self {
         let num_qubits = state.len().trailing_zeros() as usize;
         assert_eq!(1 << num_qubits, state.len(), "Invalid state vector size");
-        StateVec { num_qubits, state }
+        StateVec {
+            num_qubits,
+            state,
+            rng,
+        }
     }
 
     /// Prepare a specific computational basis state
@@ -434,8 +458,6 @@ impl CliffordGateable<usize> for StateVec {
     /// - These conditions must be ensured by the caller or a higher-level component.
     #[inline]
     fn mz(&mut self, target: usize) -> MeasurementResult {
-        let mut rng = rand::thread_rng();
-
         let step = 1 << target;
         let mut prob_one = 0.0;
 
@@ -448,7 +470,7 @@ impl CliffordGateable<usize> for StateVec {
         }
 
         // Decide measurement outcome
-        let result = usize::from(rng.gen::<f64>() < prob_one);
+        let result = usize::from(self.rng.gen::<f64>() < prob_one);
 
         // Collapse and normalize state
         let mut norm = 0.0;
