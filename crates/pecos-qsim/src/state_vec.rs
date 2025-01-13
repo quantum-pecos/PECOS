@@ -50,6 +50,18 @@ where
 
 impl StateVec {
     /// Create a new state initialized to |0...0⟩
+    ///
+    /// # Examples
+    /// ```rust
+    /// use pecos_qsim::StateVec;
+    ///
+    /// // Initialize a 3-qubit state vector in the |000⟩ state
+    /// let state_vec = StateVec::new(3);
+    ///
+    /// // Confirm the state is |000⟩
+    /// let prob = state_vec.probability(0);
+    /// assert!((prob - 1.0).abs() < 1e-10);
+    /// ```
     #[inline]
     #[must_use]
     pub fn new(num_qubits: usize) -> StateVec<ChaCha8Rng> {
@@ -111,6 +123,22 @@ where
 
     /// Initialize from a custom state vector
     ///
+    /// # Examples
+    /// ```rust
+    /// use pecos_core::SimRng;
+    /// use num_complex::Complex64;
+    /// use pecos_qsim::StateVec;
+    ///
+    /// let custom_state = vec![
+    ///     Complex64::new(1.0 / 2.0_f64.sqrt(), 0.0),
+    ///     Complex64::new(1.0 / 2.0_f64.sqrt(), 0.0),
+    ///     Complex64::new(0.0, 0.0),
+    ///     Complex64::new(0.0, 0.0),
+    /// ];
+    ///
+    /// let state_vec = StateVec::from_state(custom_state, rand_chacha::ChaCha8Rng::from_entropy());
+    /// ```
+    ///
     /// # Panics
     /// Code will panic if the input state requires more qubits then `StateVec` has.
     #[inline]
@@ -127,10 +155,26 @@ where
 
     /// Prepare a specific computational basis state
     ///
+    /// # Convention
+    /// Note: The binary representation of the basis state uses a different ordering than
+    /// standard quantum notation. For example:
+    /// - |01⟩ corresponds to binary `0b10` (decimal 2)
+    /// - |10⟩ corresponds to binary `0b01` (decimal 1)
+    ///
+    /// This is because in quantum notation the leftmost qubit is the most significant,
+    /// while in binary representation the rightmost bit is the most significant.
+    ///
+    /// # Examples
+    /// ```rust
+    /// use pecos_qsim::StateVec;
+    ///
+    /// let mut state_vec = StateVec::new(3);
+    /// state_vec.prepare_computational_basis(0b110);  // Prepares |011⟩
+    /// ```
+    ///
     /// # Panics
     /// Code will panic if `basis_state` >= `2^num_qubits` (i.e., if the basis state index is too large for the number of qubits)
     #[inline]
-    #[must_use]
     pub fn prepare_computational_basis(&mut self, basis_state: usize) -> &mut Self {
         assert!(basis_state < 1 << self.num_qubits);
         self.state.fill(Complex64::new(0.0, 0.0));
@@ -150,7 +194,6 @@ where
     /// state.prepare_plus_state();
     /// ```
     #[inline]
-    #[must_use]
     pub fn prepare_plus_state(&mut self) -> &mut Self {
         let factor = Complex64::new(1.0 / f64::from(1 << self.num_qubits), 0.0);
         self.state.fill(factor);
@@ -162,6 +205,25 @@ where
     /// The state vector is guaranteed to be normalized such that the sum of
     /// probability amplitudes squared equals 1.
     ///
+    /// # Examples
+    /// ```rust
+    /// use pecos_qsim::StateVec;
+    ///
+    /// // Initialize a 2-qubit state vector
+    /// let state_vec = StateVec::new(2);
+    ///
+    /// // Access the state vector
+    /// let state = state_vec.state();
+    ///
+    /// // Verify the state is initialized to |00⟩
+    /// assert_eq!(state[0].re, 1.0);
+    /// assert_eq!(state[0].im, 0.0);
+    /// for amp in &state[1..] {
+    ///     assert_eq!(amp.re, 0.0);
+    ///     assert_eq!(amp.im, 0.0);
+    /// }
+    /// ```
+    ///
     /// # Returns
     /// A slice containing the complex amplitudes of the quantum state
     #[inline]
@@ -171,6 +233,34 @@ where
     }
 
     /// Returns the probability of measuring a specific basis state
+    ///
+    /// # Convention
+    /// Note: The binary representation of the basis state uses a different ordering than
+    /// standard quantum notation. For example:
+    /// - |01⟩ corresponds to binary `0b10` (decimal 2)
+    /// - |10⟩ corresponds to binary `0b01` (decimal 1)
+    ///
+    /// This is because in quantum notation the leftmost qubit is the most significant,
+    /// while in binary representation the rightmost bit is the most significant.
+    ///
+    /// # Examples
+    /// ```rust
+    /// use pecos_qsim::StateVec;
+    ///
+    /// // Initialize a 2-qubit state vector
+    /// let mut state_vec = StateVec::new(2);
+    ///
+    /// // Prepare the |01⟩ state (corresponds to binary 10)
+    /// state_vec.prepare_computational_basis(0b10);
+    ///
+    /// // Get the probability of measuring |01⟩
+    /// let prob = state_vec.probability(0b10);  // Use binary 10 for |01⟩
+    /// assert!((prob - 1.0).abs() < 1e-10);
+    ///
+    /// // Probability of measuring |00⟩ should be 0
+    /// let prob_zero = state_vec.probability(0);
+    /// assert!(prob_zero.abs() < 1e-10);
+    /// ```
     ///
     /// # Panics
     /// Code will panic if `basis_state` >= `2^num_qubits` (i.e., if the basis state index is too large for the number of qubits)
@@ -233,6 +323,58 @@ where
     ///      [u20, u21, u22, u23],
     ///      [u30, u31, u32, u33]]
     ///
+    /// # Examples
+    /// ```rust
+    /// use num_complex::Complex64;
+    /// use pecos_qsim::StateVec;
+    ///
+    /// let mut state_vec = StateVec::new(2);
+    ///
+    /// let cnot_gate = [
+    ///     [Complex64::new(1.0, 0.0), Complex64::new(0.0, 0.0), Complex64::new(0.0, 0.0), Complex64::new(0.0, 0.0)],
+    ///     [Complex64::new(0.0, 0.0), Complex64::new(1.0, 0.0), Complex64::new(0.0, 0.0), Complex64::new(0.0, 0.0)],
+    ///     [Complex64::new(0.0, 0.0), Complex64::new(0.0, 0.0), Complex64::new(0.0, 0.0), Complex64::new(1.0, 0.0)],
+    ///     [Complex64::new(0.0, 0.0), Complex64::new(0.0, 0.0), Complex64::new(1.0, 0.0), Complex64::new(0.0, 0.0)],
+    /// ];
+    ///
+    /// state_vec.prepare_computational_basis(2);  // |01⟩
+    /// println!("|01⟩: {:?}", state_vec.state());
+    /// state_vec.two_qubit_unitary(1, 0, cnot_gate);  // Control: qubit 1, Target: qubit 0
+    ///
+    /// println!("|11⟩: {:?}", state_vec.state());
+    ///
+    /// let prob = state_vec.probability(3);  // Expect |11⟩
+    /// println!("prob: {:?}", prob);
+    /// assert!((prob - 1.0).abs() < 1e-10);
+    /// ```
+    ///
+    /// ```rust
+    /// use num_complex::Complex64;
+    /// use pecos_qsim::StateVec;
+    ///
+    /// // Initialize a 2-qubit state vector
+    /// let mut state_vec = StateVec::new(2);
+    ///
+    /// // Define a SWAP gate as a 4x4 unitary matrix
+    /// let swap_gate = [
+    ///     [Complex64::new(1.0, 0.0), Complex64::new(0.0, 0.0), Complex64::new(0.0, 0.0), Complex64::new(0.0, 0.0)],
+    ///     [Complex64::new(0.0, 0.0), Complex64::new(0.0, 0.0), Complex64::new(1.0, 0.0), Complex64::new(0.0, 0.0)],
+    ///     [Complex64::new(0.0, 0.0), Complex64::new(1.0, 0.0), Complex64::new(0.0, 0.0), Complex64::new(0.0, 0.0)],
+    ///     [Complex64::new(0.0, 0.0), Complex64::new(0.0, 0.0), Complex64::new(0.0, 0.0), Complex64::new(1.0, 0.0)],
+    /// ];
+    ///
+    /// // Prepare the |01⟩ state
+    /// state_vec.prepare_computational_basis(2);
+    ///
+    /// // Apply the SWAP gate to qubits 0 and 1
+    /// state_vec.two_qubit_unitary(0, 1, swap_gate);
+    /// println!("{:?}", state_vec.state());
+    ///
+    /// // Verify the state is now |10⟩
+    /// let prob = state_vec.probability(1);
+    /// assert!((prob - 1.0).abs() < 1e-10);
+    /// ```
+    ///
     /// # Safety
     /// This function assumes that:
     /// - `qubit1` and `qubit2` are valid qubit indices (i.e., `< number of qubits`).
@@ -241,60 +383,58 @@ where
     #[inline]
     pub fn two_qubit_unitary(
         &mut self,
-        qubit1: usize,
-        qubit2: usize,
+        control: usize,
+        target: usize,
         matrix: [[Complex64; 4]; 4],
     ) -> &mut Self {
-        // Make sure qubit1 < qubit2 for consistent ordering
-        let (q1, q2) = if qubit1 < qubit2 {
-            (qubit1, qubit2)
-        } else {
-            (qubit2, qubit1)
-        };
+        let n = self.num_qubits;
+        let size = 1 << n;
 
-        // Process state vector in groups of 4 amplitudes
-        for i in 0..self.state.len() {
-            let bit1 = (i >> q1) & 1;
-            let bit2 = (i >> q2) & 1;
+        // Use a temporary buffer to avoid overwriting data during updates
+        let mut new_state = vec![Complex64::new(0.0, 0.0); size];
 
-            // Only process each set of 4 states once
-            if bit1 == 0 && bit2 == 0 {
-                // Calculate indices for all four basis states
-                let i00 = i;
-                let i01 = i ^ (1 << q2);
-                let i10 = i ^ (1 << q1);
-                let i11 = i ^ (1 << q1) ^ (1 << q2);
+        for i in 0..size {
+            // Extract control and target bits
+            let control_bit = (i >> control) & 1;
+            let target_bit = (i >> target) & 1;
 
-                // Store original amplitudes
-                let a00 = self.state[i00];
-                let a01 = self.state[i01];
-                let a10 = self.state[i10];
-                let a11 = self.state[i11];
+            // Map (control_bit, target_bit) to basis index (00, 01, 10, 11)
+            let basis_idx = (control_bit << 1) | target_bit;
 
-                // Apply the 4x4 unitary transformation
-                self.state[i00] = matrix[0][0] * a00
-                    + matrix[0][1] * a01
-                    + matrix[0][2] * a10
-                    + matrix[0][3] * a11;
-                self.state[i01] = matrix[1][0] * a00
-                    + matrix[1][1] * a01
-                    + matrix[1][2] * a10
-                    + matrix[1][3] * a11;
-                self.state[i10] = matrix[2][0] * a00
-                    + matrix[2][1] * a01
-                    + matrix[2][2] * a10
-                    + matrix[2][3] * a11;
-                self.state[i11] = matrix[3][0] * a00
-                    + matrix[3][1] * a01
-                    + matrix[3][2] * a10
-                    + matrix[3][3] * a11;
+            for j in 0..4 {
+                // Calculate the index after flipping control and target qubits
+                let flipped_i = (i & !(1 << control) & !(1 << target))
+                    | (((j >> 1) & 1) << control)
+                    | ((j & 1) << target);
+
+                // Apply the matrix to the relevant amplitudes
+                new_state[flipped_i] += matrix[j][basis_idx] * self.state[i];
             }
         }
+
+        self.state = new_state;
         self
     }
 }
 
 impl QuantumSimulator for StateVec {
+    /// # Examples
+    /// ```rust
+    /// use pecos_qsim::{QuantumSimulator, StateVec};
+    ///
+    /// // Initialize a 2-qubit state vector
+    /// let mut state_vec = StateVec::new(2);
+    ///
+    /// // Prepare a different state
+    /// state_vec.prepare_computational_basis(3); // |11⟩
+    ///
+    /// // Reset the state back to |00⟩
+    /// state_vec.reset();
+    ///
+    /// // Verify the state is |00⟩
+    /// let prob_zero = state_vec.probability(0);
+    /// assert!((prob_zero - 1.0).abs() < 1e-10);
+    /// ```
     #[inline]
     fn reset(&mut self) -> &mut Self {
         self.prepare_computational_basis(0)
@@ -479,6 +619,19 @@ impl CliffordGateable<usize> for StateVec {
     ///
     /// // Create GHZ state with CNOT cascade
     /// state.h(0).cx(0, 1).cx(1, 2);
+    /// ```
+    ///
+    /// ```rust
+    /// use num_complex::Complex64;
+    /// use pecos_qsim::{StateVec, CliffordGateable};
+    ///
+    /// let mut state_vec = StateVec::new(2);
+    ///
+    /// state_vec.prepare_computational_basis(2);  // |01⟩
+    /// state_vec.cx(1, 0);  // Control: qubit 1, Target: qubit 0
+    ///
+    /// let prob = state_vec.probability(3);  // Expect |11⟩
+    /// assert!((prob - 1.0).abs() < 1e-10);
     /// ```
     ///
     /// # Safety
@@ -1608,6 +1761,43 @@ mod tests {
     }
 
     #[test]
+    fn test_two_qubit_unitary_swap_simple() {
+        let mut state_vec = StateVec::new(2);
+
+        let swap_gate = [
+            [
+                Complex64::new(1.0, 0.0),
+                Complex64::new(0.0, 0.0),
+                Complex64::new(0.0, 0.0),
+                Complex64::new(0.0, 0.0),
+            ],
+            [
+                Complex64::new(0.0, 0.0),
+                Complex64::new(0.0, 0.0),
+                Complex64::new(1.0, 0.0),
+                Complex64::new(0.0, 0.0),
+            ],
+            [
+                Complex64::new(0.0, 0.0),
+                Complex64::new(1.0, 0.0),
+                Complex64::new(0.0, 0.0),
+                Complex64::new(0.0, 0.0),
+            ],
+            [
+                Complex64::new(0.0, 0.0),
+                Complex64::new(0.0, 0.0),
+                Complex64::new(0.0, 0.0),
+                Complex64::new(1.0, 0.0),
+            ],
+        ];
+
+        state_vec.prepare_computational_basis(2); // |10⟩
+        state_vec.two_qubit_unitary(1, 0, swap_gate);
+
+        assert!((state_vec.probability(1) - 1.0).abs() < 1e-10); // Should now be |01⟩
+    }
+
+    #[test]
     fn test_cx() {
         let mut q = StateVec::new(2);
         // Prep |+>
@@ -1620,6 +1810,31 @@ mod tests {
         assert!((q.state[3].re - expected).abs() < 1e-10);
         assert!(q.state[1].norm() < 1e-10);
         assert!(q.state[2].norm() < 1e-10);
+    }
+
+    #[test]
+    fn test_cx_all_basis_states() {
+        let mut state_vec = StateVec::new(2);
+
+        // |00⟩ → should remain |00⟩
+        state_vec.prepare_computational_basis(0);
+        state_vec.cx(1, 0);
+        assert!((state_vec.probability(0) - 1.0).abs() < 1e-10);
+
+        // |01⟩ → should remain |01⟩
+        state_vec.prepare_computational_basis(1);
+        state_vec.cx(1, 0);
+        assert!((state_vec.probability(1) - 1.0).abs() < 1e-10);
+
+        // |10⟩ → should flip to |11⟩
+        state_vec.prepare_computational_basis(2);
+        state_vec.cx(1, 0);
+        assert!((state_vec.probability(3) - 1.0).abs() < 1e-10);
+
+        // |11⟩ → should flip to |10⟩
+        state_vec.prepare_computational_basis(3);
+        state_vec.cx(1, 0);
+        assert!((state_vec.probability(2) - 1.0).abs() < 1e-10);
     }
 
     #[test]
@@ -1657,6 +1872,43 @@ mod tests {
         assert!((q.state[1].re - expected).abs() < 1e-10); // |01⟩ amplitude
         assert!((q.state[2].re - expected).abs() < 1e-10); // |10⟩ amplitude
         assert!((q.state[3].re + expected).abs() < 1e-10); // |11⟩ amplitude
+    }
+
+    #[test]
+    fn test_state_normalization() {
+        let mut state_vec = StateVec::new(3);
+
+        // Apply multiple gates
+        state_vec.h(0);
+        state_vec.cx(0, 1);
+        state_vec.cx(1, 2);
+
+        // Verify normalization
+        let norm: f64 = state_vec.state.iter().map(|amp| amp.norm_sqr()).sum();
+        assert!((norm - 1.0).abs() < 1e-10);
+    }
+
+    #[test]
+    fn test_non_commuting_gates() {
+        let mut state1 = StateVec::new(1);
+        let mut state2 = StateVec::new(1);
+
+        state1.h(0);
+        state1.z(0);
+
+        state2.z(0);
+        state2.h(0);
+
+        // Compute the global norm difference
+        let diff_norm: f64 = state1
+            .state
+            .iter()
+            .zip(state2.state.iter())
+            .map(|(a, b)| (a - b).norm_sqr())
+            .sum::<f64>()
+            .sqrt();
+
+        assert!(diff_norm > 1e-10, "H and Z should not commute.");
     }
 
     #[test]
@@ -2257,7 +2509,7 @@ mod tests {
     }
 
     #[test]
-    fn test_reset() {
+    fn test_pz() {
         let mut q = StateVec::new(1);
 
         q.h(0);
@@ -2271,7 +2523,7 @@ mod tests {
     }
 
     #[test]
-    fn test_reset_multiple_qubits() {
+    fn test_pz_multiple_qubits() {
         let mut q = StateVec::new(2);
 
         q.h(0);
@@ -2795,5 +3047,514 @@ mod tests {
         let result2 = q.mz(1);
 
         assert_eq!(result1.outcome, result2.outcome);
+    }
+
+    #[test]
+    fn test_prepare_computational_basis_all_states() {
+        let num_qubits = 3;
+        let mut state_vec = StateVec::new(num_qubits);
+
+        for basis_state in 0..(1 << num_qubits) {
+            state_vec.prepare_computational_basis(basis_state);
+            for i in 0..state_vec.state.len() {
+                if i == basis_state {
+                    assert!((state_vec.state[i].norm() - 1.0).abs() < 1e-10);
+                } else {
+                    assert!(state_vec.state[i].norm() < 1e-10);
+                }
+            }
+        }
+    }
+
+    #[test]
+    fn test_reset() {
+        let mut state_vec = StateVec::new(2);
+
+        state_vec.h(0).cx(0, 1); // Create Bell state
+        state_vec.reset(); // Reset to |00⟩
+
+        assert!((state_vec.probability(0) - 1.0).abs() < 1e-10);
+        for i in 1..state_vec.state.len() {
+            assert!(state_vec.state[i].norm() < 1e-10);
+        }
+    }
+
+    #[test]
+    fn test_probability() {
+        let mut state_vec = StateVec::new(1);
+
+        // Prepare |+⟩ state
+        state_vec.h(0);
+
+        let prob_zero = state_vec.probability(0);
+        let prob_one = state_vec.probability(1);
+
+        assert!((prob_zero - 0.5).abs() < 1e-10);
+        assert!((prob_one - 0.5).abs() < 1e-10);
+    }
+
+    #[test]
+    fn test_inverse_gates() {
+        let mut state_vec = StateVec::new(1);
+
+        // Apply Hadamard twice: H * H = I
+        state_vec.h(0);
+        state_vec.h(0);
+
+        // Verify state is back to |0⟩
+        assert!((state_vec.probability(0) - 1.0).abs() < 1e-10);
+        assert!((state_vec.probability(1)).abs() < 1e-10);
+
+        // Apply X twice: X * X = I
+        state_vec.x(0);
+        state_vec.x(0);
+        assert!((state_vec.probability(0) - 1.0).abs() < 1e-10);
+    }
+
+    #[test]
+    fn test_bell_state_entanglement() {
+        let mut state_vec = StateVec::new(2);
+
+        // Prepare Bell State: (|00⟩ + |11⟩) / √2
+        state_vec.h(0);
+        state_vec.cx(0, 1);
+
+        let expected_amplitude = 1.0 / 2.0_f64.sqrt();
+
+        assert!((state_vec.state[0].re - expected_amplitude).abs() < 1e-10);
+        assert!((state_vec.state[3].re - expected_amplitude).abs() < 1e-10);
+
+        assert!(state_vec.state[1].norm() < 1e-10);
+        assert!(state_vec.state[2].norm() < 1e-10);
+    }
+
+    #[test]
+    fn test_measurement_collapse() {
+        let mut state_vec = StateVec::new(1);
+
+        // Prepare |+⟩ = (|0⟩ + |1⟩) / √2
+        state_vec.h(0);
+
+        // Simulate a measurement
+        let result = state_vec.mz(0);
+
+        // State should collapse to |0⟩ or |1⟩
+        if result.outcome {
+            assert!((state_vec.probability(1) - 1.0).abs() < 1e-10);
+        } else {
+            assert!((state_vec.probability(0) - 1.0).abs() < 1e-10);
+        }
+    }
+
+    #[test]
+    fn test_state_normalization_after_random_gates() {
+        let mut state_vec = StateVec::new(3);
+
+        // Apply a sequence of random gates
+        state_vec.h(0);
+        state_vec.cx(0, 1);
+        state_vec.rz(std::f64::consts::PI / 3.0, 2);
+        state_vec.swap(1, 2);
+
+        // Check if the state is still normalized
+        let norm: f64 = state_vec.state.iter().map(|amp| amp.norm_sqr()).sum();
+        assert!((norm - 1.0).abs() < 1e-10);
+    }
+
+    #[test]
+    fn test_two_qubit_unitary_identity() {
+        let mut state_vec = StateVec::new(2);
+
+        // Identity matrix
+        let identity_gate = [
+            [
+                Complex64::new(1.0, 0.0),
+                Complex64::new(0.0, 0.0),
+                Complex64::new(0.0, 0.0),
+                Complex64::new(0.0, 0.0),
+            ],
+            [
+                Complex64::new(0.0, 0.0),
+                Complex64::new(1.0, 0.0),
+                Complex64::new(0.0, 0.0),
+                Complex64::new(0.0, 0.0),
+            ],
+            [
+                Complex64::new(0.0, 0.0),
+                Complex64::new(0.0, 0.0),
+                Complex64::new(1.0, 0.0),
+                Complex64::new(0.0, 0.0),
+            ],
+            [
+                Complex64::new(0.0, 0.0),
+                Complex64::new(0.0, 0.0),
+                Complex64::new(0.0, 0.0),
+                Complex64::new(1.0, 0.0),
+            ],
+        ];
+
+        // Apply the identity gate
+        state_vec.prepare_computational_basis(2);
+        state_vec.two_qubit_unitary(0, 1, identity_gate);
+
+        // State should remain |10⟩
+        assert!((state_vec.probability(2) - 1.0).abs() < 1e-10);
+    }
+
+    #[test]
+    fn test_gate_decompositions() {
+        // Test that composite operations match their decompositions
+        let mut q1 = StateVec::new(2);
+        let mut q2 = StateVec::new(2);
+
+        // Test SWAP decomposition into CNOTs
+        q1.x(0); // Start with |10⟩
+        q1.swap(0, 1); // Direct SWAP
+
+        q2.x(0); // Also start with |10⟩
+        q2.cx(0, 1).cx(1, 0).cx(0, 1); // SWAP decomposition
+
+        assert_states_equal(&q1.state, &q2.state);
+    }
+
+    #[test]
+    fn test_phase_relationships() {
+        // Test expected phase relationships between gates
+        let q = StateVec::new(1);
+
+        // Test that T * T = S
+        let mut q1 = q.clone();
+        q1.t(0).t(0);
+
+        let mut q2 = q.clone();
+        q2.sz(0);
+
+        assert_states_equal(&q1.state, &q2.state);
+    }
+
+    #[test]
+    fn test_phase_gate_identities() {
+        // Test S = T^2
+        let mut q1 = StateVec::new(1);
+        let mut q2 = StateVec::new(1);
+
+        // Put in superposition first to check phases
+        q1.h(0);
+        q2.h(0);
+
+        q1.sz(0); // S gate
+        q2.t(0).t(0); // Two T gates
+
+        assert_states_equal(&q1.state, &q2.state);
+    }
+
+    #[test]
+    fn test_hadamard_properties() {
+        // Test H^2 = I
+        let mut q = StateVec::new(1);
+        q.x(0); // Start with |1⟩
+        let initial = q.state.clone();
+        q.h(0).h(0);
+        assert_states_equal(&q.state, &initial);
+
+        // Test HXH = Z
+        let mut q1 = StateVec::new(1);
+        let mut q2 = StateVec::new(1);
+
+        q1.h(0).x(0).h(0);
+        q2.z(0);
+
+        assert_states_equal(&q1.state, &q2.state);
+    }
+
+    #[test]
+    fn test_controlled_gate_symmetries() {
+        let mut q1 = StateVec::new(2);
+        let mut q2 = StateVec::new(2);
+
+        // Test SWAP symmetry
+        q1.x(0); // |10⟩
+        q2.x(0); // |10⟩
+
+        q1.cx(0, 1).cx(1, 0).cx(0, 1); // SWAP via CNOTs
+        q2.swap(0, 1); // Direct SWAP
+
+        assert_states_equal(&q1.state, &q2.state);
+    }
+
+    #[test]
+    fn test_controlled_gate_phases() {
+        // Test phase behavior of controlled operations
+        let mut q = StateVec::new(2);
+
+        // Create superposition with phases
+        q.h(0).sz(0);
+        q.h(1).sz(1);
+
+        // Control operations should preserve phases correctly
+        let initial = q.state.clone();
+        q.cz(0, 1).cz(0, 1); // CZ^2 = I
+
+        assert_states_equal(&q.state, &initial);
+    }
+
+    #[test]
+    fn test_rotation_composition() {
+        let mut q1 = StateVec::new(1);
+        let mut q2 = StateVec::new(1);
+
+        // Test that rotation decompositions work
+        // RY(θ) = RX(π/2)RZ(θ)RX(-π/2)
+        q1.ry(FRAC_PI_3, 0);
+
+        q2.rx(FRAC_PI_2, 0).rz(FRAC_PI_3, 0).rx(-FRAC_PI_2, 0);
+
+        assert_states_equal(&q1.state, &q2.state);
+    }
+
+    #[test]
+    fn test_rotation_angle_precision() {
+        let mut q = StateVec::new(1);
+
+        // Test small angle rotations
+        let small_angle = 1e-6;
+        q.rx(small_angle, 0);
+
+        // Check that probabilities sum to 1
+        let total_prob: f64 = q.state.iter().map(|amp| amp.norm_sqr()).sum();
+        assert!((total_prob - 1.0).abs() < 1e-10);
+    }
+
+    #[test]
+    fn test_measurement_properties() {
+        let mut q = StateVec::new(2);
+
+        // Test 1: Measuring |0⟩ should always give 0
+        let result = q.mz(0);
+        assert!(!result.outcome);
+        assert!((q.probability(0) - 1.0).abs() < 1e-10);
+
+        // Test 2: Measuring |1⟩ should always give 1
+        q.reset();
+        q.x(0);
+        let result = q.mz(0);
+        assert!(result.outcome);
+        assert!((q.probability(1) - 1.0).abs() < 1e-10);
+
+        // Test 3: In a Bell state, measurements should correlate
+        q.reset();
+        q.h(0).cx(0, 1); // Create Bell state
+        let result1 = q.mz(0);
+        let result2 = q.mz(1);
+        assert_eq!(
+            result1.outcome, result2.outcome,
+            "Bell state measurements should correlate"
+        );
+
+        // Test 4: Repeated measurements should be consistent
+        q.reset();
+        q.h(0); // Create superposition
+        let first = q.mz(0);
+        let second = q.mz(0); // Measure again
+        assert_eq!(
+            first.outcome, second.outcome,
+            "Repeated measurements should give same result"
+        );
+    }
+
+    #[test]
+    fn test_measurement_basis_transforms() {
+        let mut q = StateVec::new(1);
+
+        // |0⟩ in X basis
+        q.h(0);
+
+        // Measure in Z basis
+        let result = q.mz(0);
+
+        // Result should be random but state should collapse
+        let final_prob = if result.outcome {
+            q.probability(1)
+        } else {
+            q.probability(0)
+        };
+        assert!((final_prob - 1.0).abs() < 1e-10);
+    }
+
+    #[test]
+    fn test_state_preparation_fidelity() {
+        let mut q = StateVec::new(2);
+
+        // Method 1: H + CNOT
+        q.h(0).cx(0, 1);
+        let probs1 = vec![
+            q.probability(0),
+            q.probability(1),
+            q.probability(2),
+            q.probability(3),
+        ];
+
+        // Method 2: Rotations
+        q.reset();
+        q.ry(FRAC_PI_2, 0).cx(0, 1); // Remove rz(PI) since it just adds phase
+
+        // Compare probability distributions
+        assert!((q.probability(0) - probs1[0]).abs() < 1e-10);
+        assert!((q.probability(1) - probs1[1]).abs() < 1e-10);
+        assert!((q.probability(2) - probs1[2]).abs() < 1e-10);
+        assert!((q.probability(3) - probs1[3]).abs() < 1e-10);
+    }
+
+    #[test]
+    fn test_arbitrary_state_preparation() {
+        let mut q = StateVec::new(1);
+
+        // Try to prepare various single-qubit states
+        // |+⟩ state
+        q.h(0);
+        assert!((q.probability(0) - 0.5).abs() < 1e-10);
+        assert!((q.probability(1) - 0.5).abs() < 1e-10);
+
+        // |+i⟩ state
+        q.reset();
+        q.h(0).sz(0);
+        assert!((q.probability(0) - 0.5).abs() < 1e-10);
+        assert!((q.probability(1) - 0.5).abs() < 1e-10);
+    }
+
+    #[test]
+    fn test_numerical_stability() {
+        let mut q = StateVec::new(4);
+
+        // Apply many rotations to test numerical stability
+        for _ in 0..100 {
+            q.rx(FRAC_PI_3, 0)
+                .ry(FRAC_PI_4, 1)
+                .rz(FRAC_PI_6, 2)
+                .cx(0, 3);
+        }
+
+        // Check normalization is preserved
+        let total_prob: f64 = q.state.iter().map(|amp| amp.norm_sqr()).sum();
+        assert!((total_prob - 1.0).abs() < 1e-8);
+    }
+
+    #[test]
+    fn test_ghz_state() {
+        // Test creating and verifying a GHZ state
+        let mut q = StateVec::new(3);
+        q.h(0).cx(0, 1).cx(1, 2); // Create GHZ state
+
+        // Verify properties
+        let mut norm_squared = 0.0;
+        for i in 0..8 {
+            if i == 0 || i == 7 {
+                // |000⟩ or |111⟩
+                norm_squared += q.state[i].norm_sqr();
+                assert!((q.state[i].norm() - FRAC_1_SQRT_2).abs() < 1e-10);
+            } else {
+                assert!(q.state[i].norm() < 1e-10);
+            }
+        }
+        assert!((norm_squared - 1.0).abs() < 1e-10);
+    }
+
+    #[test]
+    fn test_operation_chains() {
+        // Test complex sequences of operations
+        let mut q = StateVec::new(2);
+
+        // Create maximally entangled state then disentangle
+        q.h(0)
+            .cx(0, 1) // Create Bell state
+            .cx(0, 1)
+            .h(0); // Disentangle (apply the same operations in reverse)
+
+        // Should be back to |00⟩
+        assert!((q.probability(0) - 1.0).abs() < 1e-10);
+    }
+
+    #[test]
+    fn test_phase_coherence() {
+        let mut q = StateVec::new(1);
+
+        // Apply series of phase rotations that should cancel
+        q.h(0) // Create superposition
+            .rz(FRAC_PI_4, 0)
+            .rz(FRAC_PI_4, 0)
+            .rz(-FRAC_PI_2, 0); // Should cancel
+
+        // Should be back to |+⟩
+        assert!((q.state[0].re - FRAC_1_SQRT_2).abs() < 1e-10);
+        assert!((q.state[1].re - FRAC_1_SQRT_2).abs() < 1e-10);
+        assert!(q.state[0].im.abs() < 1e-10);
+        assert!(q.state[1].im.abs() < 1e-10);
+    }
+
+    #[test]
+    fn test_adjacent_vs_distant_qubits() {
+        let mut q1 = StateVec::new(4);
+        let mut q2 = StateVec::new(4);
+
+        // Test operations on adjacent vs distant qubits
+        q1.h(0).cx(0, 1); // Adjacent qubits
+        q2.h(0).cx(0, 3); // Distant qubits
+
+        // Both should maintain proper normalization
+        let norm1: f64 = q1.state.iter().map(|amp| amp.norm_sqr()).sum();
+        let norm2: f64 = q2.state.iter().map(|amp| amp.norm_sqr()).sum();
+        assert!((norm1 - 1.0).abs() < 1e-10);
+        assert!((norm2 - 1.0).abs() < 1e-10);
+    }
+
+    #[test]
+    fn test_state_prep_consistency() {
+        // First method: direct X gate
+        let mut q1 = StateVec::new(2);
+        q1.x(1); // Direct preparation of |01⟩
+
+        // Verify first preparation - |01⟩ corresponds to binary 10 (decimal 2)
+        assert!(
+            (q1.probability(2) - 1.0).abs() < 1e-10,
+            "First preparation failed"
+        );
+        assert!(q1.probability(0) < 1e-10);
+        assert!(q1.probability(1) < 1e-10);
+        assert!(q1.probability(3) < 1e-10);
+
+        // Second method: using two X gates that cancel on qubit 0
+        let mut q2 = StateVec::new(2);
+        q2.x(0).x(1).x(0); // Should give |01⟩
+
+        // Verify second preparation - |01⟩ corresponds to binary 10 (decimal 2)
+        assert!(
+            (q2.probability(2) - 1.0).abs() < 1e-10,
+            "Second preparation failed"
+        );
+        assert!(q2.probability(0) < 1e-10);
+        assert!(q2.probability(1) < 1e-10);
+        assert!(q2.probability(3) < 1e-10);
+
+        // Verify both methods give the same state
+        assert_states_equal(&q1.state, &q2.state);
+    }
+
+    #[test]
+    fn test_rotation_arithmetic() {
+        let q = StateVec::new(1);
+
+        // Test that RY(θ₁)RY(θ₂) = RY(θ₁ + θ₂) when commuting
+        let theta1 = FRAC_PI_3;
+        let theta2 = FRAC_PI_6;
+
+        // Method 1: Two separate rotations
+        let mut q1 = q.clone();
+        q1.ry(theta1, 0).ry(theta2, 0);
+
+        // Method 2: Combined rotation
+        let mut q2 = q.clone();
+        q2.ry(theta1 + theta2, 0);
+
+        assert_states_equal(&q1.state, &q2.state);
     }
 }
