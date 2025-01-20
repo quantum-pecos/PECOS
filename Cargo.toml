@@ -27,8 +27,10 @@ rand_xoshiro = "0.6"
 
 pecos-core = { version = "0.1.1", path = "crates/pecos-core" }
 pecos-qsim = { version = "0.1.1", path = "crates/pecos-qsim" }
+pecos-engines = { version = "0.1.1", path = "crates/pecos-engines" }
 pecos-qec = { version = "0.1.1", path = "crates/pecos-qec" }
 pecos = { version = "0.1.1", path = "crates/pecos" }
+pecos-cli = { version = "0.1.1", path = "crates/pecos-cli" }
 pecos-python = { version = "0.1.1", path = "crates/pecos-python" }
 
 [profile.release]
