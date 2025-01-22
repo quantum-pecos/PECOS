@@ -295,13 +295,13 @@ where
     #[inline]
     pub fn single_qubit_rotation(
         &mut self,
-        target: usize,
+        qubit: usize,
         u00: Complex64,
         u01: Complex64,
         u10: Complex64,
         u11: Complex64,
     ) -> &mut Self {
-        let step = 1 << target;
+        let step = 1 << qubit;
         for i in (0..self.state.len()).step_by(2 * step) {
             for offset in 0..step {
                 let j = i + offset;
@@ -383,8 +383,8 @@ where
     #[inline]
     pub fn two_qubit_unitary(
         &mut self,
-        control: usize,
-        target: usize,
+        qubit1: usize,
+        qubit2: usize,
         matrix: [[Complex64; 4]; 4],
     ) -> &mut Self {
         let n = self.num_qubits;
@@ -394,18 +394,18 @@ where
         let mut new_state = vec![Complex64::new(0.0, 0.0); size];
 
         for i in 0..size {
-            // Extract control and target bits
-            let control_bit = (i >> control) & 1;
-            let target_bit = (i >> target) & 1;
+            // Extract qubit1 and qubit2 bits
+            let control_bit = (i >> qubit1) & 1;
+            let target_bit = (i >> qubit2) & 1;
 
             // Map (control_bit, target_bit) to basis index (00, 01, 10, 11)
             let basis_idx = (control_bit << 1) | target_bit;
 
             for (j, &row) in matrix.iter().enumerate() {
-                // Calculate the index after flipping control and target qubits
-                let flipped_i = (i & !(1 << control) & !(1 << target))
-                    | (((j >> 1) & 1) << control)
-                    | ((j & 1) << target);
+                // Calculate the index after flipping qubit1 and qubit2 qubits
+                let flipped_i = (i & !(1 << qubit1) & !(1 << qubit2))
+                    | (((j >> 1) & 1) << qubit1)
+                    | ((j & 1) << qubit2);
 
                 // Apply the matrix to the relevant amplitudes
                 new_state[flipped_i] += row[basis_idx] * self.state[i];
@@ -496,10 +496,10 @@ impl CliffordGateable<usize> for StateVec {
     /// - `qubit` is a valid qubit index (i.e., `< number of qubits`).
     /// - These conditions must be ensured by the caller or a higher-level component.
     #[inline]
-    fn y(&mut self, target: usize) -> &mut Self {
+    fn y(&mut self, qubit: usize) -> &mut Self {
         for i in 0..self.state.len() {
-            if (i >> target) & 1 == 0 {
-                let flipped_i = i ^ (1 << target);
+            if (i >> qubit) & 1 == 0 {
+                let flipped_i = i ^ (1 << qubit);
                 let temp = self.state[i];
                 self.state[i] = -Complex64::i() * self.state[flipped_i];
                 self.state[flipped_i] = Complex64::i() * temp;
@@ -611,6 +611,10 @@ impl CliffordGateable<usize> for StateVec {
     /// See [`CliffordGateable::cx`] for mathematical details and gate properties.
     /// Uses bit manipulation for fast controlled operations.
     ///
+    /// # Arguments
+    /// * `qubit1` - Qubit ID and control qubit
+    /// * `qubit2` - Qubit ID and target qubit
+    ///
     /// # Examples
     /// ```rust
     /// use pecos_qsim::{QuantumSimulator, StateVec, CliffordGateable};
@@ -657,6 +661,10 @@ impl CliffordGateable<usize> for StateVec {
     /// See [`CliffordGateable::cy`] for mathematical details and gate properties.
     /// Combines bit manipulation with phase updates for controlled-Y operation.
     ///
+    /// # Arguments
+    /// * `qubit1` - Qubit ID and control qubit
+    /// * `qubit2` - Qubit ID and target qubit
+    ///
     /// # Examples
     /// ```rust
     /// use pecos_qsim::{QuantumSimulator, StateVec, CliffordGateable};
@@ -696,6 +704,10 @@ impl CliffordGateable<usize> for StateVec {
     ///
     /// See [`CliffordGateable::cz`] for mathematical details and gate properties.
     /// Takes advantage of diagonal structure for optimal performance.
+    ///
+    /// # Arguments
+    /// * `qubit1` - Qubit ID and control qubit
+    /// * `qubit2` - Qubit ID and target qubit
     ///
     /// # Examples
     /// ```rust
