@@ -93,11 +93,11 @@ pub extern "C" fn __quantum__rt__result_record_output(result: *const Result, _la
                 use crate::channels::stdio::format_command;
                 match format_command(&cmd) {
                     Ok(cmd_str) => {
-                        println!("CMD {}", cmd_str);
+                        println!("CMD {cmd_str}");
                         io::stdout().flush().unwrap();
                     }
                     Err(e) => {
-                        println!("[ERROR] Failed to format command: {}", e);
+                        println!("[ERROR] Failed to format command: {e}");
                     }
                 }
             }
@@ -110,10 +110,10 @@ pub extern "C" fn __quantum__rt__result_record_output(result: *const Result, _la
 
         match line.trim().parse::<u32>() {
             Ok(measurement) => {
-                println!("RESULT measurement_{} {}", result_idx, measurement);
+                println!("RESULT measurement_{result_idx} {measurement}");
             }
             Err(e) => {
-                println!("[ERROR] Failed to parse measurement: {}", e);
+                println!("[ERROR] Failed to parse measurement: {e}");
             }
         }
     }

@@ -16,6 +16,7 @@ pub struct QirCompiler {
 }
 
 impl QirCompiler {
+    #[must_use]
     pub fn new(llc_path: &str, clang_path: &str, build_dir: &str) -> Self {
         Self {
             llc_path: llc_path.to_string(),
@@ -34,7 +35,7 @@ impl QirCompiler {
         // Convert LLVM IR to bitcode
         println!("Converting LLVM IR to bitcode...");
         let status = Command::new("llvm-as-13")
-            .arg(format!("{}.ll", program))
+            .arg(format!("{program}.ll"))
             .arg("-o")
             .arg(&bc_path)
             .status()?;
@@ -69,7 +70,7 @@ impl QirCompiler {
             return Err("Linking failed".into());
         }
 
-        println!("Compilation successful for {}", program);
+        println!("Compilation successful for {program}");
         Ok(())
     }
 
@@ -127,7 +128,7 @@ impl QirCompiler {
                             debug!("[SHOT-{}] Processing command: {}", shot_idx, cmd);
 
                             if let Some(measurement) = self.process_quantum_command(cmd)? {
-                                writeln!(stdin, "{}", measurement)
+                                writeln!(stdin, "{measurement}")
                                     .map_err(|e| QueueError::ExecutionError(e.to_string()))?;
                                 stdin
                                     .flush()
@@ -141,7 +142,7 @@ impl QirCompiler {
                     let parts: Vec<&str> = line.split_whitespace().collect();
                     if let ["RESULT", key, value] = parts.as_slice() {
                         if let Ok(val) = value.parse::<u32>() {
-                            results.insert(key.to_string(), val);
+                            results.insert((*key).to_string(), val);
                         }
                     }
                 }
@@ -227,8 +228,8 @@ impl QirCompiler {
             let zeros = values.iter().filter(|&&x| x == 0).count();
             let ones = values.iter().filter(|&&x| x == 1).count();
 
-            println!("\n{}:", key);
-            println!("  Total measurements: {}", n);
+            println!("\n{key}:");
+            println!("  Total measurements: {n}");
             println!("  |0⟩: {} ({:.1}%)", zeros, 100.0 * zeros as f64 / n as f64);
             println!("  |1⟩: {} ({:.1}%)", ones, 100.0 * ones as f64 / n as f64);
         }
@@ -265,8 +266,7 @@ impl QirCompiler {
                 Ok(Some(measurement))
             }
             _ => Err(QueueError::OperationError(format!(
-                "Unknown command: {}",
-                cmd
+                "Unknown command: {cmd}"
             ))),
         }
     }

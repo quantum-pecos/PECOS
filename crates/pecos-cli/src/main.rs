@@ -6,9 +6,10 @@ use pecos_engines::{
     engines::{classical::QirClassicalEngine, quantum::QuantumSimulator, HybridEngine},
 };
 use std::error::Error;
+use std::path::{Path, PathBuf};
 
 fn main() -> Result<(), Box<dyn Error>> {
-    env_logger::Builder::from_env(Env::default().default_filter_or("debug")).init();
+    env_logger::Builder::from_env(Env::default().default_filter_or("info")).init();
 
     let matches = Command::new("qir-runner")
         .version("1.0")
@@ -45,23 +46,38 @@ fn main() -> Result<(), Box<dyn Error>> {
         )
         .get_matches();
 
+    // Get path to the input program
     let program = matches.get_one::<String>("program").unwrap();
     let program_path = if program.ends_with(".ll") {
         program.to_string()
     } else {
-        format!("{}.ll", program)
+        format!("{program}.ll")
     };
 
     let mode = matches.get_one::<String>("mode").unwrap();
     let total_shots = *matches.get_one::<usize>("shots").unwrap();
     let num_workers = *matches.get_one::<usize>("workers").unwrap();
 
-    // Create absolute paths
     let current_dir = std::env::current_dir()?;
-    let build_dir = current_dir.join("build");
-    let program_path = current_dir.join(program_path);
+    debug!("Current directory: {}", current_dir.display());
 
+    // Convert relative path to absolute
+    let program_path = if Path::new(&program_path).is_absolute() {
+        PathBuf::from(&program_path)
+    } else {
+        current_dir.join(&program_path)
+    };
+
+    // Make sure program path exists
+    if !program_path.exists() {
+        return Err(format!("Program file not found: {}", program_path.display()).into());
+    }
+
+    let program_path = program_path.canonicalize()?;
     debug!("Program path: {}", program_path.display());
+
+    // Create build directory next to the input file
+    let build_dir = program_path.parent().unwrap().join("build");
     debug!("Build directory: {}", build_dir.display());
 
     // Create build directory
@@ -99,7 +115,7 @@ fn main() -> Result<(), Box<dyn Error>> {
             engine.print_statistics(&stats);
         }
         _ => {
-            println!("Unknown mode: {}", mode);
+            println!("Unknown mode: {mode}");
             println!("Usage: qir-runner <compile|run> <program> [-s <shots>] [-w <workers>]");
             std::process::exit(1);
         }

@@ -12,6 +12,7 @@ pub struct StdioChannel {
 }
 
 impl StdioChannel {
+    #[must_use]
     pub fn new(
         reader: Box<dyn BufRead + Send + Sync>,
         writer: Box<dyn Write + Send + Sync>,
@@ -45,14 +46,14 @@ impl CommandChannel for StdioChannel {
         let mut writer = self
             .writer
             .lock()
-            .map_err(|e| QueueError::LockError(format!("Failed to lock writer: {}", e)))?;
+            .map_err(|e| QueueError::LockError(format!("Failed to lock writer: {e}")))?;
 
         writeln!(*writer, "FLUSH_BEGIN")?;
 
         for cmd in cmds {
             trace!("Sending command: {:?}", cmd);
             let cmd_str = format_command(&cmd)?;
-            writeln!(*writer, "CMD {}", cmd_str)?;
+            writeln!(*writer, "CMD {cmd_str}")?;
         }
 
         writeln!(*writer, "FLUSH_END")?;
@@ -64,7 +65,7 @@ impl CommandChannel for StdioChannel {
         let mut writer = self
             .writer
             .lock()
-            .map_err(|e| QueueError::LockError(format!("Failed to lock writer: {}", e)))?;
+            .map_err(|e| QueueError::LockError(format!("Failed to lock writer: {e}")))?;
         writer.flush()?;
         Ok(())
     }
@@ -75,7 +76,7 @@ impl MeasurementChannel for StdioChannel {
         let mut reader = self
             .reader
             .lock()
-            .map_err(|e| QueueError::LockError(format!("Failed to lock reader: {}", e)))?;
+            .map_err(|e| QueueError::LockError(format!("Failed to lock reader: {e}")))?;
 
         let mut line = String::new();
         reader.read_line(&mut line)?;
@@ -83,7 +84,7 @@ impl MeasurementChannel for StdioChannel {
         let measurement = line
             .trim()
             .parse()
-            .map_err(|e| QueueError::OperationError(format!("Invalid measurement: {}", e)))?;
+            .map_err(|e| QueueError::OperationError(format!("Invalid measurement: {e}")))?;
 
         trace!("Received measurement: {}", measurement);
         Ok(measurement)
@@ -91,7 +92,7 @@ impl MeasurementChannel for StdioChannel {
 }
 
 pub(crate) fn format_command(cmd: &QuantumCommand) -> Result<String, QueueError> {
-    use crate::types::GateType::*;
+    use crate::types::GateType::{Measure, RXY, RZ, ZZ};
 
     match &cmd.gate {
         RZ { theta } => Ok(format!("RZ {} {}", theta, cmd.qubits[0])),

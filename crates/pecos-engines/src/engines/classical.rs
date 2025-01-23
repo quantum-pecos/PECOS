@@ -18,6 +18,7 @@ pub struct QirClassicalEngine {
 }
 
 impl QirClassicalEngine {
+    #[must_use]
     pub fn new(program_path: &Path, build_dir: &Path) -> Self {
         let program_name = program_path
             .file_stem()
@@ -36,6 +37,27 @@ impl QirClassicalEngine {
         }
     }
 
+    fn find_library_dir() -> Result<PathBuf, Box<dyn std::error::Error>> {
+        let exe_path = std::env::current_exe()?;
+        let exe_dir = exe_path.parent().ok_or("Cannot get executable directory")?;
+
+        // Development case
+        if let Some(target_dir) = exe_dir.parent() {
+            let lib = target_dir.join("debug/libpecos_engines.so");
+            if lib.exists() {
+                return Ok(target_dir.join("debug"));
+            }
+        }
+
+        // Installation case
+        if exe_dir.ends_with("bin") {
+            let lib_dir = exe_dir.parent().unwrap().join("lib");
+            return Ok(lib_dir);
+        }
+
+        Err("Could not find libpecos_engines.so".into())
+    }
+
     pub fn compile(&self) -> Result<(), Box<dyn std::error::Error>> {
         fs::create_dir_all(&self.build_dir)?;
 
@@ -43,20 +65,16 @@ impl QirClassicalEngine {
         let obj_path = self.build_dir.join(format!("{}.o", self.program_name));
         let exe_path = self.build_dir.join(&self.program_name);
 
-        // Ensure input path has .ll extension
-        let input_path = if self.program_path.extension().unwrap_or_default() == "ll" {
-            self.program_path.clone()
-        } else {
-            self.program_path.with_extension("ll")
-        };
-
-        debug!("Input file: {}", input_path.display());
+        debug!("Input file: {}", self.program_path.display());
         debug!("Object file: {}", obj_path.display());
         debug!("Executable: {}", exe_path.display());
 
+        let lib_dir = Self::find_library_dir()?;
+        debug!("Library directory: {}", lib_dir.display());
+
         info!("Converting LLVM IR to bitcode...");
         let status = Command::new("llvm-as-13")
-            .arg(&input_path)
+            .arg(&self.program_path)
             .arg("-o")
             .arg(&bc_path)
             .status()?;
@@ -65,7 +83,6 @@ impl QirClassicalEngine {
             return Err("Failed to convert LLVM IR to bitcode".into());
         }
 
-        // Compile bitcode to object file
         info!("Compiling to native code...");
         let status = Command::new(&self.llc_path)
             .arg(&bc_path)
@@ -78,22 +95,25 @@ impl QirClassicalEngine {
             return Err("LLC compilation failed".into());
         }
 
-        // Link with runtime
         info!("Linking with runtime...");
-        let current_dir = std::env::current_dir()?;
-        let lib_path = current_dir.join("target/debug");
-
-        debug!("Library path: {}", lib_path.display());
-        let status = Command::new(&self.clang_path)
+        let output = Command::new(&self.clang_path)
+            .arg("-v")
             .arg("-o")
             .arg(&exe_path)
             .arg(&obj_path)
-            .arg(format!("-L{}", lib_path.display()))
-            .arg("-lqir_black_box")
-            .status()?;
+            .arg(format!("-L{}", lib_dir.display()))
+            .arg("-Wl,-rpath")
+            .arg(lib_dir)
+            .arg("-lpecos_engines")
+            .output()?;
 
-        if !status.success() {
-            return Err("Linking failed".into());
+        if !output.status.success() {
+            return Err(format!(
+                "Linking failed:\nstdout: {}\nstderr: {}",
+                String::from_utf8_lossy(&output.stdout),
+                String::from_utf8_lossy(&output.stderr)
+            )
+            .into());
         }
 
         info!("Compilation successful: {}", exe_path.display());
@@ -122,7 +142,7 @@ impl ClassicalEngine for QirClassicalEngine {
             .stdout(Stdio::piped())
             .stderr(Stdio::inherit())
             .spawn()
-            .map_err(|e| QueueError::ExecutionError(format!("Failed to spawn process: {}", e)))?;
+            .map_err(|e| QueueError::ExecutionError(format!("Failed to spawn process: {e}")))?;
 
         let stdout = child
             .stdout
@@ -139,32 +159,31 @@ impl ClassicalEngine for QirClassicalEngine {
                 break;
             }
 
-            match line.trim() {
-                "FLUSH_BEGIN" => {
-                    debug!("Processing commands block");
-                    loop {
-                        line.clear();
-                        let len = reader.read_line(&mut line)?;
-                        if len == 0 {
-                            break;
-                        }
+            if line.trim() == "FLUSH_BEGIN" {
+                debug!("Processing commands block");
+                loop {
+                    line.clear();
+                    let len = reader.read_line(&mut line)?;
+                    if len == 0 {
+                        break;
+                    }
 
-                        let trimmed = line.trim();
-                        if trimmed == "FLUSH_END" {
-                            debug!("End of commands block");
-                            break;
-                        }
+                    let trimmed = line.trim();
+                    if trimmed == "FLUSH_END" {
+                        debug!("End of commands block");
+                        break;
+                    }
 
-                        if let Some(cmd) = trimmed.strip_prefix("CMD ") {
-                            debug!("Received command: {}", cmd);
-                            if let Ok(quantum_cmd) = QuantumCommand::parse_from_str(cmd) {
-                                commands.push(quantum_cmd);
-                            }
+                    if let Some(cmd) = trimmed.strip_prefix("CMD ") {
+                        debug!("Received command: {}", cmd);
+                        if let Ok(quantum_cmd) = QuantumCommand::parse_from_str(cmd) {
+                            commands.push(quantum_cmd);
                         }
                     }
-                    break;
                 }
-                _ => debug!("Skipping line: {}", line.trim()),
+                break;
+            } else {
+                debug!("Skipping line: {}", line.trim());
             }
             line.clear();
         }
@@ -184,13 +203,13 @@ impl ClassicalEngine for QirClassicalEngine {
         // Store measurement with result_id that matches the QIR program
         self.current_results
             .measurements
-            .insert(format!("measurement_{}", qubit_idx), measurement);
+            .insert(format!("measurement_{qubit_idx}"), measurement);
 
         // Try to send back to process if still alive
         if let Some(child) = &mut self.child_process {
             if let Some(mut stdin) = child.stdin.take() {
-                match writeln!(stdin, "{}", measurement) {
-                    Ok(_) => {
+                match writeln!(stdin, "{measurement}") {
+                    Ok(()) => {
                         debug!(
                             "Successfully sent measurement {} to classical process",
                             measurement
@@ -212,51 +231,7 @@ impl ClassicalEngine for QirClassicalEngine {
     }
 
     fn compile(&self) -> Result<(), Box<dyn std::error::Error>> {
-        fs::create_dir_all(&self.build_dir)?;
-
-        let bc_path = self.build_dir.join(format!("{}.bc", self.program_name));
-        let obj_path = self.build_dir.join(format!("{}.o", self.program_name));
-        let exe_path = self.build_dir.join(&self.program_name);
-
-        info!("Converting LLVM IR to bitcode...");
-        let status = Command::new("llvm-as-13")
-            .arg(&self.program_path)
-            .arg("-o")
-            .arg(&bc_path)
-            .status()?;
-
-        if !status.success() {
-            return Err("Failed to convert LLVM IR to bitcode".into());
-        }
-
-        // Compile bitcode to object file
-        info!("Compiling to native code...");
-        let status = Command::new(&self.llc_path)
-            .arg(&bc_path)
-            .arg("-filetype=obj")
-            .arg("-o")
-            .arg(&obj_path)
-            .status()?;
-
-        if !status.success() {
-            return Err("LLC compilation failed".into());
-        }
-
-        // Link with runtime
-        let status = Command::new(&self.clang_path)
-            .arg("-o")
-            .arg(&exe_path)
-            .arg(&obj_path)
-            .arg("-L./target/debug/")
-            .arg("-lqir_black_box")
-            .status()?;
-
-        if !status.success() {
-            return Err("Linking failed".into());
-        }
-
-        info!("Compilation successful");
-        Ok(())
+        self.compile()
     }
 }
 

@@ -11,7 +11,7 @@ keywords.workspace = true
 categories.workspace = true
 
 [lib]
-crate-type = ["staticlib", "rlib"]
+crate-type = ["cdylib", "staticlib", "rlib"]
 
 [dependencies]
 rand = "0.8"

@@ -28,11 +28,11 @@ impl QuantumCommand {
                     gate: GateType::RZ {
                         theta: parts[1]
                             .parse()
-                            .map_err(|e| format!("Invalid theta: {}", e))?,
+                            .map_err(|e| format!("Invalid theta: {e}"))?,
                     },
                     qubits: vec![parts[2]
                         .parse()
-                        .map_err(|e| format!("Invalid qubit: {}", e))?],
+                        .map_err(|e| format!("Invalid qubit: {e}"))?],
                 })
             }
             Some(&"RXY") => {
@@ -41,16 +41,14 @@ impl QuantumCommand {
                 }
                 Ok(Self {
                     gate: GateType::RXY {
-                        phi: parts[1]
-                            .parse()
-                            .map_err(|e| format!("Invalid phi: {}", e))?,
+                        phi: parts[1].parse().map_err(|e| format!("Invalid phi: {e}"))?,
                         theta: parts[2]
                             .parse()
-                            .map_err(|e| format!("Invalid theta: {}", e))?,
+                            .map_err(|e| format!("Invalid theta: {e}"))?,
                     },
                     qubits: vec![parts[3]
                         .parse()
-                        .map_err(|e| format!("Invalid qubit: {}", e))?],
+                        .map_err(|e| format!("Invalid qubit: {e}"))?],
                 })
             }
             Some(&"ZZ") => {
@@ -62,10 +60,10 @@ impl QuantumCommand {
                     qubits: vec![
                         parts[1]
                             .parse()
-                            .map_err(|e| format!("Invalid qubit1: {}", e))?,
+                            .map_err(|e| format!("Invalid qubit1: {e}"))?,
                         parts[2]
                             .parse()
-                            .map_err(|e| format!("Invalid qubit2: {}", e))?,
+                            .map_err(|e| format!("Invalid qubit2: {e}"))?,
                     ],
                 })
             }
@@ -77,11 +75,11 @@ impl QuantumCommand {
                     gate: GateType::Measure {
                         result_id: parts[2]
                             .parse()
-                            .map_err(|e| format!("Invalid result_id: {}", e))?,
+                            .map_err(|e| format!("Invalid result_id: {e}"))?,
                     },
                     qubits: vec![parts[1]
                         .parse()
-                        .map_err(|e| format!("Invalid qubit: {}", e))?],
+                        .map_err(|e| format!("Invalid qubit: {e}"))?],
                 })
             }
             _ => Err(format!(
@@ -121,6 +119,7 @@ impl Default for QubitStats {
 }
 
 impl QubitStats {
+    #[must_use]
     pub fn new() -> Self {
         Self { zeros: 0, ones: 0 }
     }
@@ -133,6 +132,7 @@ impl QubitStats {
         }
     }
 
+    #[must_use]
     pub fn total_measurements(&self) -> usize {
         self.zeros + self.ones
     }

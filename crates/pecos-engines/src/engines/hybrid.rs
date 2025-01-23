@@ -83,7 +83,7 @@ where
                             };
                             shot_result
                                 .measurements
-                                .insert(format!("measurement_{}", res_id), measurement);
+                                .insert(format!("measurement_{res_id}"), measurement);
                         }
                     }
                 }
@@ -124,7 +124,7 @@ where
 
         for key in keys {
             let qstats = &stats.per_qubit_stats[key];
-            println!("\n{}:", key);
+            println!("\n{key}:");
             println!("  Total measurements: {}", qstats.total_measurements());
             println!(
                 "  |0⟩: {} ({:.1}%)",

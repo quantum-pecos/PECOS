@@ -15,10 +15,10 @@ pub enum QueueError {
 impl fmt::Display for QueueError {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self {
-            QueueError::LockError(msg) => write!(f, "Queue lock error: {}", msg),
-            QueueError::OperationError(msg) => write!(f, "Queue operation error: {}", msg),
-            QueueError::ExecutionError(msg) => write!(f, "Program execution error: {}", msg),
-            QueueError::SerializationError(msg) => write!(f, "Serialization error: {}", msg),
+            QueueError::LockError(msg) => write!(f, "Queue lock error: {msg}"),
+            QueueError::OperationError(msg) => write!(f, "Queue operation error: {msg}"),
+            QueueError::ExecutionError(msg) => write!(f, "Program execution error: {msg}"),
+            QueueError::SerializationError(msg) => write!(f, "Serialization error: {msg}"),
         }
     }
 }

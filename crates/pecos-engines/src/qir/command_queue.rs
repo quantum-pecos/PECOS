@@ -12,6 +12,7 @@ impl Default for CommandQueue {
 }
 
 impl CommandQueue {
+    #[must_use]
     pub fn new() -> Self {
         Self {
             queue: VecDeque::new(),
@@ -26,10 +27,12 @@ impl CommandQueue {
         self.queue.pop_front()
     }
 
+    #[must_use]
     pub fn is_empty(&self) -> bool {
         self.queue.is_empty()
     }
 
+    #[must_use]
     pub fn len(&self) -> usize {
         self.queue.len()
     }

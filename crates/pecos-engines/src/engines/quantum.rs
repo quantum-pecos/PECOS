@@ -13,6 +13,7 @@ impl Default for QuantumSimulator {
 }
 
 impl QuantumSimulator {
+    #[must_use]
     pub fn new() -> Self {
         Self
     }
