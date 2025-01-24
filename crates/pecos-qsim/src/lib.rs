@@ -10,20 +10,21 @@
 // or implied. See the License for the specific language governing permissions and limitations under
 // the License.
 
-pub mod clifford_simulator;
+pub mod clifford_gateable;
 pub mod gens;
-// pub mod measurement;
-// pub mod nonclifford_simulator;
-// pub mod pauli_prop;
+pub mod pauli_prop;
 // pub mod paulis;
+pub mod arbitrary_rotation_gateable;
+pub mod prelude;
 pub mod quantum_simulator;
 pub mod sparse_stab;
+pub mod state_vec;
 
-pub use clifford_simulator::CliffordSimulator;
+pub use arbitrary_rotation_gateable::ArbitraryRotationGateable;
+pub use clifford_gateable::{CliffordGateable, MeasurementResult};
 pub use gens::Gens;
-// pub use measurement::{MeasBitValue, MeasValue, Measurement}; // TODO: Distinguish between trait and struct/enum
-// pub use nonclifford_simulator::NonCliffordSimulator;
-// pub use pauli_prop::{PauliProp, StdPauliProp};
 // pub use paulis::Paulis;
+pub use pauli_prop::{PauliProp, StdPauliProp};
 pub use quantum_simulator::QuantumSimulator;
-pub use sparse_stab::SparseStab;
+pub use sparse_stab::{SparseStab, StdSparseStab};
+pub use state_vec::StateVec;

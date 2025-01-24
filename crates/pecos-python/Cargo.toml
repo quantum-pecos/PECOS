@@ -17,6 +17,8 @@ crate-type = ["cdylib"]
 [dependencies]
 pyo3 = { workspace=true, features = ["extension-module"] }
 pecos = { workspace = true }
+num-complex = { workspace = true }
+rand = { workspace = true }
 
 [lints]
 workspace = true

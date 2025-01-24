@@ -15,16 +15,47 @@ from __future__ import annotations
 
 from typing import Any
 
-from pecos_rslib._pecos_rslib import SparseSim as RustSparseSim
+import numpy as np
+
+from pecos_rslib._pecos_rslib import RsStateVec as RustStateVec
 
 
-class SparseSimRs:
+class StateVecRs:
     def __init__(self, num_qubits: int):
-        self._sim = RustSparseSim(num_qubits)
+        """
+        Initializes the Rust-backed state vector simulator.
+
+        Args:
+            num_qubits (int): The number of qubits in the quantum system.
+        """
+        self._sim = RustStateVec(num_qubits)
         self.num_qubits = num_qubits
         self.bindings = dict(gate_dict)
 
+    @property
+    def vector(self) -> np.ndarray:
+        raw_vector = self._sim.vector
+        print(f"[DEBUG] Raw vector: {raw_vector}")
+
+        if isinstance(raw_vector[0], (list, tuple)):
+            raw_vector = np.array([complex(r, i) for r, i in raw_vector])
+
+        # Convert vector from little-endian to big-endian ordering to match BasicSV
+        raw_vector = np.array(raw_vector).flatten()
+        num_qubits = self.num_qubits
+
+        # Convert to big-endian by reversing bit order
+        indices = np.arange(len(raw_vector))
+        binary_indices = [f"{idx:0{num_qubits}b}" for idx in indices]
+        reordered_indices = [int(bits[::-1], 2) for bits in binary_indices]
+
+        # Reorder the vector to match BasicSV's bit ordering
+        final_vector = raw_vector[reordered_indices]
+
+        return final_vector
+
     def reset(self):
+        """Resets the quantum state to the all-zero state."""
         self._sim.reset()
         return self
 
@@ -34,6 +65,18 @@ class SparseSimRs:
         locations: set[int] | set[tuple[int, ...]],
         **params: Any,
     ) -> dict[int, int]:
+        """
+        Applies a gate to the quantum state.
+
+        Args:
+            symbol (str): The gate symbol (e.g., "X", "H", "CX").
+            location (tuple[int, ...]): The qubit(s) to which the gate is applied.
+            params (dict, optional): Parameters for the gate (e.g., rotation angles).
+
+        Returns:
+            None
+        """
+        # self._sim.run_gate(symbol, location, params)
         output = {}
 
         if params.get("simulate_gate", True) and locations:
@@ -73,119 +116,6 @@ class SparseSimRs:
 
         return results
 
-    def add_faults(self, circuit, removed_locations: set[int] | None = None) -> None:
-        self.run_circuit(circuit, removed_locations)
-
-    # def print_stabs(self, *, verbose: bool = True, print_y: bool = True, print_destabs: bool = False) -> list[str]:
-    #     return self._sim.print_stabs(verbose, print_y, print_destabs)
-
-    @property
-    def stabs(self):
-        return TableauWrapper(self._sim, is_stab=True)
-
-    @property
-    def destabs(self):
-        return TableauWrapper(self._sim, is_stab=False)
-
-    def print_stabs(
-        self,
-        *,
-        verbose: bool = True,
-        print_y: bool = True,
-        print_destabs: bool = False,
-    ):
-        stabs = self._sim.stab_tableau()
-        if print_destabs:
-            destabs = self._sim.destab_tableau()
-            if verbose:
-                print("Stabilizers:")
-                print(stabs)
-                print("Destabilizers:")
-                print(destabs)
-            return stabs, destabs
-        else:
-            if verbose:
-                print("Stabilizers:")
-                print(stabs)
-            return stabs
-
-    def logical_sign(self, logical_op):
-        # This method needs to be implemented based on the Python version
-        # It might require additional Rust functions to be exposed
-        msg = "logical_sign method not implemented yet"
-        raise NotImplementedError(msg)
-
-    def refactor(self, xs, zs, choose=None, prefer=None, protected=None):
-        # This method needs to be implemented based on the Python version
-        # It might require additional Rust functions to be exposed
-        msg = "refactor method not implemented yet"
-        raise NotImplementedError(msg)
-
-    def find_stab(self, xs, zs):
-        # This method needs to be implemented based on the Python version
-        # It might require additional Rust functions to be exposed
-        msg = "find_stab method not implemented yet"
-        raise NotImplementedError(msg)
-
-    def copy(self):
-        # This method needs to be implemented
-        # It might require an additional Rust function to be exposed
-        msg = "copy method not implemented yet"
-        raise NotImplementedError(msg)
-
-
-class TableauWrapper:
-    def __init__(self, sim, *, is_stab: bool):
-        self._sim = sim
-        self._is_stab = is_stab
-
-    def print_tableau(self, *, verbose: bool = False) -> list[str]:
-        if self._is_stab:
-            tableau = self._sim.stab_tableau()
-        else:
-            tableau = self._sim.destab_tableau()
-
-        lines = tableau.strip().split("\n")
-        adjusted_lines = [
-            adjust_tableau_string(line, is_stab=self._is_stab) for line in lines
-        ]
-
-        if verbose:
-            for line in adjusted_lines:
-                print(line)
-
-        return adjusted_lines
-
-
-def adjust_tableau_string(line: str, *, is_stab: bool) -> str:
-    """
-    Adjust the tableau string to ensure the sign part always takes up two spaces
-    and convert 'Y' to 'W'. For destabilizers, always use two spaces for the sign.
-
-    Args:
-        line (str): A single line from the tableau string.
-        is_stab (bool): True if this is a stabilizer, False if destabilizer.
-
-    Returns:
-        str: The adjusted line with proper spacing for signs and 'W' instead of 'Y'.
-    """
-    if is_stab:
-        if line.startswith("+i"):
-            adjusted = " i" + line[2:]
-        elif line.startswith("-i"):
-            adjusted = "-i" + line[2:]
-        elif line.startswith("+"):
-            adjusted = "  " + line[1:]
-        elif line.startswith("-"):
-            adjusted = " -" + line[1:]
-        else:
-            adjusted = "  " + line  # Default case, shouldn't happen with correct input
-    else:
-        # For destabilizers, always use two spaces for the sign
-        adjusted = "  " + line[1:]
-
-    return adjusted.replace("Y", "W")
-
 
 # Define the gate dictionary
 gate_dict = {
@@ -200,11 +130,18 @@ gate_dict = {
     "SZ": lambda sim, q, **params: sim._sim.run_1q_gate("SZ", q, params),
     "SZdg": lambda sim, q, **params: sim._sim.run_1q_gate("SZdg", q, params),
     "H": lambda sim, q, **params: sim._sim.run_1q_gate("H", q, params),
+    "H1": lambda sim, q, **params: sim._sim.run_1q_gate("H", q, params),
     "H2": lambda sim, q, **params: sim._sim.run_1q_gate("H2", q, params),
     "H3": lambda sim, q, **params: sim._sim.run_1q_gate("H3", q, params),
     "H4": lambda sim, q, **params: sim._sim.run_1q_gate("H4", q, params),
     "H5": lambda sim, q, **params: sim._sim.run_1q_gate("H5", q, params),
     "H6": lambda sim, q, **params: sim._sim.run_1q_gate("H6", q, params),
+    "H+z+x": lambda sim, q, **params: sim._sim.run_1q_gate("H", q, params),
+    "H-z-x": lambda sim, q, **params: sim._sim.run_1q_gate("H2", q, params),
+    "H+y-z": lambda sim, q, **params: sim._sim.run_1q_gate("H3", q, params),
+    "H-y-z": lambda sim, q, **params: sim._sim.run_1q_gate("H4", q, params),
+    "H-x+y": lambda sim, q, **params: sim._sim.run_1q_gate("H5", q, params),
+    "H-x-y": lambda sim, q, **params: sim._sim.run_1q_gate("H6", q, params),
     "F": lambda sim, q, **params: sim._sim.run_1q_gate("F", q, params),
     "Fdg": lambda sim, q, **params: sim._sim.run_1q_gate("Fdg", q, params),
     "F2": lambda sim, q, **params: sim._sim.run_1q_gate("F2", q, params),
@@ -261,7 +198,6 @@ gate_dict = {
     "Rd": lambda sim, q, **params: sim._sim.run_1q_gate("SYdg", q, params),
     "S": lambda sim, q, **params: sim._sim.run_1q_gate("SZ", q, params),
     "Sd": lambda sim, q, **params: sim._sim.run_1q_gate("SZdg", q, params),
-    "H1": lambda sim, q, **params: sim._sim.run_1q_gate("H1", q, params),
     "F1": lambda sim, q, **params: sim._sim.run_1q_gate("F", q, params),
     "F1d": lambda sim, q, **params: sim._sim.run_1q_gate("Fdg", q, params),
     "F2d": lambda sim, q, **params: sim._sim.run_1q_gate("F2dg", q, params),
@@ -272,8 +208,8 @@ gate_dict = {
     "SqrtZZ": lambda sim, qs, **params: sim._sim.run_2q_gate("SZZ", qs, params),
     "Measure": lambda sim, q, **params: sim._sim.run_1q_gate("MZ", q, params),
     "measure Z": lambda sim, q, **params: sim._sim.run_1q_gate("MZ", q, params),
-    "MZForced": lambda sim, q, **params: sim._sim.run_1q_gate("MZForced", q, params),
-    "PZForced": lambda sim, q, **params: sim._sim.run_1q_gate("PZForced", q, params),
+    # "MZForced": lambda sim, q, **params: sim._sim.run_1q_gate("MZForced", q, params),
+    # "PZForced": lambda sim, q, **params: sim._sim.run_1q_gate("PZForced", q, params),
     "SqrtXXd": lambda sim, qs, **params: sim._sim.run_2q_gate("SXXdg", qs, params),
     "SqrtYYd": lambda sim, qs, **params: sim._sim.run_2q_gate("SYYdg", qs, params),
     "SqrtZZd": lambda sim, qs, **params: sim._sim.run_2q_gate("SZZdg", qs, params),
@@ -283,8 +219,55 @@ gate_dict = {
     "SqrtYd": lambda sim, q, **params: sim._sim.run_1q_gate("SYdg", q, params),
     "SqrtZ": lambda sim, q, **params: sim._sim.run_1q_gate("SZ", q, params),
     "SqrtZd": lambda sim, q, **params: sim._sim.run_1q_gate("SZdg", q, params),
+    "RX": lambda sim, q, **params: sim._sim.run_1q_gate(
+        "RX",
+        q,
+        {"angle": params["angles"][0]} if "angles" in params else {"angle": 0},
+    ),
+    "RY": lambda sim, q, **params: sim._sim.run_1q_gate(
+        "RY",
+        q,
+        {"angle": params["angles"][0]} if "angles" in params else {"angle": 0},
+    ),
+    "RZ": lambda sim, q, **params: sim._sim.run_1q_gate(
+        "RZ",
+        q,
+        {"angle": params["angles"][0]} if "angles" in params else {"angle": 0},
+    ),
+    "R1XY": lambda sim, q, **params: sim._sim.run_1q_gate(
+        "R1XY",
+        q,
+        {"angles": params["angles"]},  # Changed from "angle" to "angles"
+    ),
+    "T": lambda sim, q, **params: sim._sim.run_1q_gate("T", q, params),
+    "Tdg": lambda sim, q, **params: sim._sim.run_1q_gate("Tdg", q, params),
+    "RXX": lambda sim, qs, **params: sim._sim.run_2q_gate(
+        "RXX",
+        qs,
+        {"angle": params["angles"][0]} if "angles" in params else {"angle": 0},
+    ),
+    "RYY": lambda sim, qs, **params: sim._sim.run_2q_gate(
+        "RYY",
+        qs,
+        {"angle": params["angles"][0]} if "angles" in params else {"angle": 0},
+    ),
+    "RZZ": lambda sim, qs, **params: sim._sim.run_2q_gate(
+        "RZZ",
+        qs,
+        {"angle": params["angles"][0]} if "angles" in params else {"angle": 0},
+    ),
+    "RZZRYYRXX": lambda sim, qs, **params: sim._sim.run_2q_gate(
+        "RZZRYYRXX",
+        qs,
+        {"angles": params["angles"]} if "angles" in params else {"angles": [0, 0, 0]},
+    ),
+    "R2XXYYZZ": lambda sim, qs, **params: sim._sim.run_2q_gate(
+        "RZZRYYRXX",
+        qs,
+        {"angles": params["angles"]} if "angles" in params else {"angles": [0, 0, 0]},
+    ),
 }
 
 # "force output": qmeas.force_output,
 
-__all__ = ["SparseSimRs", "gate_dict"]
+__all__ = ["StateVecRs", "gate_dict"]

@@ -10,17 +10,10 @@
 // or implied. See the License for the specific language governing permissions and limitations under
 // the License.
 
-mod sparse_stab_bindings;
-mod state_vec_bindings;
-
-use sparse_stab_bindings::SparseSim;
-use state_vec_bindings::RsStateVec;
-
-use pyo3::prelude::*;
-
-#[pymodule]
-fn _pecos_rslib(_py: Python<'_>, m: &Bound<'_, PyModule>) -> PyResult<()> {
-    m.add_class::<SparseSim>()?;
-    m.add_class::<RsStateVec>()?;
-    Ok(())
-}
+pub use crate::arbitrary_rotation_gateable::ArbitraryRotationGateable;
+pub use crate::clifford_gateable::CliffordGateable;
+pub use crate::pauli_prop::{PauliProp, StdPauliProp};
+pub use crate::quantum_simulator::QuantumSimulator;
+pub use crate::sparse_stab::SparseStab;
+pub use crate::state_vec::StateVec;
+pub use pecos_core::{IndexableElement, VecSet};
