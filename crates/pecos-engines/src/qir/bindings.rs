@@ -1,3 +1,4 @@
+// PECOS/crates/pecos-engines/src/qir/bindings.rs
 use lazy_static::lazy_static;
 use log::{debug, trace};
 use std::collections::VecDeque;
@@ -91,15 +92,9 @@ pub extern "C" fn __quantum__rt__result_record_output(result: *const Result, _la
             println!("FLUSH_BEGIN");
             while let Some(cmd) = queue.pop_front() {
                 use crate::channels::stdio::format_command;
-                match format_command(&cmd) {
-                    Ok(cmd_str) => {
-                        println!("CMD {cmd_str}");
-                        io::stdout().flush().unwrap();
-                    }
-                    Err(e) => {
-                        println!("[ERROR] Failed to format command: {e}");
-                    }
-                }
+                let cmd_str = format_command(&cmd);
+                println!("CMD {cmd_str}");
+                io::stdout().flush().unwrap();
             }
             println!("FLUSH_END");
             io::stdout().flush().unwrap();

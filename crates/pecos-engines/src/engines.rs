@@ -1,3 +1,4 @@
+// PECOS/crates/pecos-engines/src/engines.rs
 pub mod classical;
 pub mod hybrid;
 pub mod quantum;

@@ -1,3 +1,4 @@
+// PECOS/crates/pecos-engines/src/qir/compiler.rs
 use crate::errors::QueueError;
 use log::{debug, info, trace};
 use rand::Rng;
@@ -127,7 +128,7 @@ impl QirCompiler {
                         if let Some(cmd) = trimmed.strip_prefix("CMD ") {
                             debug!("[SHOT-{}] Processing command: {}", shot_idx, cmd);
 
-                            if let Some(measurement) = self.process_quantum_command(cmd)? {
+                            if let Some(measurement) = Self::process_quantum_command(cmd)? {
                                 writeln!(stdin, "{measurement}")
                                     .map_err(|e| QueueError::ExecutionError(e.to_string()))?;
                                 stdin
@@ -235,7 +236,7 @@ impl QirCompiler {
         }
     }
 
-    fn process_quantum_command(&self, cmd: &str) -> Result<Option<u32>, QueueError> {
+    fn process_quantum_command(cmd: &str) -> Result<Option<u32>, QueueError> {
         let parts: Vec<&str> = cmd.split_whitespace().collect();
         let mut rng = rand::thread_rng();
 

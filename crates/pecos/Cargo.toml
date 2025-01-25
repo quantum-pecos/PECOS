@@ -14,6 +14,7 @@ description = "A crate for evaluating and exploring quantum error correction."
 [dependencies]
 pecos-core = { workspace = true }
 pecos-qsim = { workspace = true }
+pecos-engines = { workspace = true }
 pecos-qec = { workspace = true }
 
 # For Wasm tests, see: https://rustwasm.github.io/wasm-bindgen/wasm-bindgen-test/index.html

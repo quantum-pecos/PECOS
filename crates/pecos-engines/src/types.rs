@@ -1,3 +1,4 @@
+// PECOS/crates/pecos-engines/src/types.rs
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 
@@ -16,7 +17,33 @@ pub struct QuantumCommand {
 }
 
 impl QuantumCommand {
-    // Helper functions to create commands, matching current format
+    /// Parses quantum circuit commands from string representation.
+    ///
+    /// # Format
+    /// Commands must follow these formats:
+    /// - RZ theta qubit
+    /// - RXY phi theta qubit
+    /// - ZZ qubit1 qubit2
+    /// - M qubit `result_id`
+    ///
+    /// All numeric parameters should be valid floating point numbers.
+    /// Qubits and `result_id` should be valid integers.
+    ///
+    /// # Examples
+    /// ```
+    /// use pecos_engines::types::QuantumCommand;
+    /// let cmd = QuantumCommand::parse_from_str("RZ 0.5 1").unwrap();
+    /// let cmd = QuantumCommand::parse_from_str("RXY 0.1 0.2 0").unwrap();
+    /// let cmd = QuantumCommand::parse_from_str("ZZ 0 1").unwrap();
+    /// let cmd = QuantumCommand::parse_from_str("M 0 42").unwrap();
+    /// ```
+    ///
+    /// # Errors
+    /// Returns error strings for:
+    /// - Wrong number of parameters for command type
+    /// - Invalid numeric values for angles/ids
+    /// - Unknown command type
+    /// - Empty command string
     pub fn parse_from_str(cmd_str: &str) -> Result<Self, String> {
         let parts: Vec<&str> = cmd_str.split_whitespace().collect();
         match parts.first() {

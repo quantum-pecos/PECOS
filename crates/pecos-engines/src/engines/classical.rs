@@ -1,3 +1,4 @@
+// PECOS/crates/pecos-engines/src/engines/classical.rs
 use super::ClassicalEngine;
 use crate::errors::QueueError;
 use crate::types::{CommandBatch, MeasurementResult, QuantumCommand, ShotResult};
@@ -182,9 +183,10 @@ impl ClassicalEngine for QirClassicalEngine {
                     }
                 }
                 break;
-            } else {
-                debug!("Skipping line: {}", line.trim());
             }
+
+            debug!("Skipping line: {}", line.trim());
+
             line.clear();
         }
 

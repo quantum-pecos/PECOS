@@ -1,3 +1,4 @@
+// PECOS/crates/pecos-engines/src/channels/stdio.rs
 use super::{CommandChannel, MeasurementChannel};
 use crate::errors::QueueError;
 use crate::types::{CommandBatch, MeasurementResult, QuantumCommand};
@@ -52,7 +53,7 @@ impl CommandChannel for StdioChannel {
 
         for cmd in cmds {
             trace!("Sending command: {:?}", cmd);
-            let cmd_str = format_command(&cmd)?;
+            let cmd_str = format_command(&cmd);
             writeln!(*writer, "CMD {cmd_str}")?;
         }
 
@@ -91,13 +92,13 @@ impl MeasurementChannel for StdioChannel {
     }
 }
 
-pub(crate) fn format_command(cmd: &QuantumCommand) -> Result<String, QueueError> {
+pub(crate) fn format_command(cmd: &QuantumCommand) -> String {
     use crate::types::GateType::{Measure, RXY, RZ, ZZ};
 
     match &cmd.gate {
-        RZ { theta } => Ok(format!("RZ {} {}", theta, cmd.qubits[0])),
-        RXY { phi, theta } => Ok(format!("RXY {} {} {}", phi, theta, cmd.qubits[0])),
-        ZZ => Ok(format!("ZZ {} {}", cmd.qubits[0], cmd.qubits[1])),
-        Measure { result_id } => Ok(format!("M {} {}", cmd.qubits[0], result_id)),
+        RZ { theta } => format!("RZ {} {}", theta, cmd.qubits[0]),
+        RXY { phi, theta } => format!("RXY {} {} {}", phi, theta, cmd.qubits[0]),
+        ZZ => format!("ZZ {} {}", cmd.qubits[0], cmd.qubits[1]),
+        Measure { result_id } => format!("M {} {}", cmd.qubits[0], result_id),
     }
 }

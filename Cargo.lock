@@ -1217,6 +1217,7 @@ dependencies = [
  "flamegraph",
  "getrandom",
  "pecos-core",
+ "pecos-engines",
  "pecos-qec",
  "pecos-qsim",
  "rand",
@@ -1230,7 +1231,7 @@ dependencies = [
  "clap",
  "env_logger",
  "log",
- "pecos-engines",
+ "pecos",
 ]
 
 [[package]]
