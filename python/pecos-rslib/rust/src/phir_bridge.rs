@@ -1,4 +1,4 @@
-// PECOS/crates/pecos-python/src/phir_bridge.rs
+// PECOS/python/pecos-rslib/rust/src/phir_bridge.rs
 use parking_lot::Mutex;
 use pecos::prelude::*;
 use pyo3::prelude::*;
@@ -31,14 +31,90 @@ impl PHIREngine {
     }
 
     #[getter]
-    fn results_dict(&self, py: Python<'_>) -> PyResult<PyObject> {
+    fn results_dict(&self, py: Python<'_>) -> Py<PyAny> {
         let results = self.results.lock();
-        Ok(PyObject::from(
+        PyObject::from(
             results
                 .clone()
                 .into_pyobject(py)
                 .expect("Failed to convert results"),
-        ))
+        )
+    }
+
+    fn process_program(&mut self) -> PyResult<Vec<PyObject>> {
+        Python::with_gil(|py| {
+            ClassicalEngine::process_program(self)
+                .map_err(|e| QueueErrorWrapper(e).into())
+                .and_then(|commands| {
+                    let mut py_commands = Vec::with_capacity(commands.len());
+                    for cmd in commands {
+                        let py_dict = PyDict::new(py);
+
+                        // Create a dict for parameters
+                        let params_dict = PyDict::new(py);
+
+                        // Convert gate type and parameters
+                        match cmd.gate {
+                            GateType::Measure { result_id } => {
+                                py_dict.set_item("gate_type", "Measure")?;
+                                params_dict.set_item("result_id", result_id)?;
+                            }
+                            GateType::RZ { theta } => {
+                                py_dict.set_item("gate_type", "RZ")?;
+                                params_dict.set_item("theta", theta)?;
+                            }
+                            GateType::R1XY { phi, theta } => {
+                                py_dict.set_item("gate_type", "R1XY")?;
+                                let angles = vec![phi, theta];
+                                params_dict.set_item("angles", angles)?;
+                            }
+                            GateType::SZZ => {
+                                py_dict.set_item("gate_type", "SZZ")?;
+                            }
+                        }
+
+                        py_dict.set_item("params", params_dict)?;
+                        py_dict.set_item("qubits", cmd.qubits)?;
+
+                        // Convert to PyObject
+                        let py_obj: PyObject = py_dict.into_any().into();
+                        py_commands.push(py_obj);
+                    }
+                    Ok(py_commands)
+                })
+        })
+    }
+
+    fn handle_measurement(&mut self, measurement: u32) -> PyResult<()> {
+        Python::with_gil(|py| {
+            let interpreter = self.interpreter.lock();
+            let dict = PyDict::new(py);
+            dict.set_item("measurement", measurement)?;
+            let results_guard = self.results.lock();
+            let dict_list: Vec<PyObject> = results_guard
+                .iter()
+                .map(|(key, value)| {
+                    let py_dict = PyDict::new(py);
+                    py_dict.set_item("key", key).expect("Failed to set key");
+                    py_dict
+                        .set_item("value", value)
+                        .expect("Failed to set value");
+                    py_dict.into_any().into()
+                })
+                .collect();
+
+            interpreter.call_method1(py, "receive_results", (dict_list,))?;
+            Ok(())
+        })
+    }
+
+    fn get_results(&self) -> PyResult<HashMap<String, u32>> {
+        match ClassicalEngine::get_results(self) {
+            Ok(results) => Ok(results.measurements),
+            Err(e) => Err(PyErr::new::<pyo3::exceptions::PyRuntimeError, _>(
+                e.to_string(),
+            )),
+        }
     }
 }
 
@@ -154,4 +230,15 @@ fn convert_gate(py_cmd: &Bound<'_, PyAny>) -> Result<(GateType, Vec<usize>), PyE
     };
 
     Ok((gate, qubits))
+}
+
+// Newtype wrapper for QueueError
+#[derive(Debug)]
+struct QueueErrorWrapper(QueueError);
+
+// Implement conversion from QueueErrorWrapper to PyErr
+impl From<QueueErrorWrapper> for PyErr {
+    fn from(err: QueueErrorWrapper) -> PyErr {
+        PyErr::new::<pyo3::exceptions::PyRuntimeError, _>(err.0.to_string())
+    }
 }

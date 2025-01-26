@@ -10,10 +10,10 @@
 // or implied. See the License for the specific language governing permissions and limitations under
 // the License.
 
-mod phir_bridge;
+// PECOS/python/pecos-rslib/rust/src/lib.rs
+
+pub mod phir_bridge;
 mod sparse_sim;
-#[cfg(test)]
-mod test_phir_bridge;
 
 use sparse_sim::SparseSim;
 

@@ -1502,18 +1502,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "pecos-python"
-version = "0.1.1"
-dependencies = [
- "once_cell",
- "parking_lot",
- "pecos",
- "pyo3",
- "pyo3-build-config",
- "serde_json",
-]
-
-[[package]]
 name = "pecos-qec"
 version = "0.1.1"
 dependencies = [
@@ -1526,6 +1514,16 @@ version = "0.1.1"
 dependencies = [
  "pecos-core",
  "rand_chacha",
+]
+
+[[package]]
+name = "pecos-rslib"
+version = "0.1.1"
+dependencies = [
+ "parking_lot",
+ "pecos",
+ "pyo3",
+ "serde_json",
 ]
 
 [[package]]

@@ -1,7 +1,9 @@
-#[cfg(test)]
+// PECOS/python/pecos-rslib/tests/test_phir_bridge.rs
+
+#[cfg(not(test))]
 mod tests {
-    use crate::phir_bridge::PHIREngine;
     use pecos::prelude::*;
+    use pecos_rslib::phir_bridge::PHIREngine;
     use serde_json::json;
 
     fn create_minimal_phir() -> String {
