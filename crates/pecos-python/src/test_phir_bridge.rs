@@ -61,7 +61,7 @@ mod tests {
         let results = engine.get_results()?;
 
         // Debugging output for results
-        println!("Results object: {results:?}");
+        println!("Results object: {:?}", results);
 
         // Extract the measurement key dynamically
         let measurement_key = results
@@ -70,7 +70,7 @@ mod tests {
             .next()
             .expect("Expected at least one measurement key");
 
-        println!("Measurement key found: {measurement_key}");
+        println!("Measurement key found: {}", measurement_key);
 
         // Assertion for debugging
         println!(
@@ -83,7 +83,8 @@ mod tests {
         assert_eq!(
             results.measurements.get(measurement_key),
             Some(&0), // Adjusted to match the observed result
-            "Expected {measurement_key} to have value 0"
+            "Expected {} to have value 0",
+            measurement_key
         );
 
         Ok(())
