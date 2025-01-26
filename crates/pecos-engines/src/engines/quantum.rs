@@ -33,15 +33,15 @@ impl QuantumEngine for QuantumSimulator {
                 );
                 Ok(None)
             }
-            GateType::RXY { phi, theta } => {
+            GateType::R1XY { phi, theta } => {
                 debug!(
-                    "Processing RXY gate with phi={}, theta={} on qubit {:?}",
+                    "Processing R1XY gate with phi={}, theta={} on qubit {:?}",
                     phi, theta, cmd.qubits[0]
                 );
                 Ok(None)
             }
-            GateType::ZZ => {
-                debug!("Processing ZZ gate on qubits {:?}", cmd.qubits);
+            GateType::SZZ => {
+                debug!("Processing SZZ gate on qubits {:?}", cmd.qubits);
                 Ok(None)
             }
             GateType::Measure { result_id } => {

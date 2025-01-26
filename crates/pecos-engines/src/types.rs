@@ -5,8 +5,8 @@ use std::collections::HashMap;
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum GateType {
     RZ { theta: f64 },
-    RXY { phi: f64, theta: f64 },
-    ZZ,
+    R1XY { phi: f64, theta: f64 },
+    SZZ,
     Measure { result_id: usize },
 }
 
@@ -22,8 +22,8 @@ impl QuantumCommand {
     /// # Format
     /// Commands must follow these formats:
     /// - RZ theta qubit
-    /// - RXY phi theta qubit
-    /// - ZZ qubit1 qubit2
+    /// - R1XY phi theta qubit
+    /// - SZZ qubit1 qubit2
     /// - M qubit `result_id`
     ///
     /// All numeric parameters should be valid floating point numbers.
@@ -33,8 +33,8 @@ impl QuantumCommand {
     /// ```
     /// use pecos_engines::types::QuantumCommand;
     /// let cmd = QuantumCommand::parse_from_str("RZ 0.5 1").unwrap();
-    /// let cmd = QuantumCommand::parse_from_str("RXY 0.1 0.2 0").unwrap();
-    /// let cmd = QuantumCommand::parse_from_str("ZZ 0 1").unwrap();
+    /// let cmd = QuantumCommand::parse_from_str("R1XY 0.1 0.2 0").unwrap();
+    /// let cmd = QuantumCommand::parse_from_str("SZZ 0 1").unwrap();
     /// let cmd = QuantumCommand::parse_from_str("M 0 42").unwrap();
     /// ```
     ///
@@ -62,12 +62,12 @@ impl QuantumCommand {
                         .map_err(|e| format!("Invalid qubit: {e}"))?],
                 })
             }
-            Some(&"RXY") => {
+            Some(&"R1XY") => {
                 if parts.len() != 4 {
-                    return Err("Invalid RXY format".into());
+                    return Err("Invalid R1XY format".into());
                 }
                 Ok(Self {
-                    gate: GateType::RXY {
+                    gate: GateType::R1XY {
                         phi: parts[1].parse().map_err(|e| format!("Invalid phi: {e}"))?,
                         theta: parts[2]
                             .parse()
@@ -78,12 +78,12 @@ impl QuantumCommand {
                         .map_err(|e| format!("Invalid qubit: {e}"))?],
                 })
             }
-            Some(&"ZZ") => {
+            Some(&"SZZ") => {
                 if parts.len() != 3 {
-                    return Err("Invalid ZZ format".into());
+                    return Err("Invalid SZZ format".into());
                 }
                 Ok(Self {
-                    gate: GateType::ZZ,
+                    gate: GateType::SZZ,
                     qubits: vec![
                         parts[1]
                             .parse()

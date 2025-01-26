@@ -245,12 +245,12 @@ impl QirCompiler {
                 debug!("Processing RZ gate");
                 Ok(None)
             }
-            Some(&"RXY") => {
-                debug!("Processing RXY gate");
+            Some(&"R1XY") => {
+                debug!("Processing R1XY gate");
                 Ok(None)
             }
-            Some(&"ZZ") => {
-                debug!("Processing ZZ gate");
+            Some(&"SZZ") => {
+                debug!("Processing SZZ gate");
                 Ok(None)
             }
             Some(&"M") => {

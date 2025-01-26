@@ -10,13 +10,19 @@
 // or implied. See the License for the specific language governing permissions and limitations under
 // the License.
 
+mod phir_bridge;
 mod sparse_sim;
+#[cfg(test)]
+mod test_phir_bridge;
+
 use sparse_sim::SparseSim;
 
 use pyo3::prelude::*;
 
+/// A Python module implemented in Rust.
 #[pymodule]
 fn _pecos_rslib(_py: Python<'_>, m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_class::<SparseSim>()?;
+    m.add_class::<phir_bridge::PHIREngine>()?;
     Ok(())
 }

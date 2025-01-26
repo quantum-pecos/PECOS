@@ -41,10 +41,10 @@ pub extern "C" fn __quantum__qis__rxy__body(phi: f64, theta: f64, qubit: *const 
 
     if let Ok(mut queue) = COMMAND_QUEUE.lock() {
         let cmd = QuantumCommand {
-            gate: GateType::RXY { phi, theta },
+            gate: GateType::R1XY { phi, theta },
             qubits: vec![qubit_idx],
         };
-        trace!("Queueing RXY gate: {:?}", cmd);
+        trace!("Queueing R1XY gate: {:?}", cmd);
         queue.push_back(cmd);
     }
 }
@@ -56,10 +56,10 @@ pub extern "C" fn __quantum__qis__zz__body(qubit1: *const Qubit, qubit2: *const 
 
     if let Ok(mut queue) = COMMAND_QUEUE.lock() {
         let cmd = QuantumCommand {
-            gate: GateType::ZZ,
+            gate: GateType::SZZ,
             qubits: vec![qubit1_idx, qubit2_idx],
         };
-        trace!("Queueing ZZ gate: {:?}", cmd);
+        trace!("Queueing SZZ gate: {:?}", cmd);
         queue.push_back(cmd);
     }
 }
