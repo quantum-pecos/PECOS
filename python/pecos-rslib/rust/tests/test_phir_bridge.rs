@@ -1,6 +1,6 @@
 // PECOS/python/pecos-rslib/tests/test_phir_bridge.rs
 
-#[cfg(not(test))]
+#[cfg(feature = "python-tests")]
 mod tests {
     use pecos::prelude::*;
     use pecos_rslib::phir_bridge::PHIREngine;
