@@ -27,3 +27,4 @@ pub use gens::Gens;
 // pub use paulis::Paulis;
 pub use quantum_simulator::QuantumSimulator;
 pub use sparse_stab::SparseStab;
+pub use pecos_core::VecSet;

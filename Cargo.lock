@@ -1517,6 +1517,7 @@ dependencies = [
  "memmap2 0.9.5",
  "os_pipe",
  "parking_lot",
+ "pecos-qsim",
  "rand",
  "rayon",
  "serde",
