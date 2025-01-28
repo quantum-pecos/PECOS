@@ -135,7 +135,7 @@ fn main() -> Result<(), Box<dyn Error>> {
             }
 
             // Setup hybrid engine
-            let quantum_engine = QuantumSimulator::new();
+            let quantum_engine = QSimBackend::new();
             let cmd_channel = StdioChannel::from_stdio()?;
             let engine = HybridEngine::new(
                 classical_engine,

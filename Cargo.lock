@@ -1533,10 +1533,6 @@ dependencies = [
  "serde_json",
  "tempfile",
  "uuid",
- "num-complex",
- "pecos",
- "pyo3",
- "rand",
 ]
 
 [[package]]
@@ -1560,9 +1556,11 @@ dependencies = [
 name = "pecos-rslib"
 version = "0.1.1"
 dependencies = [
+ "num-complex",
  "parking_lot",
  "pecos",
  "pyo3",
+ "rand",
  "serde_json",
 ]
 

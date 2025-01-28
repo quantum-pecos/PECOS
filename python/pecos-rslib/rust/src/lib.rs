@@ -15,7 +15,6 @@
 pub mod phir_bridge;
 mod sparse_sim;
 
-use sparse_sim::SparseSim;
 mod sparse_stab_bindings;
 mod state_vec_bindings;
 

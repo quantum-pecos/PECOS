@@ -17,7 +17,7 @@ pub use pecos_core::{IndexableElement, VecSet};
 pub use pecos_engines::{
     channels::stdio::StdioChannel,
     engines::{
-        classical::QirClassicalEngine, phir::PHIREngine, quantum::QuantumSimulator,
+        classical::QirClassicalEngine, phir::PHIREngine, quantum::QuantumSimulator as QSimBackend,
         ClassicalEngine, HybridEngine,
     },
     errors::QueueError,
