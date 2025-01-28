@@ -1,0 +1,59 @@
+{
+  "format": "PHIR/JSON",
+  "version": "0.1.0",
+  "metadata": {"description": "Basic test program"},
+  "ops": [
+    {
+      "data": "qvar_define",
+      "data_type": "qubits",
+      "variable": "q",
+      "size": 2
+    },
+    {
+      "data": "cvar_define",
+      "data_type": "i64",
+      "variable": "m",
+      "size": 2
+    },
+    {
+      "data": "cvar_define",
+      "data_type": "i64",
+      "variable": "result",
+      "size": 2
+    },
+    {
+      "qop": "RZ",
+      "angles": [[3.14], "rad"],
+      "args": [["q", 0]]
+    },
+    {
+      "qop": "R1XY",
+      "angles": [[3.14, 1.07], "rad"],
+      "args": [["q", 1]]
+    },
+    {
+      "qop": "SZZ",
+      "args": [["q", 0], ["q", 1]]
+    },
+    {
+      "qop": "Measure",
+      "args": [["q", 0]],
+      "returns": [["m", 0]]
+    },
+    {
+      "qop": "Measure",
+      "args": [["q", 1]],
+      "returns": [["m", 1]]
+    },
+    {
+      "cop": "Result",
+      "args": [["m", 0]],
+      "returns": [["result", 0]]
+    },
+    {
+      "cop": "Result",
+      "args": [["m", 1]],
+      "returns": [["result", 1]]
+    }
+  ]
+}

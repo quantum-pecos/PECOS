@@ -8,7 +8,7 @@ use std::sync::Arc;
 use super::HybridEngine;
 use crate::channels::{CommandChannel, MeasurementChannel};
 use crate::errors::QueueError;
-use crate::types::{GateType, MeasurementStatistics, QubitStats, ShotResult};
+use crate::types::{GateType, MeasurementStatistics, QubitStats, ShotResult, ShotResults};
 
 impl<C, M> HybridEngine<C, M>
 where
@@ -49,13 +49,13 @@ where
         &self,
         shots: usize,
         workers: usize,
-    ) -> Result<Vec<ShotResult>, QueueError> {
+    ) -> Result<ShotResults, QueueError> {
         info!(
-            "Starting parallel execution with {} shots and {} workers",
-            shots, workers
-        );
+        "Starting parallel execution with {} shots and {} workers",
+        shots, workers
+    );
 
-        let results = Arc::new(Mutex::new(Vec::with_capacity(shots)));
+        let shot_results = Arc::new(Mutex::new(Vec::with_capacity(shots)));
 
         // Get commands just once from classical engine
         let commands = {
@@ -89,14 +89,23 @@ where
                     }
                 }
 
-                results.lock().push(shot_result);
+                shot_results.lock().push(shot_result);
                 debug!("Completed shot {}", shot_idx);
                 Ok(())
             })?;
 
-        Ok(Arc::try_unwrap(results)
-            .map_err(|_| QueueError::LockError("Could not unwrap results".into()))?
-            .into_inner())
+        let mutex = Arc::try_unwrap(shot_results)
+            .map_err(|_| QueueError::LockError("Could not unwrap results".into()))?;
+
+        let raw_results = mutex.into_inner();
+
+        // Convert to our new ShotResults type
+        let results = ShotResults::from_measurements(&raw_results);
+
+        // Print results
+        results.print();
+
+        Ok(results)
     }
 
     pub fn compute_statistics(&self, results: &[ShotResult]) -> MeasurementStatistics {

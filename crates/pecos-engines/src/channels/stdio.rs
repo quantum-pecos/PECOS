@@ -93,12 +93,14 @@ impl MeasurementChannel for StdioChannel {
 }
 
 pub(crate) fn format_command(cmd: &QuantumCommand) -> String {
-    use crate::types::GateType::{Measure, R1XY, RZ, SZZ};
+    use crate::types::GateType::{Measure, CX, H, R1XY, RZ, SZZ};
 
     match &cmd.gate {
         RZ { theta } => format!("RZ {} {}", theta, cmd.qubits[0]),
         R1XY { phi, theta } => format!("R1XY {} {} {}", phi, theta, cmd.qubits[0]),
         SZZ => format!("SZZ {} {}", cmd.qubits[0], cmd.qubits[1]),
+        H => format!("H {}", cmd.qubits[0]),
+        CX => format!("CX {} {}", cmd.qubits[0], cmd.qubits[1]),
         Measure { result_id } => format!("M {} {}", cmd.qubits[0], result_id),
     }
 }

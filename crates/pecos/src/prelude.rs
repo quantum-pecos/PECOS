@@ -17,7 +17,8 @@ pub use pecos_core::VecSet;
 pub use pecos_engines::{
     channels::stdio::StdioChannel,
     engines::{
-        classical::QirClassicalEngine, quantum::QuantumSimulator, ClassicalEngine, HybridEngine,
+        classical::QirClassicalEngine, phir::PHIREngine, quantum::QuantumSimulator,
+        ClassicalEngine, HybridEngine,
     },
     errors::QueueError,
     types::{CommandBatch, GateType, MeasurementResult, QuantumCommand, ShotResult},

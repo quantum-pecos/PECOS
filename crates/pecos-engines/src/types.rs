@@ -7,6 +7,8 @@ pub enum GateType {
     RZ { theta: f64 },
     R1XY { phi: f64, theta: f64 },
     SZZ,
+    H,
+    CX,
     Measure { result_id: usize },
 }
 
@@ -94,6 +96,33 @@ impl QuantumCommand {
                     ],
                 })
             }
+            Some(&"H") => {
+                if parts.len() != 2 {
+                    return Err("Invalid H format".into());
+                }
+                Ok(Self {
+                    gate: GateType::H,
+                    qubits: vec![parts[1]
+                        .parse()
+                        .map_err(|e| format!("Invalid qubit: {e}"))?],
+                })
+            }
+            Some(&"CX") => {
+                if parts.len() != 3 {
+                    return Err("Invalid CX format".into());
+                }
+                Ok(Self {
+                    gate: GateType::CX,
+                    qubits: vec![
+                        parts[1]
+                            .parse()
+                            .map_err(|e| format!("Invalid control qubit: {e}"))?,
+                        parts[2]
+                            .parse()
+                            .map_err(|e| format!("Invalid target qubit: {e}"))?,
+                    ],
+                })
+            }
             Some(&"M") => {
                 if parts.len() != 3 {
                     return Err("Invalid M format".into());
@@ -162,5 +191,76 @@ impl QubitStats {
     #[must_use]
     pub fn total_measurements(&self) -> usize {
         self.zeros + self.ones
+    }
+}
+
+#[derive(Debug, Clone)]
+pub struct ShotResults {
+    pub shots: Vec<HashMap<String, String>>
+}
+
+impl ShotResults {
+    pub fn new() -> Self {
+        Self { shots: Vec::new() }
+    }
+
+    pub fn from_measurements(results: &[ShotResult]) -> Self {
+        let mut shots = Vec::new();
+
+        for shot in results {
+            let mut processed_results: HashMap<String, String> = HashMap::new();
+            let mut measurement_values = Vec::new();
+
+            // Get all measurements in order
+            let mut keys: Vec<_> = shot.measurements.keys().collect();
+            keys.sort();
+
+            // Handle "measurement_X" keys specially
+            for key in &keys {
+                if key.starts_with("measurement_") {
+                    if let Some(&value) = shot.measurements.get(*key) {
+                        measurement_values.push(value.to_string());
+                    }
+                } else if let Some(&value) = shot.measurements.get(*key) {
+                    // Other variables go in as-is
+                    processed_results.insert(key.to_string(), value.to_string());
+                }
+            }
+
+            // Only add result if we have measurements
+            if !measurement_values.is_empty() {
+                processed_results.insert("result".to_string(), measurement_values.concat());
+            }
+
+            shots.push(processed_results);
+        }
+
+        Self { shots }
+    }
+
+    pub fn print(&self) {
+        println!("[");
+        for (i, shot) in self.shots.iter().enumerate() {
+            print!("  {{");
+            let mut first = true;
+            let mut var_names: Vec<_> = shot.keys().collect();
+            var_names.sort();
+
+            for var_name in var_names {
+                if !first {
+                    print!(", ");
+                }
+                first = false;
+                print!("\"{}\": \"{}\"", var_name, shot[var_name]);
+            }
+            print!("}}");
+
+            if i < self.shots.len() - 1 {
+                println!(",");
+            } else {
+                println!();
+            }
+        }
+        println!("]");
     }
 }

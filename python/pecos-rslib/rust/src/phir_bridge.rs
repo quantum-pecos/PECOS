@@ -71,6 +71,12 @@ impl PHIREngine {
                             GateType::SZZ => {
                                 py_dict.set_item("gate_type", "SZZ")?;
                             }
+                            GateType::H => {
+                                py_dict.set_item("gate_type", "H")?;
+                            }
+                            GateType::CX => {
+                                py_dict.set_item("gate_type", "CX")?;
+                            }
                         }
 
                         py_dict.set_item("params", params_dict)?;
@@ -216,6 +222,8 @@ fn convert_gate(py_cmd: &Bound<'_, PyAny>) -> Result<(GateType, Vec<usize>), PyE
             }
         }
         "SZZ" => GateType::SZZ,
+        "H" => GateType::H,
+        "CX" => GateType::CX,
         "Measure" => {
             let returns = py_cmd.getattr("returns")?;
             let return_item = returns.get_item(0)?;

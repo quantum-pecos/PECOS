@@ -65,6 +65,35 @@ pub extern "C" fn __quantum__qis__zz__body(qubit1: *const Qubit, qubit2: *const 
 }
 
 #[no_mangle]
+pub extern "C" fn __quantum__qis__h__body(qubit: *const Qubit) {
+    let qubit_idx = (qubit as u64) as usize;
+
+    if let Ok(mut queue) = COMMAND_QUEUE.lock() {
+        let cmd = QuantumCommand {
+            gate: GateType::H,
+            qubits: vec![qubit_idx],
+        };
+        trace!("Queueing H gate: {:?}", cmd);
+        queue.push_back(cmd);
+    }
+}
+
+#[no_mangle]
+pub extern "C" fn __quantum__qis__cx__body(control: *const Qubit, target: *const Qubit) {
+    let control_idx = (control as u64) as usize;
+    let target_idx = (target as u64) as usize;
+
+    if let Ok(mut queue) = COMMAND_QUEUE.lock() {
+        let cmd = QuantumCommand {
+            gate: GateType::CX,
+            qubits: vec![control_idx, target_idx],
+        };
+        trace!("Queueing CX gate: {:?}", cmd);
+        queue.push_back(cmd);
+    }
+}
+
+#[no_mangle]
 pub extern "C" fn __quantum__qis__m__body(qubit: *const Qubit, result: *const Result) {
     let qubit_idx = (qubit as u64) as usize;
     let result_idx = (result as u64) as usize;

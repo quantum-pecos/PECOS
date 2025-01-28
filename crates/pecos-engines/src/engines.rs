@@ -1,6 +1,7 @@
 // PECOS/crates/pecos-engines/src/engines.rs
 pub mod classical;
 pub mod hybrid;
+pub mod phir;
 pub mod quantum;
 
 pub use crate::channels::{CommandChannel, MeasurementChannel};

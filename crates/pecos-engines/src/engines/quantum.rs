@@ -44,6 +44,17 @@ impl QuantumEngine for QuantumSimulator {
                 debug!("Processing SZZ gate on qubits {:?}", cmd.qubits);
                 Ok(None)
             }
+            GateType::H => {
+                debug!("Processing H gate on qubit {:?}", cmd.qubits[0]);
+                Ok(None)
+            }
+            GateType::CX => {
+                debug!(
+                    "Processing CX gate with control {:?} and target {:?}",
+                    cmd.qubits[0], cmd.qubits[1]
+                );
+                Ok(None)
+            }
             GateType::Measure { result_id } => {
                 let mut rng = rand::thread_rng(); // Create RNG only when needed // TODO: create once per worker...
                 let measurement = rng.gen_range(0..=1);
