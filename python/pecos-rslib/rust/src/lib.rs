@@ -16,6 +16,11 @@ pub mod phir_bridge;
 mod sparse_sim;
 
 use sparse_sim::SparseSim;
+mod sparse_stab_bindings;
+mod state_vec_bindings;
+
+use sparse_stab_bindings::SparseSim;
+use state_vec_bindings::RsStateVec;
 
 use pyo3::prelude::*;
 
@@ -24,5 +29,6 @@ use pyo3::prelude::*;
 fn _pecos_rslib(_py: Python<'_>, m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_class::<SparseSim>()?;
     m.add_class::<phir_bridge::PHIREngine>()?;
+    m.add_class::<RsStateVec>()?;
     Ok(())
 }

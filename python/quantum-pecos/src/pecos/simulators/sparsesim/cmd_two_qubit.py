@@ -693,28 +693,7 @@ def SZZdg(state: SparseSim, qubits: tuple[int, int], **params: Any) -> None:
 
 
 def iSWAP(state: SparseSim, qubits: tuple[int, int], **params: Any) -> None:
-    r"""ISWAP = [[1,0,0,0],[0,0,i,0],[0,i,0,0],[0,0,0,i]]
-    = e^{i(XX+YY) \pi / 4}
-    = (II + i XX + i YY + ZZ)/2.
-
-    XI -> YZ
-    IX -> ZY
-    ZI -> ZI
-    IZ -> IZ
-
-    ISWAP is just SZZ...
-
-    TODO: verify implementation!
-
-    Args:
-    ----
-        state:
-        qubits:
-
-    Returns:
-    -------
-
-    """
+    r"""iSWAP = e^{i(XX+YY) \pi / 4"""
     qubit1, qubit2 = qubits
     SWAP(state, qubits)
     SZ(state, qubit1)

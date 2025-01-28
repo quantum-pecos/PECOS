@@ -11,7 +11,7 @@
 # specific language governing permissions and limitations under the License.
 
 # Rust version of stabilizer sim
-from pecos_rslib import SparseSimRs
+from pecos_rslib import SparseSimRs, StateVecRs
 from pecos_rslib import SparseSimRs as SparseSim
 
 from pecos.simulators import sim_class_types
