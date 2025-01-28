@@ -5,9 +5,10 @@ use rayon::prelude::*;
 use std::collections::HashMap;
 use std::sync::Arc;
 
-use super::HybridEngine;
+use super::{ClassicalEngine, HybridEngine, QuantumEngine};
 use crate::channels::{CommandChannel, MeasurementChannel};
 use crate::errors::QueueError;
+use crate::noise::NoiseModel;
 use crate::types::{GateType, MeasurementStatistics, QubitStats, ShotResult, ShotResults};
 
 impl<C, M> HybridEngine<C, M>
@@ -16,8 +17,8 @@ where
     M: MeasurementChannel + Send + Sync + 'static + Clone,
 {
     pub fn new(
-        classical: Box<dyn super::ClassicalEngine>,
-        quantum: Box<dyn super::QuantumEngine>,
+        classical: Box<dyn ClassicalEngine>,
+        quantum: Box<dyn QuantumEngine>,
         cmd_channel: C,
         meas_channel: M,
     ) -> Self {
@@ -26,7 +27,12 @@ where
             quantum: Arc::new(RwLock::new(quantum)),
             cmd_channel: Arc::new(RwLock::new(cmd_channel)),
             meas_channel: Arc::new(RwLock::new(meas_channel)),
+            noise_model: Arc::new(RwLock::new(None)),
         }
+    }
+
+    pub fn set_noise_model(&self, noise_model: Option<Box<dyn NoiseModel>>) {
+        *self.noise_model.write() = noise_model;
     }
 
     pub fn run_shot(&self) -> Result<ShotResult, QueueError> {
@@ -45,26 +51,24 @@ where
         self.classical.read().get_results()
     }
 
-    pub fn run_parallel(
-        &self,
-        shots: usize,
-        workers: usize,
-    ) -> Result<ShotResults, QueueError> {
+    pub fn run_parallel(&self, shots: usize, workers: usize) -> Result<ShotResults, QueueError> {
         info!(
-        "Starting parallel execution with {} shots and {} workers",
-        shots, workers
-    );
+            "Starting parallel execution with {} shots and {} workers",
+            shots, workers
+        );
 
         let shot_results = Arc::new(Mutex::new(Vec::with_capacity(shots)));
 
         // Get commands just once from classical engine
-        let commands = {
+        let base_commands = {
             let mut classical = self.classical.write();
-            classical.process_program()?
+            let cmds = classical.process_program()?;
+            debug!("Generated base commands: {:?}", cmds);
+            cmds
         };
 
-        // Share the commands across all shots
-        let commands = Arc::new(commands);
+        // Get noise model reference outside the loop
+        let noise_model = self.noise_model.read();
 
         (0..shots)
             .into_par_iter()
@@ -72,10 +76,25 @@ where
                 debug!("Starting shot {}", shot_idx);
                 let mut shot_result = ShotResult::default();
 
+                // Clone the base commands for this shot
+                let mut commands = base_commands.clone();
+
+                // Apply noise model independently for this shot
+                if let Some(noise_model) = &*noise_model {
+                    commands = noise_model.apply_noise(commands);
+                    debug!(
+                        "Applied noise model for shot {}, commands: {:?}",
+                        shot_idx, commands
+                    );
+                }
+
                 // Process commands through quantum engine
                 {
                     let mut quantum = self.quantum.write();
-                    for cmd in commands.iter() {
+                    // Reset quantum state before processing this shot
+                    quantum.reset_state()?;
+
+                    for cmd in &commands {
                         if let Some(measurement) = quantum.process_command(cmd)? {
                             let res_id = if let GateType::Measure { result_id } = cmd.gate {
                                 result_id

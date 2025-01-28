@@ -25,7 +25,7 @@ pub use clifford_gateable::{CliffordGateable, MeasurementResult};
 pub use gens::Gens;
 // pub use paulis::Paulis;
 pub use pauli_prop::{PauliProp, StdPauliProp};
+pub use pecos_core::VecSet;
 pub use quantum_simulator::QuantumSimulator;
 pub use sparse_stab::{SparseStab, StdSparseStab};
 pub use state_vec::StateVec;
-pub use pecos_core::VecSet;

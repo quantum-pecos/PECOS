@@ -142,8 +142,7 @@ impl PHIREngine {
         if let Some(&size) = self.quantum_variables.get(var) {
             if idx >= size {
                 return Err(QueueError::OperationError(format!(
-                    "Index {} out of bounds for quantum variable {} of size {}",
-                    idx, var, size
+                    "Index {idx} out of bounds for quantum variable {var} of size {size}"
                 )));
             }
             return Ok(());
@@ -153,16 +152,14 @@ impl PHIREngine {
         if let Some((_, size)) = self.classical_variables.get(var) {
             if idx >= *size {
                 return Err(QueueError::OperationError(format!(
-                    "Index {} out of bounds for classical variable {} of size {}",
-                    idx, var, size
+                    "Index {idx} out of bounds for classical variable {var} of size {size}"
                 )));
             }
             return Ok(());
         }
 
         Err(QueueError::OperationError(format!(
-            "Undefined variable: {}",
-            var
+            "Undefined variable: {var}"
         )))
     }
 
@@ -257,7 +254,10 @@ impl PHIREngine {
 
             log::debug!(
                 "Will store measurement {}[{}] in return location {}[{}]",
-                meas_var, meas_idx, return_var, return_idx
+                meas_var,
+                meas_idx,
+                return_var,
+                return_idx
             );
 
             // Return true if this is the last Result operation in a sequence
@@ -361,7 +361,7 @@ impl ClassicalEngine for PHIREngine {
                     if qop != "Measure" {
                         self.handle_quantum_op(&qop, &angles, &args)
                     } else {
-                        Ok(false)  // Already handled in the match above
+                        Ok(false) // Already handled in the match above
                     }
                 }
                 ProcessAction::Classical { cop, args, returns } => {
@@ -381,10 +381,8 @@ impl ClassicalEngine for PHIREngine {
 
     fn handle_measurement(&mut self, measurement: MeasurementResult) -> Result<(), QueueError> {
         let result_id = self.measurement_results.len();
-        self.measurement_results.insert(
-            format!("measurement_{}", result_id),
-            vec![measurement]
-        );
+        self.measurement_results
+            .insert(format!("measurement_{result_id}"), vec![measurement]);
         Ok(())
     }
 

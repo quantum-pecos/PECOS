@@ -6,6 +6,7 @@ pub mod quantum;
 
 pub use crate::channels::{CommandChannel, MeasurementChannel};
 pub use crate::errors::QueueError;
+use crate::noise::NoiseModel;
 pub use crate::types::{CommandBatch, MeasurementResult, QuantumCommand, ShotResult};
 use parking_lot::RwLock;
 use std::sync::Arc;
@@ -24,6 +25,8 @@ pub trait QuantumEngine: Send + Sync {
         &mut self,
         cmd: &QuantumCommand,
     ) -> Result<Option<MeasurementResult>, QueueError>;
+
+    fn reset_state(&mut self) -> Result<(), QueueError>;
 }
 
 // Base implementation of Hybrid Engine
@@ -36,4 +39,5 @@ where
     quantum: Arc<RwLock<Box<dyn QuantumEngine>>>,
     cmd_channel: Arc<RwLock<C>>,
     meas_channel: Arc<RwLock<M>>,
+    noise_model: Arc<RwLock<Option<Box<dyn NoiseModel>>>>,
 }

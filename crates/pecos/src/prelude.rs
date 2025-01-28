@@ -17,10 +17,13 @@ pub use pecos_core::{IndexableElement, VecSet};
 pub use pecos_engines::{
     channels::stdio::StdioChannel,
     engines::{
-        classical::QirClassicalEngine, phir::PHIREngine, quantum::QuantumSimulator as QSimBackend,
+        classical::QirClassicalEngine,
+        phir::PHIREngine,
+        quantum::{new_quantum_engine, new_quantum_engine_full, CliffordEngine, FullEngine},
         ClassicalEngine, HybridEngine,
     },
     errors::QueueError,
+    noise::{DepolarizingNoise, NoiseModel},
     types::{CommandBatch, GateType, MeasurementResult, QuantumCommand, ShotResult},
 };
 

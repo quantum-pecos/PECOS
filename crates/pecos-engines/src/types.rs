@@ -1,6 +1,7 @@
 // PECOS/crates/pecos-engines/src/types.rs
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
+use std::fmt;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum GateType {
@@ -196,14 +197,22 @@ impl QubitStats {
 
 #[derive(Debug, Clone)]
 pub struct ShotResults {
-    pub shots: Vec<HashMap<String, String>>
+    pub shots: Vec<HashMap<String, String>>,
+}
+
+impl Default for ShotResults {
+    fn default() -> Self {
+        Self::new()
+    }
 }
 
 impl ShotResults {
+    #[must_use]
     pub fn new() -> Self {
         Self { shots: Vec::new() }
     }
 
+    #[must_use]
     pub fn from_measurements(results: &[ShotResult]) -> Self {
         let mut shots = Vec::new();
 
@@ -211,23 +220,19 @@ impl ShotResults {
             let mut processed_results: HashMap<String, String> = HashMap::new();
             let mut measurement_values = Vec::new();
 
-            // Get all measurements in order
             let mut keys: Vec<_> = shot.measurements.keys().collect();
             keys.sort();
 
-            // Handle "measurement_X" keys specially
             for key in &keys {
                 if key.starts_with("measurement_") {
                     if let Some(&value) = shot.measurements.get(*key) {
                         measurement_values.push(value.to_string());
                     }
                 } else if let Some(&value) = shot.measurements.get(*key) {
-                    // Other variables go in as-is
-                    processed_results.insert(key.to_string(), value.to_string());
+                    processed_results.insert((*key).to_string(), value.to_string());
                 }
             }
 
-            // Only add result if we have measurements
             if !measurement_values.is_empty() {
                 processed_results.insert("result".to_string(), measurement_values.concat());
             }
@@ -239,28 +244,33 @@ impl ShotResults {
     }
 
     pub fn print(&self) {
-        println!("[");
+        println!("{self}");
+    }
+}
+
+impl fmt::Display for ShotResults {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        writeln!(f, "[")?;
+
         for (i, shot) in self.shots.iter().enumerate() {
-            print!("  {{");
-            let mut first = true;
-            let mut var_names: Vec<_> = shot.keys().collect();
-            var_names.sort();
+            // Get all keys and sort them for consistent output
+            let mut keys: Vec<_> = shot.keys().collect();
+            keys.sort();
 
-            for var_name in var_names {
-                if !first {
-                    print!(", ");
+            write!(f, "  {{")?;
+            for (j, key) in keys.iter().enumerate() {
+                write!(f, "\"{}\": \"{}\"", key, shot.get(*key).unwrap())?;
+                if j < keys.len() - 1 {
+                    write!(f, ", ")?;
                 }
-                first = false;
-                print!("\"{}\": \"{}\"", var_name, shot[var_name]);
             }
-            print!("}}");
-
             if i < self.shots.len() - 1 {
-                println!(",");
+                writeln!(f, "}},")?;
             } else {
-                println!();
+                writeln!(f, "}}")?;
             }
         }
-        println!("]");
+
+        write!(f, "]")
     }
 }
