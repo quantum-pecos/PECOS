@@ -34,7 +34,7 @@ impl QirCompiler {
         let exe_path = format!("{}/{}", self.build_dir, program);
 
         // Convert LLVM IR to bitcode
-        println!("Converting LLVM IR to bitcode...");
+        info!("Converting LLVM IR to bitcode...");
         let status = Command::new("llvm-as-13")
             .arg(format!("{program}.ll"))
             .arg("-o")
@@ -46,7 +46,7 @@ impl QirCompiler {
         }
 
         // Compile bitcode to object file
-        println!("Compiling quantum program...");
+        info!("Compiling to native code...");
         let status = Command::new(&self.llc_path)
             .arg(&bc_path)
             .arg("-filetype=obj")
@@ -64,7 +64,7 @@ impl QirCompiler {
             .arg(&exe_path)
             .arg(&obj_path)
             .arg("-L./target/debug/")
-            .arg("-lqir_black_box")
+            .arg("-lpecos_engines")
             .status()?;
 
         if !status.success() {
@@ -251,6 +251,14 @@ impl QirCompiler {
             }
             Some(&"SZZ") => {
                 debug!("Processing SZZ gate");
+                Ok(None)
+            }
+            Some(&"H") => {
+                debug!("Processing H gate");
+                Ok(None)
+            }
+            Some(&"CX") => {
+                debug!("Processing CX gate");
                 Ok(None)
             }
             Some(&"M") => {

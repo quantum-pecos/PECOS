@@ -13,7 +13,7 @@ description = "Provides simulator engines for PECOS simulations."
 
 
 [lib]
-crate-type = ["cdylib", "staticlib", "rlib"]
+crate-type = ["cdylib", "rlib"]
 
 [dependencies]
 rand = { workspace = true}
