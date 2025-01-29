@@ -11,7 +11,7 @@
 // the License.
 
 use criterion::{black_box, measurement::Measurement, BenchmarkGroup, Criterion};
-use pecos_core::IndexableElement;
+use pecos::prelude::*;
 
 pub fn benchmarks<M: Measurement>(c: &mut Criterion<M>) {
     let mut group = c.benchmark_group("Element Operations");

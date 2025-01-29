@@ -5,16 +5,29 @@ use rayon::prelude::*;
 use std::collections::HashMap;
 use std::sync::Arc;
 
-use super::{ClassicalEngine, HybridEngine, QuantumEngine};
-use crate::channels::{CommandChannel, MeasurementChannel};
+use super::{ClassicalEngine, QuantumEngine};
+use crate::channels::{CommandChannel, MessageChannel};
 use crate::errors::QueueError;
 use pecos_core::types::{GateType, MeasurementStatistics, QubitStats, ShotResult, ShotResults};
-use pecos_noise::noise::NoiseModel;
+use pecos_noise::NoiseModel;
+
+// Base implementation of Hybrid Engine
+pub struct HybridEngine<C, M>
+where
+    C: CommandChannel + Send + Sync + 'static,
+    M: MessageChannel + Send + Sync + 'static,
+{
+    classical: Arc<RwLock<Box<dyn ClassicalEngine>>>,
+    quantum: Arc<RwLock<Box<dyn QuantumEngine>>>,
+    cmd_channel: Arc<RwLock<C>>,
+    meas_channel: Arc<RwLock<M>>,
+    noise_model: Arc<RwLock<Option<Box<dyn NoiseModel>>>>,
+}
 
 impl<C, M> HybridEngine<C, M>
 where
     C: CommandChannel + Send + Sync + 'static + Clone,
-    M: MeasurementChannel + Send + Sync + 'static + Clone,
+    M: MessageChannel + Send + Sync + 'static + Clone,
 {
     pub fn new(
         classical: Box<dyn ClassicalEngine>,
@@ -44,7 +57,7 @@ where
         self.cmd_channel.write().send_commands(commands)?;
 
         // Process measurements
-        let measurement = self.meas_channel.write().receive_measurement()?;
+        let measurement = self.meas_channel.write().receive_message()?;
         self.classical.write().handle_measurement(measurement)?;
 
         // Get final results

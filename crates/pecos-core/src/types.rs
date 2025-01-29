@@ -154,7 +154,6 @@ pub struct ShotResult {
 
 // For communication
 pub type CommandBatch = Vec<QuantumCommand>;
-pub type MeasurementResult = u32;
 
 // Statistics
 #[derive(Debug)]

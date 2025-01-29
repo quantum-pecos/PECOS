@@ -1,9 +1,38 @@
 // PECOS/crates/pecos-engines/src/engines/quantum.rs
-use super::QuantumEngine;
+use crate::channels::Message;
 use crate::errors::QueueError;
 use log::debug;
-use pecos_core::types::{GateType, MeasurementResult, QuantumCommand};
+use pecos_core::types::{GateType, QuantumCommand};
 use pecos_qsim::{ArbitraryRotationGateable, CliffordGateable, QuantumSimulator};
+
+/// Quantum engine that processes commands and generates measurements
+pub trait QuantumEngine: Send + Sync {
+    /// Processes a single quantum command and optionally generates a measurement.
+    ///
+    /// # Parameters
+    ///
+    /// * `cmd` - The quantum command to be processed, containing the gate type and qubit indices.
+    ///
+    /// # Returns
+    ///
+    /// * `Ok(Some(Message))` if a measurement is generated.
+    /// * `Ok(None)` if no measurement is generated.
+    /// * `Err(QueueError)` if an error occurs during processing.
+    ///
+    /// # Errors
+    ///
+    /// * [`QueueError::OperationError`] - If the operation is not supported by the simulator.
+    /// * [`QueueError::ExecutionError`] - If the simulator fails during command execution.
+    fn process_command(&mut self, cmd: &QuantumCommand) -> Result<Option<Message>, QueueError>;
+
+    /// Resets the internal state of the quantum engine to its initial state.
+    ///
+    /// # Errors
+    ///
+    /// Returns a [`QueueError`] if the underlying quantum simulator fails
+    /// to reset its state.
+    fn reset_state(&mut self) -> Result<(), QueueError>;
+}
 
 // Engine for simulators that only support Clifford gates
 pub struct CliffordEngine<S>
@@ -26,10 +55,7 @@ impl<S> QuantumEngine for CliffordEngine<S>
 where
     S: QuantumSimulator + CliffordGateable<usize> + Send + Sync,
 {
-    fn process_command(
-        &mut self,
-        cmd: &QuantumCommand,
-    ) -> Result<Option<MeasurementResult>, QueueError> {
+    fn process_command(&mut self, cmd: &QuantumCommand) -> Result<Option<Message>, QueueError> {
         match &cmd.gate {
             GateType::H => {
                 debug!("Processing H gate on qubit {:?}", cmd.qubits[0]);
@@ -51,7 +77,7 @@ where
             }
             GateType::Measure { result_id: _ } => {
                 let result = self.simulator.mz(cmd.qubits[0]);
-                let measurement = if result.outcome { 1 } else { 0 };
+                let measurement = u32::from(result.outcome);
                 debug!(
                     "Generated measurement {} for qubit {:?}",
                     measurement, cmd.qubits[0]
@@ -91,10 +117,7 @@ impl<S> QuantumEngine for FullEngine<S>
 where
     S: QuantumSimulator + CliffordGateable<usize> + ArbitraryRotationGateable<usize> + Send + Sync,
 {
-    fn process_command(
-        &mut self,
-        cmd: &QuantumCommand,
-    ) -> Result<Option<MeasurementResult>, QueueError> {
+    fn process_command(&mut self, cmd: &QuantumCommand) -> Result<Option<Message>, QueueError> {
         match &cmd.gate {
             GateType::H => {
                 debug!("Processing H gate on qubit {:?}", cmd.qubits[0]);
@@ -116,7 +139,7 @@ where
             }
             GateType::Measure { result_id: _ } => {
                 let result = self.simulator.mz(cmd.qubits[0]);
-                let measurement = if result.outcome { 1 } else { 0 };
+                let measurement = u32::from(result.outcome);
                 debug!(
                     "Generated measurement {} for qubit {:?}",
                     measurement, cmd.qubits[0]

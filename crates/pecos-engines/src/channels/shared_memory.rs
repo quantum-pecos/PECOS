@@ -1,8 +1,8 @@
 // PECOS/crates/pecos-engines/src/channels/shared_memory.rs
-use super::{CommandChannel, MeasurementChannel};
+use super::{CommandChannel, Message, MessageChannel};
 use crate::errors::QueueError;
 use memmap2::MmapMut;
-use pecos_core::types::{CommandBatch, MeasurementResult};
+use pecos_core::types::CommandBatch;
 use std::fs::OpenOptions;
 use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::Arc;
@@ -61,8 +61,8 @@ impl CommandChannel for SharedMemoryChannel {
     }
 }
 
-impl MeasurementChannel for SharedMemoryChannel {
-    fn receive_measurement(&mut self) -> Result<MeasurementResult, QueueError> {
+impl MessageChannel for SharedMemoryChannel {
+    fn receive_message(&mut self) -> Result<Message, QueueError> {
         let mmap = self.mmap.lock();
         let read_pos = self.read_pos.load(Ordering::SeqCst) as usize;
 

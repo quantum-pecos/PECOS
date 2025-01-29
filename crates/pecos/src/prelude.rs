@@ -11,25 +11,23 @@
 // the License.
 
 // re-exporting pecos-core
-pub use pecos_core::{IndexableElement, VecSet};
+pub use pecos_core::{IndexableElement, Set, VecSet};
 // re-exporting pecos-engines
-pub use pecos_core::types::{
-    CommandBatch, GateType, MeasurementResult, QuantumCommand, ShotResult,
-};
+pub use pecos_core::types::{CommandBatch, GateType, QuantumCommand, ShotResult};
 // re-exporting pecos-engines
 pub use pecos_engines::{
     channels::stdio::StdioChannel,
+    channels::{Message, MessageChannel},
     engines::{
         phir_engine::PHIREngine,
         quantum::{new_quantum_engine, new_quantum_engine_full, CliffordEngine, FullEngine},
         ClassicalEngine, HybridEngine,
     },
     errors::QueueError,
+    qir::engine::QirClassicalEngine,
 };
 // re-exporting pecos-engines
-pub use pecos_engines::qir::qir_engine::QirClassicalEngine;
-// re-exporting pecos-engines
-pub use pecos_noise::noise::{DepolarizingNoise, NoiseModel};
+pub use pecos_noise::{DepolarizingNoise, NoiseModel};
 // re-exporting pecos-qsim
 pub use pecos_qsim::ArbitraryRotationGateable;
 pub use pecos_qsim::CliffordGateable;

@@ -31,7 +31,6 @@ pub use sets::vec_set::VecSet;
 pub use crate::sims_rngs::chacha_rng::{ChaCha12Rng, ChaCha20Rng, ChaCha8Rng};
 pub use crate::sims_rngs::choices::Choices;
 pub use crate::sims_rngs::cyclic_rng::{CyclicRng, CyclicSeed};
-// pub use crate::sims_rngs::mock_rng::MockRng;
 pub use crate::sims_rngs::sim_rng::SimRng;
 pub use crate::sims_rngs::xoshiro_rng::{
     Xoshiro128PlusPlus, Xoshiro128StarStar, Xoshiro256PlusPlus, Xoshiro256StarStar,

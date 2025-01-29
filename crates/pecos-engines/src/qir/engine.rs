@@ -1,8 +1,9 @@
 // PECOS/crates/pecos-engines/src/qir/qir_engine
+use crate::channels::Message;
 use crate::engines::ClassicalEngine;
 use crate::errors::QueueError;
 use log::{debug, info};
-use pecos_core::types::{CommandBatch, MeasurementResult, QuantumCommand, ShotResult};
+use pecos_core::types::{CommandBatch, QuantumCommand, ShotResult};
 use std::fs;
 use std::io::{BufRead, BufReader, Write};
 use std::path::{Path, PathBuf};
@@ -252,7 +253,7 @@ impl ClassicalEngine for QirClassicalEngine {
         Ok(commands)
     }
 
-    fn handle_measurement(&mut self, measurement: MeasurementResult) -> Result<(), QueueError> {
+    fn handle_measurement(&mut self, measurement: Message) -> Result<(), QueueError> {
         debug!("Handling measurement: {}", measurement);
 
         // Get current qubit index from measurements size

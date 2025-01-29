@@ -15,6 +15,23 @@ pub struct PHIREngine {
 
 #[pymethods]
 impl PHIREngine {
+
+    /// Creates a new `PHIREngine`.
+    ///
+    /// # Arguments
+    ///
+    /// * `phir_json` - A JSON string representing the initial configuration of the PHIREngine.
+    ///
+    /// # Returns
+    ///
+    /// Returns an instance of `PHIREngine` wrapped in a `PyResult`.
+    ///
+    /// # Errors
+    ///
+    /// This function will return a `PyErr` if:
+    /// - The `pecos.classical_interpreters` module cannot be imported.
+    /// - The `PHIRClassicalInterpreter` class is not found.
+    /// - Any method call on the Python interpreter fails.
     #[new]
     pub fn py_new(phir_json: &str) -> PyResult<Self> {
         Python::with_gil(|py| {
@@ -149,7 +166,7 @@ impl ClassicalEngine for PHIREngine {
         .map_err(|e: PyErr| QueueError::ExecutionError(e.to_string()))
     }
 
-    fn handle_measurement(&mut self, measurement: MeasurementResult) -> Result<(), QueueError> {
+    fn handle_measurement(&mut self, measurement: Message) -> Result<(), QueueError> {
         Python::with_gil(|py| {
             let interpreter = self.interpreter.lock();
             let dict = PyDict::new(py);
@@ -181,7 +198,7 @@ impl ClassicalEngine for PHIREngine {
             let interpreter = self.interpreter.lock();
             let py_results = interpreter.call_method0(py, "results")?;
             let results: HashMap<String, u32> = py_results.extract(py)?;
-            *self.results.lock() = results.clone();
+            (*self.results.lock()).clone_from(&results);
             Ok(ShotResult {
                 measurements: results,
             })

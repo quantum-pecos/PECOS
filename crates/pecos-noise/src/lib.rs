@@ -1,17 +1,4 @@
-pub mod noise;
-
-#[must_use]
-pub fn add(left: u64, right: u64) -> u64 {
-    left + right
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn it_works() {
-        let result = add(2, 2);
-        assert_eq!(result, 4);
-    }
-}
+pub mod depolarizing_noise;
+pub mod noise_model;
+pub use depolarizing_noise::DepolarizingNoise;
+pub use noise_model::NoiseModel;

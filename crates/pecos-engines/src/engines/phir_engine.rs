@@ -4,8 +4,9 @@ use std::collections::HashMap;
 use std::path::Path;
 
 use super::ClassicalEngine;
+use crate::channels::Message;
 use crate::errors::QueueError;
-use pecos_core::types::{CommandBatch, GateType, MeasurementResult, QuantumCommand, ShotResult};
+use pecos_core::types::{CommandBatch, GateType, QuantumCommand, ShotResult};
 
 #[derive(Debug, Deserialize)]
 struct PHIRProgram {
@@ -377,7 +378,7 @@ impl ClassicalEngine for PHIREngine {
         }
     }
 
-    fn handle_measurement(&mut self, measurement: MeasurementResult) -> Result<(), QueueError> {
+    fn handle_measurement(&mut self, measurement: Message) -> Result<(), QueueError> {
         let result_id = self.measurement_results.len();
         self.measurement_results
             .insert(format!("measurement_{result_id}"), vec![measurement]);

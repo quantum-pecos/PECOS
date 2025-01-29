@@ -1,15 +1,10 @@
+use crate::noise_model::NoiseModel;
 use parking_lot::Mutex;
 use pecos_core::types::{CommandBatch, GateType, QuantumCommand};
 use rand::rngs::StdRng;
 use rand::Rng;
 use rand::SeedableRng;
 use std::sync::Arc;
-
-/// Trait defining interface for quantum noise models
-pub trait NoiseModel: Send + Sync {
-    /// Apply noise to a batch of quantum commands
-    fn apply_noise(&self, commands: CommandBatch) -> CommandBatch;
-}
 
 /// Simple depolarizing noise model that applies random Pauli errors
 pub struct DepolarizingNoise {

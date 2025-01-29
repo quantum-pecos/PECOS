@@ -1,8 +1,8 @@
 // PECOS/crates/pecos-engines/src/channels/stdio.rs
-use super::{CommandChannel, MeasurementChannel};
+use super::{CommandChannel, Message, MessageChannel};
 use crate::errors::QueueError;
 use log::trace;
-use pecos_core::types::{CommandBatch, MeasurementResult, QuantumCommand};
+use pecos_core::types::{CommandBatch, QuantumCommand};
 use std::io::{self, BufRead, BufReader, BufWriter, Write};
 use std::sync::{Arc, Mutex};
 
@@ -43,6 +43,23 @@ impl StdioChannel {
 }
 
 impl CommandChannel for StdioChannel {
+    /// Sends a batch of commands through the channel.
+    ///
+    /// This function writes the commands to the writer, formatting them into a
+    /// specific protocol. The procedure includes:
+    /// - Writing "FLUSH_BEGIN" before the commands.
+    /// - Writing each command in the form "CMD <formatted_command>".
+    /// - Writing "FLUSH_END" after all commands.
+    ///
+    /// The function ensures that the data is flushed to the writer before returning.
+    ///
+    /// # Parameters
+    /// - `cmds`: A batch of quantum commands to be sent.
+    ///
+    /// # Errors
+    /// This function returns a `QueueError` if:
+    /// - The writer cannot be locked.
+    /// - There is an I/O error while writing the commands or flushing the writer.
     fn send_commands(&mut self, cmds: CommandBatch) -> Result<(), QueueError> {
         let mut writer = self
             .writer
@@ -62,6 +79,12 @@ impl CommandChannel for StdioChannel {
         Ok(())
     }
 
+    /// Flushes any remaining data in the writer, ensuring it is written out.
+    ///
+    /// # Errors
+    /// This function returns a `QueueError` if:
+    /// - There is an error locking the writer.
+    /// - The flush operation fails for any reason.
     fn flush(&mut self) -> Result<(), QueueError> {
         let mut writer = self
             .writer
@@ -72,8 +95,18 @@ impl CommandChannel for StdioChannel {
     }
 }
 
-impl MeasurementChannel for StdioChannel {
-    fn receive_measurement(&mut self) -> Result<MeasurementResult, QueueError> {
+impl MessageChannel for StdioChannel {
+    /// Receives a message (measurement) from the channel.
+    ///
+    /// This method tries to read a line of input, parses it into a `Message` (u32),
+    /// and returns the result.
+    ///
+    /// # Errors
+    /// This function returns a `QueueError` if:
+    /// - There is an error locking the reader.
+    /// - The operation fails to read a line from the reader.
+    /// - The parsed measurement is invalid (not a valid `u32`).
+    fn receive_message(&mut self) -> Result<Message, QueueError> {
         let mut reader = self
             .reader
             .lock()

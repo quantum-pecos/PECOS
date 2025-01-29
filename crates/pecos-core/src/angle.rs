@@ -27,6 +27,7 @@ use num_traits::{
     Bounded, FromPrimitive, PrimInt, ToPrimitive, Unsigned, WrappingAdd, WrappingMul, WrappingNeg,
     WrappingSub, Zero,
 };
+pub use parse::ParseAngleError;
 use std::fmt;
 use std::ops::{Add, AddAssign, Div, DivAssign, Mul, MulAssign, Rem, Sub, SubAssign};
 
@@ -37,8 +38,6 @@ pub type Angle8 = Angle<u8>;
 /// Alias for `Angle` with a 16-bit unsigned integer.
 #[allow(clippy::module_name_repetitions)]
 pub type Angle16 = Angle<u16>;
-
-pub use parse::ParseAngleError;
 
 /// Alias for `Angle` with a 32-bit unsigned integer.
 #[allow(clippy::module_name_repetitions)]

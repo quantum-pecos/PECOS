@@ -1,4 +1,3 @@
 // PECOS/crates/pecos-engines/src/qir.rs
 pub mod bindings;
-pub mod command_queue;
-pub mod qir_engine;
+pub mod engine;

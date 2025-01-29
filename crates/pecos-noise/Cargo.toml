@@ -9,6 +9,7 @@ repository.workspace = true
 license.workspace = true
 keywords.workspace = true
 categories.workspace = true
+description = "Provides noise models for PECOS simulations."
 
 [dependencies]
 rand = { workspace = true }
