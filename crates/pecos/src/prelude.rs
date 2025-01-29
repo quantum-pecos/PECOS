@@ -17,8 +17,7 @@ pub use pecos_core::{IndexableElement, VecSet};
 pub use pecos_engines::{
     channels::stdio::StdioChannel,
     engines::{
-        classical::QirClassicalEngine,
-        phir::PHIREngine,
+        phir_engine::PHIREngine,
         quantum::{new_quantum_engine, new_quantum_engine_full, CliffordEngine, FullEngine},
         ClassicalEngine, HybridEngine,
     },
@@ -26,7 +25,8 @@ pub use pecos_engines::{
     noise::{DepolarizingNoise, NoiseModel},
     types::{CommandBatch, GateType, MeasurementResult, QuantumCommand, ShotResult},
 };
-
+// re-exporting pecos-engines
+pub use pecos_engines::qir::qir_engine::QirClassicalEngine;
 // re-exporting pecos-qsim
 pub use pecos_qsim::ArbitraryRotationGateable;
 pub use pecos_qsim::CliffordGateable;

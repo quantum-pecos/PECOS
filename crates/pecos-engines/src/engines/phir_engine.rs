@@ -1,4 +1,4 @@
-// engines/phir.rs
+// engines/phir_engines
 #![allow(dead_code)] // TODO: Remove once CLI integration is complete
 
 use serde::Deserialize;

@@ -1,5 +1,5 @@
-// PECOS/crates/pecos-engines/src/engines/classical.rs
-use super::ClassicalEngine;
+// PECOS/crates/pecos-engines/src/qir/qir_engine
+use crate::engines::ClassicalEngine;
 use crate::errors::QueueError;
 use crate::types::{CommandBatch, MeasurementResult, QuantumCommand, ShotResult};
 use log::{debug, info};
