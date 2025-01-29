@@ -180,7 +180,7 @@ where
         for (i, row) in gens.row_x.iter().enumerate() {
             for j in row.iter() {
                 assert!(
-                    gens.col_x[j.to_usize()].contains(&E::from_usize(i)),
+                    gens.col_x[j.to_index()].contains(&E::from_index(i)),
                     "Column-wise sparse matrix doesn't match row-wise spare matrix"
                 );
             }
@@ -194,17 +194,17 @@ where
         let mut result =
             String::with_capacity(num_qubits * gens.row_x.len() + gens.row_x.len() + 2);
         for i in 0..gens.row_x.len() {
-            if gens.signs_minus.contains(&(E::from_usize(i))) {
+            if gens.signs_minus.contains(&(E::from_index(i))) {
                 result.push('-');
             } else {
                 result.push('+');
             }
-            if gens.signs_i.contains(&(E::from_usize(i))) {
+            if gens.signs_i.contains(&(E::from_index(i))) {
                 result.push('i');
             }
 
             for qubit in 0..num_qubits {
-                let qubit_u = E::from_usize(qubit);
+                let qubit_u = E::from_index(qubit);
                 let in_row_x = gens.row_x[i].contains(&qubit_u);
                 let in_row_z = gens.row_z[i].contains(&qubit_u);
 
@@ -249,7 +249,7 @@ where
     /// Will panic if qubit ids don't convert to usize.
     #[inline]
     fn deterministic_meas(&mut self, q: E) -> MeasurementResult {
-        let qu = q.to_usize();
+        let qu = q.to_index();
 
         let mut num_minuses = self.destabs.col_x[qu]
             .intersection(&self.stabs.signs_minus)
@@ -261,7 +261,7 @@ where
 
         let mut cumulative_x = T::new();
         for row in self.destabs.col_x[qu].iter() {
-            let rowu = row.to_usize();
+            let rowu = row.to_index();
             num_minuses += &self.stabs.row_z[rowu].intersection(&cumulative_x).count();
             cumulative_x ^= &self.stabs.row_x[rowu];
         }
@@ -281,7 +281,7 @@ where
     #[allow(clippy::too_many_lines)]
     #[inline]
     fn nondeterministic_meas(&mut self, q: E, result: bool) -> MeasurementResult {
-        let qu = q.to_usize();
+        let qu = q.to_index();
 
         let mut anticom_stabs_col = self.stabs.col_x[qu].clone();
         let mut anticom_destabs_col = self.destabs.col_x[qu].clone();
@@ -290,7 +290,7 @@ where
         let mut removed_id: Option<E> = None;
 
         for stab_id in anticom_stabs_col.iter() {
-            let stab_usize = stab_id.to_usize();
+            let stab_usize = stab_id.to_index();
             let weight = self.stabs.row_x[stab_usize].len() + self.stabs.row_z[stab_usize].len();
 
             if weight < smallest_wt {
@@ -305,7 +305,7 @@ where
         let id = removed_id.expect("Critical error: removed_id was None");
 
         anticom_stabs_col.remove(&id);
-        let id_usize = id.to_usize(); // Convert `id` to `usize`
+        let id_usize = id.to_index(); // Convert `id` to `usize`
         let removed_row_x = self.stabs.row_x[id_usize].clone();
         let removed_row_z = self.stabs.row_z[id_usize].clone();
 
@@ -338,7 +338,7 @@ where
         }
 
         for gen in anticom_stabs_col.iter() {
-            let gen_usize = gen.to_usize(); // Convert `gen` to `usize`
+            let gen_usize = gen.to_index(); // Convert `gen` to `usize`
             let num_minuses = removed_row_z
                 .intersection(&self.stabs.row_x[gen_usize])
                 .count();
@@ -354,22 +354,22 @@ where
         }
 
         for i in removed_row_x.iter() {
-            let iu = i.to_usize();
+            let iu = i.to_index();
             self.stabs.col_x[iu] ^= &anticom_stabs_col;
         }
 
         for i in removed_row_z.iter() {
-            let iu = i.to_usize();
+            let iu = i.to_index();
             self.stabs.col_z[iu] ^= &anticom_stabs_col;
         }
 
         for i in self.stabs.row_x[id_usize].iter() {
-            let iu = i.to_usize();
+            let iu = i.to_index();
             self.stabs.col_x[iu].remove(&id);
         }
 
         for i in self.stabs.row_z[id_usize].iter() {
-            let iu = i.to_usize();
+            let iu = i.to_index();
             self.stabs.col_z[iu].remove(&id);
         }
 
@@ -382,31 +382,31 @@ where
         self.stabs.row_z[id_usize].insert(q);
 
         for i in self.destabs.row_x[id_usize].iter() {
-            let iu = i.to_usize();
+            let iu = i.to_index();
             self.destabs.col_x[iu].remove(&id);
         }
 
         for i in self.destabs.row_z[id_usize].iter() {
-            let iu = i.to_usize();
+            let iu = i.to_index();
             self.destabs.col_z[iu].remove(&id);
         }
 
         anticom_destabs_col.remove(&id);
 
         for i in removed_row_x.iter() {
-            let iu = i.to_usize();
+            let iu = i.to_index();
             self.destabs.col_x[iu].insert(id);
             self.destabs.col_x[iu] ^= &anticom_destabs_col;
         }
 
         for i in removed_row_z.iter() {
-            let iu = i.to_usize();
+            let iu = i.to_index();
             self.destabs.col_z[iu].insert(id);
             self.destabs.col_z[iu] ^= &anticom_destabs_col;
         }
 
         for row in anticom_destabs_col.iter() {
-            let ru = row.to_usize();
+            let ru = row.to_index();
             self.destabs.row_x[ru] ^= &removed_row_x;
             self.destabs.row_z[ru] ^= &removed_row_z;
         }
@@ -426,7 +426,7 @@ where
     /// Will panic if qubit ids don't convert to usize.
     #[inline]
     pub fn mz_forced(&mut self, q: E, forced_outcome: bool) -> MeasurementResult {
-        let qu = q.to_usize();
+        let qu = q.to_index();
 
         if self.stabs.col_x[qu].is_empty() {
             // There are no stabilizers that anti-commute with Z_q
@@ -487,7 +487,7 @@ where
     /// Will panic if qubit ids don't convert to usize.
     #[inline]
     fn x(&mut self, q: E) -> &mut Self {
-        let qu = q.to_usize();
+        let qu = q.to_index();
         self.stabs.signs_minus ^= &self.stabs.col_z[qu];
         self
     }
@@ -498,7 +498,7 @@ where
     #[inline]
     fn y(&mut self, q: E) -> &mut Self {
         // TODO: Add test
-        let qu = q.to_usize();
+        let qu = q.to_index();
         // stabs.signs_minus ^= stabs.col_x[qubit] ^ stabs.col_z[qubit]
         for i in self.stabs.col_x[qu].symmetric_difference(&self.stabs.col_z[qu]) {
             self.stabs.signs_minus ^= i;
@@ -512,7 +512,7 @@ where
     #[inline]
     fn z(&mut self, q: E) -> &mut Self {
         // TODO: Add test
-        self.stabs.signs_minus ^= &self.stabs.col_x[q.to_usize()];
+        self.stabs.signs_minus ^= &self.stabs.col_x[q.to_index()];
         self
     }
 
@@ -525,7 +525,7 @@ where
     /// Will panic if qubit ids don't convert to usize.
     #[inline]
     fn sz(&mut self, q: E) -> &mut Self {
-        let qu = q.to_usize();
+        let qu = q.to_index();
 
         // X -> i
         // ---------------------
@@ -542,7 +542,7 @@ where
             g.col_z[qu] ^= &g.col_x[qu];
 
             for &i in g.col_x[qu].iter() {
-                let iu = i.to_usize();
+                let iu = i.to_index();
                 g.row_z[iu] ^= &q;
             }
         }
@@ -554,7 +554,7 @@ where
     /// Will panic if qubit ids don't convert to usize.
     #[inline]
     fn h(&mut self, q: E) -> &mut Self {
-        let qu = q.to_usize();
+        let qu = q.to_index();
 
         // self.stabs.signs_minus.symmetric_difference_update(self.stabs.col_x[qu].intersection())
         // self.stabs.signs_minus ^= &self.stabs.col_x[qu] & &self.stabs.col_z[qu];
@@ -564,13 +564,13 @@ where
 
         for g in [&mut self.stabs, &mut self.destabs] {
             for i in g.col_x[qu].difference(&g.col_z[qu]) {
-                let iu = i.to_usize();
+                let iu = i.to_index();
                 g.row_x[iu].remove(&q);
                 g.row_z[iu].insert(q);
             }
 
             for i in g.col_z[qu].difference(&g.col_x[qu]) {
-                let iu = i.to_usize();
+                let iu = i.to_index();
                 g.row_z[iu].remove(&q);
                 g.row_x[iu].insert(q);
             }
@@ -612,8 +612,8 @@ where
     /// Will panic if qubit ids don't convert to usize.
     #[inline]
     fn cx(&mut self, q1: E, q2: E) -> &mut Self {
-        let qu1 = q1.to_usize();
-        let qu2 = q2.to_usize();
+        let qu1 = q1.to_index();
+        let qu2 = q2.to_index();
 
         for g in &mut [&mut self.stabs, &mut self.destabs] {
             let (qu_min, qu_max) = if qu1 < qu2 { (qu1, qu2) } else { (qu2, qu1) };
@@ -635,7 +635,7 @@ where
                 q2_set.insert(q2);
 
                 for i in col_x_qu1.iter() {
-                    let iu = i.to_usize();
+                    let iu = i.to_index();
                     g.row_x[iu].symmetric_difference_update(&q2_set);
                 }
                 col_x_qu2.symmetric_difference_update(col_x_qu1);
@@ -658,7 +658,7 @@ where
                 q1_set.insert(q1);
 
                 for i in col_z_qu2.iter() {
-                    let iu = i.to_usize();
+                    let iu = i.to_index();
                     g.row_z[iu].symmetric_difference_update(&q1_set);
                 }
                 col_z_qu1.symmetric_difference_update(col_z_qu2);
@@ -697,7 +697,7 @@ where
     /// Will panic if qubit ids don't convert to usize.
     #[inline]
     fn mz(&mut self, q: E) -> MeasurementResult {
-        let qu = q.to_usize();
+        let qu = q.to_index();
 
         let deterministic = self.stabs.col_x[qu].is_empty();
 

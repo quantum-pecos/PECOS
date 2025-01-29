@@ -17,7 +17,7 @@ mod set_impl;
 use crate::{Element, Set};
 use core::slice::Iter;
 
-#[derive(Clone, Debug)]
+#[derive(PartialEq, Clone, Debug)]
 pub struct VecSet<E: Element> {
     elements: Vec<E>,
 }

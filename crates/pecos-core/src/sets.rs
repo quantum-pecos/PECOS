@@ -10,6 +10,5 @@
 // or implied. See the License for the specific language governing permissions and limitations under
 // the License.
 
-pub mod element;
 pub mod set;
 pub mod vec_set;

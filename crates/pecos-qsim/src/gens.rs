@@ -98,7 +98,7 @@ where
     let mut sets = Vec::with_capacity(num_qubits);
     for i in 0..num_qubits {
         let mut set = T::new();
-        set.insert(E::from_usize(i));
+        set.insert(E::from_index(i));
         sets.push(set);
     }
     sets

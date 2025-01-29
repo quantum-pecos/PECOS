@@ -10,10 +10,20 @@
 // or implied. See the License for the specific language governing permissions and limitations under
 // the License.
 
-mod sets;
-mod sims_rngs;
+pub mod angle;
+pub mod element;
+pub mod gate;
+pub mod pauli;
+pub mod phase;
+pub mod qubit_id;
+pub mod sets;
+pub mod sims_rngs;
 
-pub use sets::element::{Element, IndexableElement};
+pub use angle::{Angle, Angle128, Angle16, Angle32, Angle64, Angle8, LossyInto};
+pub use element::{Element, IndexableElement};
+pub use phase::quarter_phase::QuarterPhase;
+pub use phase::sign::Sign;
+pub use qubit_id::QubitId;
 pub use sets::set::Set;
 pub use sets::vec_set::VecSet;
 
@@ -26,3 +36,9 @@ pub use crate::sims_rngs::xoshiro_rng::{
     Xoshiro128PlusPlus, Xoshiro128StarStar, Xoshiro256PlusPlus, Xoshiro256StarStar,
     Xoshiro512PlusPlus, Xoshiro512StarStar,
 };
+pub use gate::Gate;
+pub use pauli::pauli_bitmap::PauliBitmap;
+pub use pauli::pauli_sparse::PauliSparse;
+pub use pauli::pauli_string::PauliString;
+pub use pauli::{Pauli, PauliOperator};
+pub use phase::Phase;
