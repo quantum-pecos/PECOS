@@ -1,5 +1,5 @@
 // PECOS/crates/pecos-engines/src/qir/command_queue.rs
-use crate::types::QuantumCommand;
+use pecos_core::types::QuantumCommand;
 use std::collections::VecDeque;
 
 pub struct CommandQueue {

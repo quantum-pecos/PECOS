@@ -1,8 +1,8 @@
 // PECOS/crates/pecos-engines/src/qir/qir_engine
 use crate::engines::ClassicalEngine;
 use crate::errors::QueueError;
-use crate::types::{CommandBatch, MeasurementResult, QuantumCommand, ShotResult};
 use log::{debug, info};
+use pecos_core::types::{CommandBatch, MeasurementResult, QuantumCommand, ShotResult};
 use std::fs;
 use std::io::{BufRead, BufReader, Write};
 use std::path::{Path, PathBuf};
@@ -49,9 +49,13 @@ impl QirClassicalEngine {
                 let lib = target_dir.join(profile).join("deps").join(lib_name);
                 if lib.exists() {
                     let dest = self.build_dir.join(lib_name);
-                    debug!("Copying library from {} to {}", lib.display(), dest.display());
+                    debug!(
+                        "Copying library from {} to {}",
+                        lib.display(),
+                        dest.display()
+                    );
                     fs::copy(&lib, &dest)?;
-                    return Ok(self.build_dir.to_path_buf());
+                    return Ok(self.build_dir.clone());
                 }
             }
         }
@@ -66,9 +70,13 @@ impl QirClassicalEngine {
                     .join(lib_name);
                 if lib.exists() {
                     let dest = self.build_dir.join(lib_name);
-                    debug!("Copying library from {} to {}", lib.display(), dest.display());
+                    debug!(
+                        "Copying library from {} to {}",
+                        lib.display(),
+                        dest.display()
+                    );
                     fs::copy(&lib, &dest)?;
-                    return Ok(self.build_dir.to_path_buf());
+                    return Ok(self.build_dir.clone());
                 }
             }
         }
@@ -78,9 +86,13 @@ impl QirClassicalEngine {
             let lib = exe_dir.parent().unwrap().join("lib").join(lib_name);
             if lib.exists() {
                 let dest = self.build_dir.join(lib_name);
-                debug!("Copying library from {} to {}", lib.display(), dest.display());
+                debug!(
+                    "Copying library from {} to {}",
+                    lib.display(),
+                    dest.display()
+                );
                 fs::copy(&lib, &dest)?;
-                return Ok(self.build_dir.to_path_buf());
+                return Ok(self.build_dir.clone());
             }
         }
 
@@ -89,9 +101,13 @@ impl QirClassicalEngine {
             let lib = PathBuf::from(home).join(".cargo/lib").join(lib_name);
             if lib.exists() {
                 let dest = self.build_dir.join(lib_name);
-                debug!("Copying library from {} to {}", lib.display(), dest.display());
+                debug!(
+                    "Copying library from {} to {}",
+                    lib.display(),
+                    dest.display()
+                );
                 fs::copy(&lib, &dest)?;
-                return Ok(self.build_dir.to_path_buf());
+                return Ok(self.build_dir.clone());
             }
         }
 
@@ -142,10 +158,10 @@ impl QirClassicalEngine {
             .arg("-o")
             .arg(&exe_path)
             .arg(&obj_path)
-            .arg("-L.")  // Look in current directory
-            .arg("-Wl,-rpath,$ORIGIN")  // Use relative path for runtime
+            .arg("-L.") // Look in current directory
+            .arg("-Wl,-rpath,$ORIGIN") // Use relative path for runtime
             .arg("-lpecos_engines")
-            .current_dir(&lib_dir)  // Run from directory containing library
+            .current_dir(&lib_dir) // Run from directory containing library
             .output()?;
 
         if !output.status.success() {
@@ -154,7 +170,7 @@ impl QirClassicalEngine {
                 String::from_utf8_lossy(&output.stdout),
                 String::from_utf8_lossy(&output.stderr)
             )
-                .into());
+            .into());
         }
 
         info!("Compilation successful: {}", exe_path.display());

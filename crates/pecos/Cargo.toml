@@ -13,6 +13,7 @@ description = "A crate for evaluating and exploring quantum error correction."
 
 [dependencies]
 pecos-core = { workspace = true }
+pecos-noise = { workspace = true }
 pecos-qsim = { workspace = true }
 pecos-engines = { workspace = true }
 pecos-qec = { workspace = true }

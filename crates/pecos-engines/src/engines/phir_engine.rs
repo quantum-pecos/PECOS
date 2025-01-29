@@ -1,13 +1,11 @@
 // engines/phir_engines
-#![allow(dead_code)] // TODO: Remove once CLI integration is complete
-
 use serde::Deserialize;
 use std::collections::HashMap;
 use std::path::Path;
 
 use super::ClassicalEngine;
 use crate::errors::QueueError;
-use crate::types::{CommandBatch, GateType, MeasurementResult, QuantumCommand, ShotResult};
+use pecos_core::types::{CommandBatch, GateType, MeasurementResult, QuantumCommand, ShotResult};
 
 #[derive(Debug, Deserialize)]
 struct PHIRProgram {
@@ -440,6 +438,12 @@ mod tests {
                     "size": 2
                 },
                 {
+                    "data": "cvar_define",
+                    "data_type": "i64",
+                    "variable": "result",
+                    "size": 2
+                },
+                {
                     "qop": "R1XY",
                     "angles": [[0.1, 0.2], "rad"],
                     "args": [["q", 0]]
@@ -468,7 +472,7 @@ mod tests {
         // Verify results
         let results = engine.get_results()?;
         assert_eq!(results.measurements.len(), 1);
-        assert_eq!(results.measurements["m_0"], 1);
+        assert_eq!(results.measurements["measurement_0"], 1);
 
         Ok(())
     }

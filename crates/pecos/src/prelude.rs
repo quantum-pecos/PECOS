@@ -12,7 +12,10 @@
 
 // re-exporting pecos-core
 pub use pecos_core::{IndexableElement, VecSet};
-
+// re-exporting pecos-engines
+pub use pecos_core::types::{
+    CommandBatch, GateType, MeasurementResult, QuantumCommand, ShotResult,
+};
 // re-exporting pecos-engines
 pub use pecos_engines::{
     channels::stdio::StdioChannel,
@@ -22,11 +25,11 @@ pub use pecos_engines::{
         ClassicalEngine, HybridEngine,
     },
     errors::QueueError,
-    noise::{DepolarizingNoise, NoiseModel},
-    types::{CommandBatch, GateType, MeasurementResult, QuantumCommand, ShotResult},
 };
 // re-exporting pecos-engines
 pub use pecos_engines::qir::qir_engine::QirClassicalEngine;
+// re-exporting pecos-engines
+pub use pecos_noise::noise::{DepolarizingNoise, NoiseModel};
 // re-exporting pecos-qsim
 pub use pecos_qsim::ArbitraryRotationGateable;
 pub use pecos_qsim::CliffordGateable;

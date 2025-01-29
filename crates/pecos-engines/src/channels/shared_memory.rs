@@ -1,8 +1,8 @@
 // PECOS/crates/pecos-engines/src/channels/shared_memory.rs
 use super::{CommandChannel, MeasurementChannel};
 use crate::errors::QueueError;
-use crate::types::{CommandBatch, MeasurementResult};
 use memmap2::MmapMut;
+use pecos_core::types::{CommandBatch, MeasurementResult};
 use std::fs::OpenOptions;
 use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::Arc;

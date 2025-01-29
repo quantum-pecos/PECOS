@@ -8,8 +8,8 @@ use std::sync::Arc;
 use super::{ClassicalEngine, HybridEngine, QuantumEngine};
 use crate::channels::{CommandChannel, MeasurementChannel};
 use crate::errors::QueueError;
-use crate::noise::NoiseModel;
-use crate::types::{GateType, MeasurementStatistics, QubitStats, ShotResult, ShotResults};
+use pecos_core::types::{GateType, MeasurementStatistics, QubitStats, ShotResult, ShotResults};
+use pecos_noise::noise::NoiseModel;
 
 impl<C, M> HybridEngine<C, M>
 where

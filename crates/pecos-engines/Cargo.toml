@@ -16,7 +16,6 @@ description = "Provides simulator engines for PECOS simulations."
 crate-type = ["cdylib", "rlib"]
 
 [dependencies]
-rand = { workspace = true}
 rayon = { workspace = true}
 log = { workspace = true }
 memmap2 = { workspace = true }
@@ -26,8 +25,10 @@ os_pipe = { workspace = true }
 lazy_static = { workspace = true }
 parking_lot = { workspace = true }
 serde_json = { workspace = true }
-tempfile = "3.15.0"
+tempfile = "3"
 
+pecos-core = { workspace = true }
+pecos-noise = { workspace = true }
 pecos-qsim = { workspace = true }
 
 [lints]

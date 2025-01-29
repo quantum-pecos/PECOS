@@ -1,0 +1,20 @@
+[package]
+name = "pecos-noise"
+version.workspace = true
+edition.workspace = true
+readme.workspace = true
+authors.workspace = true
+homepage.workspace = true
+repository.workspace = true
+license.workspace = true
+keywords.workspace = true
+categories.workspace = true
+
+[dependencies]
+rand = { workspace = true }
+parking_lot = { workspace = true }
+
+pecos-core = { workspace = true }
+
+[lints]
+workspace = true

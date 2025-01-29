@@ -1,8 +1,8 @@
 // PECOS/crates/pecos-engines/src/channels/stdio.rs
 use super::{CommandChannel, MeasurementChannel};
 use crate::errors::QueueError;
-use crate::types::{CommandBatch, MeasurementResult, QuantumCommand};
 use log::trace;
+use pecos_core::types::{CommandBatch, MeasurementResult, QuantumCommand};
 use std::io::{self, BufRead, BufReader, BufWriter, Write};
 use std::sync::{Arc, Mutex};
 
@@ -93,7 +93,7 @@ impl MeasurementChannel for StdioChannel {
 }
 
 pub(crate) fn format_command(cmd: &QuantumCommand) -> String {
-    use crate::types::GateType::{Measure, CX, H, R1XY, RZ, SZZ};
+    use pecos_core::types::GateType::{Measure, CX, H, R1XY, RZ, SZZ};
 
     match &cmd.gate {
         RZ { theta } => format!("RZ {} {}", theta, cmd.qubits[0]),

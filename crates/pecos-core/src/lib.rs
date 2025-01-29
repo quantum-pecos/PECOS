@@ -18,6 +18,7 @@ pub mod phase;
 pub mod qubit_id;
 pub mod sets;
 pub mod sims_rngs;
+pub mod types;
 
 pub use angle::{Angle, Angle128, Angle16, Angle32, Angle64, Angle8, LossyInto};
 pub use element::{Element, IndexableElement};

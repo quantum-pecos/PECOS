@@ -1,5 +1,5 @@
-use crate::types::{CommandBatch, GateType, QuantumCommand};
 use parking_lot::Mutex;
+use pecos_core::types::{CommandBatch, GateType, QuantumCommand};
 use rand::rngs::StdRng;
 use rand::Rng;
 use rand::SeedableRng;

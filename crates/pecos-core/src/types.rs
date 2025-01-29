@@ -34,7 +34,7 @@ impl QuantumCommand {
     ///
     /// # Examples
     /// ```
-    /// use pecos_engines::types::QuantumCommand;
+    /// use pecos_core::types::QuantumCommand;
     /// let cmd = QuantumCommand::parse_from_str("RZ 0.5 1").unwrap();
     /// let cmd = QuantumCommand::parse_from_str("R1XY 0.1 0.2 0").unwrap();
     /// let cmd = QuantumCommand::parse_from_str("SZZ 0 1").unwrap();

@@ -1501,6 +1501,7 @@ dependencies = [
  "getrandom 0.2.15",
  "pecos-core",
  "pecos-engines",
+ "pecos-noise",
  "pecos-qec",
  "pecos-qsim",
  "rand",
@@ -1524,12 +1525,13 @@ dependencies = [
 name = "pecos-core"
 version = "0.1.1"
 dependencies = [
+ "log",
  "num-complex",
  "num-traits",
  "rand",
  "rand_chacha",
  "rand_xoshiro",
- "regex",
+ "serde",
 ]
 
 [[package]]
@@ -1541,13 +1543,23 @@ dependencies = [
  "memmap2 0.9.5",
  "os_pipe",
  "parking_lot",
+ "pecos-core",
+ "pecos-noise",
  "pecos-qsim",
- "rand",
  "rayon",
  "serde",
  "serde_json",
  "tempfile",
  "uuid",
+]
+
+[[package]]
+name = "pecos-noise"
+version = "0.1.1"
+dependencies = [
+ "parking_lot",
+ "pecos-core",
+ "rand",
 ]
 
 [[package]]

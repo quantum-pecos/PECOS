@@ -4,9 +4,9 @@ pub mod quantum;
 
 pub use crate::channels::{CommandChannel, MeasurementChannel};
 pub use crate::errors::QueueError;
-use crate::noise::NoiseModel;
-pub use crate::types::{CommandBatch, MeasurementResult, QuantumCommand, ShotResult};
 use parking_lot::RwLock;
+pub use pecos_core::types::{CommandBatch, MeasurementResult, QuantumCommand, ShotResult};
+use pecos_noise::noise::NoiseModel;
 use std::sync::Arc;
 
 /// Classical engine that processes programs and handles measurements

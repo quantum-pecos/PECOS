@@ -1,8 +1,8 @@
 // PECOS/crates/pecos-engines/src/engines/quantum.rs
 use super::QuantumEngine;
 use crate::errors::QueueError;
-use crate::types::{GateType, MeasurementResult, QuantumCommand};
 use log::debug;
+use pecos_core::types::{GateType, MeasurementResult, QuantumCommand};
 use pecos_qsim::{ArbitraryRotationGateable, CliffordGateable, QuantumSimulator};
 
 // Engine for simulators that only support Clifford gates

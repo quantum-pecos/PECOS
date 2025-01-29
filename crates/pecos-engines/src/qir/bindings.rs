@@ -5,7 +5,7 @@ use std::collections::VecDeque;
 use std::io::{self, Write};
 use std::sync::Mutex;
 
-use crate::types::{GateType, QuantumCommand};
+use pecos_core::types::{GateType, QuantumCommand};
 
 lazy_static! {
     static ref COMMAND_QUEUE: Mutex<VecDeque<QuantumCommand>> = Mutex::new(VecDeque::new());
