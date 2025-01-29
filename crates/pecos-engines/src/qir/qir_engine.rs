@@ -38,25 +38,64 @@ impl QirClassicalEngine {
         }
     }
 
-    fn find_library_dir() -> Result<PathBuf, Box<dyn std::error::Error>> {
+    fn find_and_copy_library(&self) -> Result<PathBuf, Box<dyn std::error::Error>> {
+        let lib_name = "libpecos_engines.so";
         let exe_path = std::env::current_exe()?;
         let exe_dir = exe_path.parent().ok_or("Cannot get executable directory")?;
 
-        // Development case
+        // 1. Development case - direct target directory
         if let Some(target_dir) = exe_dir.parent() {
-            let lib = target_dir.join("debug/libpecos_engines.so");
-            if lib.exists() {
-                return Ok(target_dir.join("debug"));
+            for profile in ["debug", "release"] {
+                let lib = target_dir.join(profile).join("deps").join(lib_name);
+                if lib.exists() {
+                    let dest = self.build_dir.join(lib_name);
+                    debug!("Copying library from {} to {}", lib.display(), dest.display());
+                    fs::copy(&lib, &dest)?;
+                    return Ok(self.build_dir.to_path_buf());
+                }
             }
         }
 
-        // Installation case
-        if exe_dir.ends_with("bin") {
-            let lib_dir = exe_dir.parent().unwrap().join("lib");
-            return Ok(lib_dir);
+        // 2. Development case - workspace target directory
+        if let Some(workspace_dir) = exe_dir.parent().and_then(|d| d.parent()) {
+            for profile in ["debug", "release"] {
+                let lib = workspace_dir
+                    .join("target")
+                    .join(profile)
+                    .join("deps")
+                    .join(lib_name);
+                if lib.exists() {
+                    let dest = self.build_dir.join(lib_name);
+                    debug!("Copying library from {} to {}", lib.display(), dest.display());
+                    fs::copy(&lib, &dest)?;
+                    return Ok(self.build_dir.to_path_buf());
+                }
+            }
         }
 
-        Err("Could not find libpecos_engines.so".into())
+        // 3. Installation case
+        if exe_dir.ends_with("bin") {
+            let lib = exe_dir.parent().unwrap().join("lib").join(lib_name);
+            if lib.exists() {
+                let dest = self.build_dir.join(lib_name);
+                debug!("Copying library from {} to {}", lib.display(), dest.display());
+                fs::copy(&lib, &dest)?;
+                return Ok(self.build_dir.to_path_buf());
+            }
+        }
+
+        // 4. Direct path in ~/.cargo/lib
+        if let Ok(home) = std::env::var("HOME") {
+            let lib = PathBuf::from(home).join(".cargo/lib").join(lib_name);
+            if lib.exists() {
+                let dest = self.build_dir.join(lib_name);
+                debug!("Copying library from {} to {}", lib.display(), dest.display());
+                fs::copy(&lib, &dest)?;
+                return Ok(self.build_dir.to_path_buf());
+            }
+        }
+
+        Err("Could not find libpecos_engines.so in any standard location".into())
     }
 
     pub fn compile(&self) -> Result<(), Box<dyn std::error::Error>> {
@@ -70,7 +109,8 @@ impl QirClassicalEngine {
         debug!("Object file: {}", obj_path.display());
         debug!("Executable: {}", exe_path.display());
 
-        let lib_dir = Self::find_library_dir()?;
+        // Copy library to build directory and get its location
+        let lib_dir = self.find_and_copy_library()?;
         debug!("Library directory: {}", lib_dir.display());
 
         info!("Converting LLVM IR to bitcode...");
@@ -102,10 +142,10 @@ impl QirClassicalEngine {
             .arg("-o")
             .arg(&exe_path)
             .arg(&obj_path)
-            .arg(format!("-L{}", lib_dir.display()))
-            .arg("-Wl,-rpath")
-            .arg(lib_dir)
+            .arg("-L.")  // Look in current directory
+            .arg("-Wl,-rpath,$ORIGIN")  // Use relative path for runtime
             .arg("-lpecos_engines")
+            .current_dir(&lib_dir)  // Run from directory containing library
             .output()?;
 
         if !output.status.success() {
@@ -114,7 +154,7 @@ impl QirClassicalEngine {
                 String::from_utf8_lossy(&output.stdout),
                 String::from_utf8_lossy(&output.stderr)
             )
-            .into());
+                .into());
         }
 
         info!("Compilation successful: {}", exe_path.display());
