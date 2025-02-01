@@ -9,4 +9,6 @@
 # "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the License for the
 # specific language governing permissions and limitations under the License.
 
-from pecos.classical_interpreters.phir_classical_interpreter import PHIRClassicalInterpreter
+from pecos.classical_interpreters.phir_classical_interpreter import (
+    PHIRClassicalInterpreter,
+)

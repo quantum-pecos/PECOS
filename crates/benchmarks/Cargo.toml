@@ -13,7 +13,6 @@ publish = false
 [dev-dependencies]
 criterion = { workspace = true }
 pecos = { workspace = true }
-pecos-core = { workspace = true }
 
 [[bench]]
 name = "benchmarks"

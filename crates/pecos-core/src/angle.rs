@@ -975,9 +975,9 @@ mod tests {
 
     #[test]
     fn test_randomized_values_u32_to_u64() {
-        let mut rng = rand::thread_rng();
+        let mut rng = rand::rng();
         for _ in 0..1000 {
-            let random_u32: u32 = rng.gen();
+            let random_u32: u32 = rng.random();
             let angle_u32 = Angle::<u32>::new(random_u32);
             let converted: Angle<u64> = angle_u32.into();
             let back: Angle<u32> = converted.try_into().expect("Lossless conversion failed");
@@ -987,9 +987,9 @@ mod tests {
 
     #[test]
     fn test_randomized_values_u64_to_u32() {
-        let mut rng = rand::thread_rng();
+        let mut rng = rand::rng();
         for _ in 0..1000 {
-            let random_u64: u64 = rng.gen();
+            let random_u64: u64 = rng.random();
             let angle_u64 = Angle::<u64>::new(random_u64);
             let result: Result<Angle<u32>, _> = angle_u64.try_into();
             if u32::try_from(random_u64).is_ok() {
@@ -1314,28 +1314,28 @@ mod tests {
 
     #[test]
     fn test_randomized_conversions() {
-        let mut rng = rand::thread_rng();
+        let mut rng = rand::rng();
 
         for _ in 0..1000 {
-            let val_u8: u8 = rng.gen();
+            let val_u8: u8 = rng.random();
             let angle = Angle::<u8>::new(val_u8);
             let up: Angle<u16> = angle.into();
             let down: Angle<u8> = up.try_into().expect("Lossless downscaling failed");
             assert_eq!(angle, down);
 
-            let val_u16: u16 = rng.gen();
+            let val_u16: u16 = rng.random();
             let angle = Angle::<u16>::new(val_u16);
             let up: Angle<u32> = angle.into();
             let down: Angle<u16> = up.try_into().expect("Lossless downscaling failed");
             assert_eq!(angle, down);
 
-            let val_u32: u32 = rng.gen();
+            let val_u32: u32 = rng.random();
             let angle = Angle::<u32>::new(val_u32);
             let up: Angle<u64> = angle.into();
             let down: Angle<u32> = up.try_into().expect("Lossless downscaling failed");
             assert_eq!(angle, down);
 
-            let val_u64: u64 = rng.gen();
+            let val_u64: u64 = rng.random();
             let angle = Angle::<u64>::new(val_u64);
             let up: Angle<u128> = angle.into();
             let down: Angle<u64> = up.try_into().expect("Lossless downscaling failed");

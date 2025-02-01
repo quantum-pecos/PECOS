@@ -2,13 +2,12 @@
 use log::{debug, info};
 use parking_lot::{Mutex, RwLock};
 use rayon::prelude::*;
-use std::collections::HashMap;
 use std::sync::Arc;
 
 use super::{ClassicalEngine, QuantumEngine};
 use crate::channels::{CommandChannel, MessageChannel};
 use crate::errors::QueueError;
-use pecos_core::types::{GateType, MeasurementStatistics, QubitStats, ShotResult, ShotResults};
+use pecos_core::types::{GateType, ShotResult, ShotResults};
 use pecos_noise::NoiseModel;
 
 // Base implementation of Hybrid Engine
@@ -48,6 +47,25 @@ where
         *self.noise_model.write() = noise_model;
     }
 
+    /// Executes a single quantum circuit shot and returns the result.
+    ///
+    /// This function performs the following steps:
+    /// 1. Retrieves quantum commands from the classical engine.
+    /// 2. Sends these commands to the quantum engine via the command channel.
+    /// 3. Processes measurement results received from the measurement channel.
+    /// 4. Retrieves and returns the final results from the classical engine.
+    ///
+    /// # Returns
+    ///
+    /// Returns a `ShotResult` representing the results of the shot execution.
+    ///
+    /// # Errors
+    ///
+    /// This function may return the following errors:
+    /// - `QueueError::LockError`: If a lock cannot be acquired for a resource.
+    /// - `QueueError::OperationError`: If an operation is not supported or fails.
+    /// - `QueueError::ExecutionError`: If there is a problem executing quantum or classical parts.
+    /// - `QueueError::SerializationError`: If there is an issue with serializing or deserializing data.
     pub fn run_shot(&self) -> Result<ShotResult, QueueError> {
         // Get commands from classical engine
         let commands = self.classical.write().process_program()?;
@@ -64,6 +82,24 @@ where
         self.classical.read().get_results()
     }
 
+    /// Runs a parallel execution of quantum circuits for a specified number of shots.
+    ///
+    /// # Parameters
+    ///
+    /// - `shots`: The total number of shots to execute in parallel.
+    /// - `workers`: The number of workers to use for parallel execution.
+    ///
+    /// # Returns
+    ///
+    /// Returns a `ShotResults` object containing the processed results for all shots,
+    /// or a `QueueError` if an error occurs during execution.
+    ///
+    /// # Errors
+    ///
+    /// This function may return the following errors:
+    /// - `QueueError::OperationError` if an operation is not supported.
+    /// - `QueueError::ExecutionError` if the quantum engine execution fails.
+    /// - `QueueError::LockError` if there is a failure in acquiring or unwrapping a lock.
     pub fn run_parallel(&self, shots: usize, workers: usize) -> Result<ShotResults, QueueError> {
         info!(
             "Starting parallel execution with {} shots and {} workers",
@@ -109,9 +145,7 @@ where
 
                     for cmd in &commands {
                         if let Some(measurement) = quantum.process_command(cmd)? {
-                            let res_id = if let GateType::Measure { result_id } = cmd.gate {
-                                result_id
-                            } else {
+                            let GateType::Measure { result_id: res_id } = cmd.gate else {
                                 continue;
                             };
                             shot_result
@@ -138,46 +172,5 @@ where
         results.print();
 
         Ok(results)
-    }
-
-    pub fn compute_statistics(&self, results: &[ShotResult]) -> MeasurementStatistics {
-        let mut stats = HashMap::new();
-
-        for result in results {
-            for (key, &value) in &result.measurements {
-                stats
-                    .entry(key.clone())
-                    .or_insert_with(QubitStats::new)
-                    .add_measurement(value);
-            }
-        }
-
-        MeasurementStatistics {
-            total_shots: results.len(),
-            per_qubit_stats: stats,
-        }
-    }
-
-    pub fn print_statistics(&self, stats: &MeasurementStatistics) {
-        println!("\nMeasurement Statistics:");
-
-        let mut keys: Vec<_> = stats.per_qubit_stats.keys().collect();
-        keys.sort();
-
-        for key in keys {
-            let qstats = &stats.per_qubit_stats[key];
-            println!("\n{key}:");
-            println!("  Total measurements: {}", qstats.total_measurements());
-            println!(
-                "  |0⟩: {} ({:.1}%)",
-                qstats.zeros,
-                100.0 * qstats.zeros as f64 / qstats.total_measurements() as f64
-            );
-            println!(
-                "  |1⟩: {} ({:.1}%)",
-                qstats.ones,
-                100.0 * qstats.ones as f64 / qstats.total_measurements() as f64
-            );
-        }
     }
 }

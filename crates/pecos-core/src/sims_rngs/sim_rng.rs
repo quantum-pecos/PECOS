@@ -12,8 +12,8 @@
 
 use crate::sims_rngs::choices::Choices;
 use core::fmt::Debug;
-use rand::distributions::{Bernoulli, Distribution};
-use rand::{RngCore, SeedableRng};
+use rand::distr::Bernoulli;
+use rand::prelude::*;
 
 /// Represents the minimal interface needed for simulations.
 /// This trait also allows the blanket implementation provided by Rng to be overridden in favor of
@@ -51,6 +51,6 @@ pub trait SimRng: RngCore + SeedableRng + Debug {
     #[inline]
     #[must_use]
     fn from_entropy() -> Self {
-        SeedableRng::from_entropy()
+        Self::try_from_os_rng().expect("Failed to create RNG from OS entropy")
     }
 }

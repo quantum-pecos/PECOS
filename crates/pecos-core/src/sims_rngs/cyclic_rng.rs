@@ -11,17 +11,24 @@
 // the License.
 
 use super::sim_rng::SimRng;
-use rand::{Error, RngCore, SeedableRng};
+use rand::prelude::*;
 
 const N: usize = 64;
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct CyclicSeed(pub [u8; N]);
 
 impl Default for CyclicSeed {
     #[inline]
     fn default() -> Self {
         Self([0; N])
+    }
+}
+
+impl AsRef<[u8]> for CyclicSeed {
+    #[inline]
+    fn as_ref(&self) -> &[u8] {
+        &self.0
     }
 }
 
@@ -63,12 +70,6 @@ impl RngCore for CyclicRng {
     #[allow(unused)]
     #[inline]
     fn fill_bytes(&mut self, dest: &mut [u8]) {
-        todo!()
-    }
-
-    #[allow(unused)]
-    #[inline]
-    fn try_fill_bytes(&mut self, dest: &mut [u8]) -> Result<(), Error> {
         todo!()
     }
 }

@@ -24,24 +24,24 @@ installreqs: ## Install Python project requirements to root .venv
 # ---------------------------------
 .PHONY: build
 build: installreqs ## Compile and install for development
-	cd python/pecos-rslib/ && uv run maturin develop --uv
-	cd python/quantum-pecos && uv pip install -e .[all]
+	@unset CONDA_PREFIX && cd python/pecos-rslib/ && uv run maturin develop --uv
+	@unset CONDA_PREFIX && cd python/quantum-pecos && uv pip install -e .[all]
 
 .PHONY: build-basic
 build-basic: installreqs ## Compile and install for development but do not include install extras
-	cd python/pecos-rslib/ && uv run maturin develop --uv
-	cd python/quantum-pecos && uv pip install -e .
+	@unset CONDA_PREFIX && cd python/pecos-rslib/ && uv run maturin develop --uv
+	@unset CONDA_PREFIX && cd python/quantum-pecos && uv pip install -e .
 
 .PHONY: build-release
 build-release: installreqs ## Build a faster version of binaries
-	cd python/pecos-rslib/ && uv run maturin develop --uv --release
-	cd python/quantum-pecos && uv pip install -e .[all]
+	@unset CONDA_PREFIX && cd python/pecos-rslib/ && uv run maturin develop --uv --release
+	@unset CONDA_PREFIX && cd python/quantum-pecos && uv pip install -e .[all]
 
 .PHONY: build-native
 build-native: installreqs ## Build a faster version of binaries with native CPU optimization
-	cd python/pecos-rslib/ && RUSTFLAGS='-C target-cpu=native' \
+	@unset CONDA_PREFIX && cd python/pecos-rslib/ && RUSTFLAGS='-C target-cpu=native' \
 	&& uv run maturin develop --uv --release
-	cd python/quantum-pecos && uv pip install -e .[all]
+	@unset CONDA_PREFIX && cd python/quantum-pecos && uv pip install -e .[all]
 
 # Documentation
 # -------------
@@ -79,14 +79,15 @@ rstest:  ## Run Rust tests
 .PHONY: pytest
 pytest:  ## Run tests on the Python package (not including optional dependencies). ASSUMES: previous build command
 	uv run pytest ./python/tests/ -m "not optional_dependency"
+	uv run pytest ./python/pecos-rslib/tests/
 
 .PHONY: pytest-dep
 pytest-dep: ## Run tests on the Python package only for optional dependencies. ASSUMES: previous build command
 	uv run pytest ./python/tests/ -m optional_dependency
 
 .PHONY: pytest-all
-pytest-all:  ## Run all tests on the Python package ASSUMES: previous build command
-	uv run pytest ./python/tests/
+pytest-all:  pytest ## Run all tests on the Python package ASSUMES: previous build command
+	uv run pytest ./python/tests/ -m "optional_dependency"
 
 # .PHONY: pytest-doc
 # pydoctest:  ## Run doctests with pytest. ASSUMES: A build command was ran previously. ASSUMES: previous build command
@@ -103,13 +104,13 @@ test: rstest pytest-all ## Run all tests. ASSUMES: previous build command
 clean:  ## Clean up caches and build artifacts
 	@rm -rf *.egg-info
 	@rm -rf dist
-	@rm -rf **/build/
+	@find . -type d -name "build" -exec rm -rf {} +
 	@rm -rf python/docs/_build
-	@rm -rf **/.pytest_cache/
-	@rm -rf **/.ipynb_checkpoints
+	@find . -type d -name ".pytest_cache" -exec rm -rf {} +
+	@find . -type d -name ".ipynb_checkpoints" -exec rm -rf {} +
 	@rm -rf .ruff_cache/
-	@rm -rf **/.hypothesis/
-	@rm -rf **/junit/
+	@find . -type d -name ".hypothesis" -exec rm -rf {} +
+	@find . -type d -name "junit" -exec rm -rf {} +
 	@cargo clean
 
 .PHONY: pip-install-uv

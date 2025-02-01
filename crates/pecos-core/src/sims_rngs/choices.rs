@@ -10,8 +10,8 @@
 // or implied. See the License for the specific language governing permissions and limitations under
 // the License.
 
-use rand::distributions::{Distribution, WeightedIndex};
-use rand::RngCore;
+use rand::distr::weighted::WeightedIndex;
+use rand::prelude::*;
 
 const EPSILON: f64 = 1e-9;
 

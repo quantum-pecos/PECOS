@@ -1366,8 +1366,8 @@ mod detailed_tq_gate_cases {
     fn test_ryy_randomized() {
         use rand::Rng;
 
-        let mut rng = rand::thread_rng();
-        let theta = rng.gen_range(0.0..2.0 * PI);
+        let mut rng = rand::rng();
+        let theta = rng.random_range(0.0..2.0 * PI);
 
         let mut q1 = StateVec::new(2);
         let mut q2 = StateVec::new(2);

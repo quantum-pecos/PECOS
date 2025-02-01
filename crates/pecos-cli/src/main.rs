@@ -68,6 +68,7 @@ fn detect_program_type(path: &Path) -> Result<ProgramType, Box<dyn Error>> {
     }
 }
 
+#[allow(clippy::upper_case_acronyms)]
 enum ProgramType {
     QIR,
     PHIR,

@@ -155,45 +155,6 @@ pub struct ShotResult {
 // For communication
 pub type CommandBatch = Vec<QuantumCommand>;
 
-// Statistics
-#[derive(Debug)]
-pub struct MeasurementStatistics {
-    pub total_shots: usize,
-    pub per_qubit_stats: HashMap<String, QubitStats>,
-}
-
-#[derive(Debug)]
-pub struct QubitStats {
-    pub zeros: usize,
-    pub ones: usize,
-}
-
-impl Default for QubitStats {
-    fn default() -> Self {
-        Self::new()
-    }
-}
-
-impl QubitStats {
-    #[must_use]
-    pub fn new() -> Self {
-        Self { zeros: 0, ones: 0 }
-    }
-
-    pub fn add_measurement(&mut self, value: u32) {
-        match value {
-            0 => self.zeros += 1,
-            1 => self.ones += 1,
-            _ => log::warn!("Invalid measurement value: {}", value),
-        }
-    }
-
-    #[must_use]
-    pub fn total_measurements(&self) -> usize {
-        self.zeros + self.ones
-    }
-}
-
 #[derive(Debug, Clone)]
 pub struct ShotResults {
     pub shots: Vec<HashMap<String, String>>,

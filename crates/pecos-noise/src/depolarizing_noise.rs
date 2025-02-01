@@ -2,8 +2,7 @@ use crate::noise_model::NoiseModel;
 use parking_lot::Mutex;
 use pecos_core::types::{CommandBatch, GateType, QuantumCommand};
 use rand::rngs::StdRng;
-use rand::Rng;
-use rand::SeedableRng;
+use rand::{Rng, SeedableRng};
 use std::sync::Arc;
 
 /// Simple depolarizing noise model that applies random Pauli errors
@@ -15,6 +14,14 @@ pub struct DepolarizingNoise {
 }
 
 impl DepolarizingNoise {
+    /// Creates a new instance of `DepolarizingNoise` with the specified noise probability.
+    ///
+    /// # Parameters
+    /// - `probability`: The probability of applying a noise operation after each gate.
+    ///   Must be a value between 0 and 1 (inclusive).
+    ///
+    /// # Panics
+    /// - Panics if `probability` is not within the range [0.0, 1.0].
     #[must_use]
     pub fn new(probability: f64) -> Self {
         assert!(
@@ -23,7 +30,7 @@ impl DepolarizingNoise {
         );
         Self {
             probability,
-            rng: Arc::new(Mutex::new(StdRng::from_entropy())),
+            rng: Arc::new(Mutex::new(StdRng::from_os_rng())),
         }
     }
 
@@ -101,9 +108,9 @@ impl NoiseModel for DepolarizingNoise {
 
             // For each qubit in the command, maybe apply noise
             for &qubit in &cmd.qubits {
-                if rng.gen::<f64>() < self.probability {
+                if rng.random::<f64>() < self.probability {
                     // Randomly choose X, Y, or Z error
-                    match rng.gen::<f64>() * 3.0 {
+                    match rng.random::<f64>() * 3.0 {
                         x if x < 1.0 => noisy_commands.extend(Self::x_gates(qubit)),
                         x if x < 2.0 => noisy_commands.extend(Self::y_gates(qubit)),
                         _ => noisy_commands.push(Self::z_gate(qubit)),

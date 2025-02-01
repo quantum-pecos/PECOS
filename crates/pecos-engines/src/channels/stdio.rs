@@ -24,6 +24,25 @@ impl StdioChannel {
         }
     }
 
+    /// Creates a new `StdioChannel` that uses the standard input (`stdin`) and output (`stdout`) as its reader and writer.
+    ///
+    /// This method constructs the channel by wrapping `stdin` in a `BufReader` and `stdout` in a `BufWriter`,
+    /// ensuring efficient reading and writing.
+    ///
+    /// # Returns
+    /// - On success, returns an instance of `StdioChannel`.
+    /// - On failure, returns a `std::io::Error`, which might occur while initializing the I/O streams.
+    ///
+    /// # Errors
+    /// This function returns a `std::io::Error` if:
+    /// - An error occurs while accessing the standard input or output streams.
+    /// - System-level I/O errors prevent the construction of the channel.
+    ///
+    /// # Examples
+    /// ```
+    /// use pecos_engines::channels::stdio::StdioChannel;
+    /// let channel = StdioChannel::from_stdio().expect("Failed to create StdioChannel from stdio");
+    /// ```
     pub fn from_stdio() -> io::Result<Self> {
         Ok(Self {
             reader: Arc::new(Mutex::new(Box::new(BufReader::new(io::stdin())))),
@@ -31,6 +50,25 @@ impl StdioChannel {
         })
     }
 
+    /// Creates a `StdioChannel` instance with an anonymous pipe for testing or short-lived communication.
+    ///
+    /// This method sets up a pair of connected reader and writer pipes using `os_pipe`,
+    /// wrapping the reader in a `BufReader` and the writer in a `BufWriter` for buffered I/O operations.
+    ///
+    /// # Returns
+    /// - On success, returns a fully initialized `StdioChannel`.
+    /// - On failure, returns an `std::io::Error` if the pipe creation fails.
+    ///
+    /// # Errors
+    /// This function returns a `std::io::Error` if:
+    /// - The operating system fails to create the anonymous pipe.
+    /// - There is an error during initialization of the reader or writer.
+    ///
+    /// # Examples
+    /// ```
+    /// use pecos_engines::channels::stdio::StdioChannel;
+    /// let channel = StdioChannel::create_for_shot().expect("Failed to create channel for shot");
+    /// ```
     pub fn create_for_shot() -> io::Result<Self> {
         use os_pipe::pipe;
         let (reader, writer) = pipe()?;
@@ -47,9 +85,9 @@ impl CommandChannel for StdioChannel {
     ///
     /// This function writes the commands to the writer, formatting them into a
     /// specific protocol. The procedure includes:
-    /// - Writing "FLUSH_BEGIN" before the commands.
-    /// - Writing each command in the form "CMD <formatted_command>".
-    /// - Writing "FLUSH_END" after all commands.
+    /// - Writing "`FLUSH_BEGIN`" before the commands.
+    /// - Writing each command in the form "CMD <`formatted_command`>".
+    /// - Writing "`FLUSH_END`" after all commands.
     ///
     /// The function ensures that the data is flushed to the writer before returning.
     ///

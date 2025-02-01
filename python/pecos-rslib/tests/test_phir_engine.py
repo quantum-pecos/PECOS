@@ -1,34 +1,38 @@
 # PECOS/python/pecos-rslib/tests/test_phir_engine.py
 import json
+
 import pytest
 from pecos_rslib._pecos_rslib import PHIREngine
 
+
 def test_phir_minimal():
     """Test with a minimal PHIR program to verify basic functionality."""
-    phir_json = json.dumps({
-        "format": "PHIR/JSON",
-        "version": "0.1.0",
-        "metadata": {"generated_by": "PECOS version 0.6.0.dev8"},
-        "ops": [
-            {
-                "data": "qvar_define",
-                "data_type": "qubits",
-                "variable": "q",
-                "size": 2
-            },
-            {
-                "data": "cvar_define",
-                "data_type": "i64",
-                "variable": "m",
-                "size": 2
-            },
-            {
-                "qop": "Measure",
-                "args": [["q", 0]],
-                "returns": [["m", 0]]
-            }
-        ]
-    })
+    phir_json = json.dumps(
+        {
+            "format": "PHIR/JSON",
+            "version": "0.1.0",
+            "metadata": {"generated_by": "PECOS version 0.6.0.dev8"},
+            "ops": [
+                {
+                    "data": "qvar_define",
+                    "data_type": "qubits",
+                    "variable": "q",
+                    "size": 2,
+                },
+                {
+                    "data": "cvar_define",
+                    "data_type": "i64",
+                    "variable": "m",
+                    "size": 2,
+                },
+                {
+                    "qop": "Measure",
+                    "args": [["q", 0]],
+                    "returns": [["m", 0]],
+                },
+            ],
+        },
+    )
 
     # Create engine
     engine = PHIREngine(phir_json)
@@ -56,19 +60,25 @@ def test_phir_minimal():
     # Verify the result
     assert results[measurement_key] == 0, f"Expected {measurement_key} to have value 0"
 
+
 def test_phir_invalid_json():
     invalid_json = '{"format": "PHIR/JSON", "invalid": }'
-    with pytest.raises(Exception):
+    with pytest.raises(
+        json.decoder.JSONDecodeError,
+        match=r"Expecting value: line 1 column 36 \(char 35\)",
+    ):
         PHIREngine(invalid_json)
 
 
 def test_phir_empty_program():
-    phir = json.dumps({
-        "format": "PHIR/JSON",
-        "version": "0.1.0",
-        "metadata": {"generated_by": "Test"},
-        "ops": []
-    })
+    phir = json.dumps(
+        {
+            "format": "PHIR/JSON",
+            "version": "0.1.0",
+            "metadata": {"generated_by": "Test"},
+            "ops": [],
+        },
+    )
 
     engine = PHIREngine(phir)
     commands = engine.process_program()
@@ -76,17 +86,24 @@ def test_phir_empty_program():
 
 
 def test_phir_full_circuit():
-    phir = json.dumps({
-        "format": "PHIR/JSON",
-        "version": "0.1.0",
-        "metadata": {"generated_by": "PECOS version 0.6.0.dev8"},
-        "ops": [
-            {"data": "qvar_define", "data_type": "qubits", "variable": "q", "size": 2},
-            {"data": "cvar_define", "data_type": "i64", "variable": "c", "size": 2},
-            {"qop": "Measure", "args": [["q", 0]], "returns": [["c", 0]]},
-            {"qop": "Measure", "args": [["q", 1]], "returns": [["c", 1]]},
-        ]
-    })
+    phir = json.dumps(
+        {
+            "format": "PHIR/JSON",
+            "version": "0.1.0",
+            "metadata": {"generated_by": "PECOS version 0.6.0.dev8"},
+            "ops": [
+                {
+                    "data": "qvar_define",
+                    "data_type": "qubits",
+                    "variable": "q",
+                    "size": 2,
+                },
+                {"data": "cvar_define", "data_type": "i64", "variable": "c", "size": 2},
+                {"qop": "Measure", "args": [["q", 0]], "returns": [["c", 0]]},
+                {"qop": "Measure", "args": [["q", 1]], "returns": [["c", 1]]},
+            ],
+        },
+    )
 
     # Create engine
     engine = PHIREngine(phir)
@@ -116,20 +133,20 @@ def test_phir_full():
                 "data": "qvar_define",
                 "data_type": "qubits",
                 "variable": "q",
-                "size": 2
+                "size": 2,
             },
             {
                 "data": "cvar_define",
                 "data_type": "i64",
                 "variable": "m",
-                "size": 2
+                "size": 2,
             },
             {
                 "qop": "Measure",
                 "args": [["q", 0]],
-                "returns": [["m", 0]]
-            }
-        ]
+                "returns": [["m", 0]],
+            },
+        ],
     }
 
     phir_json = json.dumps(phir)

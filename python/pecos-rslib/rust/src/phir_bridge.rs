@@ -15,7 +15,6 @@ pub struct PHIREngine {
 
 #[pymethods]
 impl PHIREngine {
-
     /// Creates a new `PHIREngine`.
     ///
     /// # Arguments

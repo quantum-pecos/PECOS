@@ -115,6 +115,23 @@ impl QirClassicalEngine {
         Err("Could not find libpecos_engines.so in any standard location".into())
     }
 
+    /// Compiles the QIR program into a native executable.
+    ///
+    /// Steps:
+    /// 1. Converts the input LLVM IR file to bitcode.
+    /// 2. Compiles the bitcode to a native object file using `llc`.
+    /// 3. Links the object file with the required runtime library using `clang`.
+    ///
+    /// The compiled executable is stored in the build directory specified for this engine.
+    ///
+    /// # Errors
+    /// - Returns an error if the build directory cannot be created.
+    /// - Returns an error if any of the commands (`llvm-as-13`, `llc`, `clang`) fail.
+    /// - Returns an error if the required runtime library cannot be found or copied.
+    ///
+    /// # Returns
+    /// - `Ok(())` if the compilation succeeds.
+    /// - `Err(Box<dyn std::error::Error>)` if any step in the process fails.
     pub fn compile(&self) -> Result<(), Box<dyn std::error::Error>> {
         fs::create_dir_all(&self.build_dir)?;
 

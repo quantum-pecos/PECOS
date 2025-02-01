@@ -68,6 +68,32 @@ pub struct PHIREngine {
 }
 
 impl PHIREngine {
+    /// Creates a new instance of `PHIREngine` by loading a PHIR program JSON file.
+    ///
+    /// # Parameters
+    /// - `path`: A reference to the path of the PHIR program JSON file to load.
+    ///
+    /// # Returns
+    /// - `Ok(Self)`: If the PHIR program file is successfully loaded and validated.
+    /// - `Err(Box<dyn std::error::Error>)`: If any errors occur during file reading,
+    ///   parsing, or if the format/version is not compatible.
+    ///
+    /// # Errors
+    /// - Returns an error if the file cannot be read.
+    /// - Returns an error if the JSON parsing fails.
+    /// - Returns an error if the format is not "PHIR/JSON".
+    /// - Returns an error if the version is not "0.1.0".
+    ///
+    /// # Examples
+    /// ```rust
+    /// use pecos_engines::engines::phir_engine::PHIREngine;
+    ///
+    /// let engine = PHIREngine::new("path_to_program.json");
+    /// match engine {
+    ///     Ok(engine) => println!("PHIREngine loaded successfully!"),
+    ///     Err(e) => eprintln!("Error loading PHIREngine: {}", e),
+    /// }
+    /// ```
     pub fn new<P: AsRef<Path>>(path: P) -> Result<Self, Box<dyn std::error::Error>> {
         let content = std::fs::read_to_string(path)?;
         let program: PHIRProgram = serde_json::from_str(&content)?;
@@ -165,7 +191,7 @@ impl PHIREngine {
     fn handle_quantum_op(
         &mut self,
         qop: &str,
-        angles: &Option<(Vec<f64>, String)>,
+        angles: Option<&(Vec<f64>, String)>,
         args: &[(String, usize)],
     ) -> Result<bool, QueueError> {
         // Validate all qubit indices first
@@ -234,6 +260,7 @@ impl PHIREngine {
         Ok(false)
     }
 
+    #[allow(clippy::similar_names)]
     fn handle_classical_op(
         &mut self,
         cop: &str,
@@ -357,10 +384,10 @@ impl ClassicalEngine for PHIREngine {
                     Ok(false)
                 }
                 ProcessAction::Quantum { qop, angles, args } => {
-                    if qop != "Measure" {
-                        self.handle_quantum_op(&qop, &angles, &args)
-                    } else {
+                    if qop == "Measure" {
                         Ok(false) // Already handled in the match above
+                    } else {
+                        self.handle_quantum_op(&qop, angles.as_ref(), &args)
                     }
                 }
                 ProcessAction::Classical { cop, args, returns } => {

@@ -814,7 +814,7 @@ impl CliffordGateable<usize> for StateVec {
         }
 
         // Decide measurement outcome
-        let result = usize::from(self.rng.gen::<f64>() < prob_one);
+        let result = usize::from(self.rng.random::<f64>() < prob_one);
 
         // Collapse and normalize state
         let mut norm = 0.0;
